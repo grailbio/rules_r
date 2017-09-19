@@ -1,0 +1,87 @@
+# Copyright 2017 GRAIL, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+workspace(name = "io_bazel_rules_r_tests")
+
+local_repository(
+    name = "io_bazel_rules_r",
+    path = "..",
+)
+
+new_http_archive(
+    name = "R_crayon",
+    build_file = "cran/BUILD.crayon",
+    sha256 = "9a6b75d63c05fe64baf222f1921330ceb727924bcc5fc2753ff0528d42555e68",
+    strip_prefix = "crayon",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/crayon_1.3.2.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/crayon/crayon_1.3.2.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_digest",
+    build_file = "cran/BUILD.digest",
+    sha256 = "a479463f120037ad8e88bb1387170842e635a1f07ce7e3575316efd6e14d9eab",
+    strip_prefix = "digest",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/digest_0.6.12.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/digest/digest_0.6.12.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_magrittr",
+    build_file = "cran/BUILD.magrittr",
+    sha256 = "05c45943ada9443134caa0ab24db4a962b629f00b755ccf039a2a2a7b2c92ae8",
+    strip_prefix = "magrittr",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/magrittr_1.5.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/magrittr/magrittr_1.5.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_praise",
+    build_file = "cran/BUILD.praise",
+    sha256 = "5c035e74fd05dfa59b03afe0d5f4c53fbf34144e175e90c53d09c6baedf5debd",
+    strip_prefix = "praise",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/praise_1.0.0.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/praise/praise_1.0.0.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_R6",
+    build_file = "cran/BUILD.R6",
+    sha256 = "087756f471884c3b3ead80215a7cc5636a78b8a956e91675acfe2896426eae8f",
+    strip_prefix = "R6",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/R6_2.2.2.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/R6/R6_2.2.2.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_testthat",
+    build_file = "cran/BUILD.testthat",
+    sha256 = "0ef7df0ace1fddf821d329f9d9a5d42296085350ae0d94af62c45bd203c8415e",
+    strip_prefix = "testthat",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/testthat_1.0.2.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/testthat/testthat_1.0.2.tar.gz",
+    ],
+)
+

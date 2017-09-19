@@ -1,0 +1,8 @@
+Package: exampleB
+Title: "Example package B"
+Version: 1.0.0
+Description: "Example package to demonstrate building an R package using Bazel."
+Author: Siddhartha Bagaria <siddharthab@users.noreply.github.com>
+Maintainer: Siddhartha Bagaria <siddharthab@users.noreply.github.com>
+Imports: exampleA
+License: file LICENSE

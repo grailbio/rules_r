@@ -1,0 +1,16 @@
+sudo: false  # Not needing sudo enables container builds.
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8'
+      key_url: 'https://bazel.build/bazel-release.pub.gpg'
+    - sourceline: 'ppa:marutter/rrutter'
+    packages:
+    - bazel
+    - r-recommended
+
+script:
+  - cd tests
+  - bazel build //...
+  - bazel test //...

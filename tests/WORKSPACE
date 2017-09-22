@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-workspace(name = "io_bazel_rules_r_tests")
+workspace(name = "com_grail_rules_r_tests")
 
 local_repository(
-    name = "io_bazel_rules_r",
+    name = "com_grail_rules_r",
     path = "..",
 )
 

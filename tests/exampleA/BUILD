@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_r//R:defs.bzl", "r_pkg")
+load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
 
 r_pkg(
     name = "exampleA",

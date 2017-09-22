@@ -31,26 +31,26 @@ following to your WORKSPACE file:
 
 ```python
 http_archive(
-    name = "io_bazel_rules_r",
-    strip_prefix = "rules_r-0.1",
-    urls = ["https://github.com/grailbio/rules_r/archive/0.1.tar.gz"],
+    name = "com_grail_rules_r",
+    strip_prefix = "rules_r-0.1.1",
+    urls = ["https://github.com/grailbio/rules_r/archive/0.1.1.tar.gz"],
 )
 ```
 
 You can load the rules in your BUILD file like so:
 ```python
-load("@io_bazel_rules_r//R:defs.bzl",
+load("@com_grail_rules_r//R:defs.bzl",
      "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
 ```
 
 There are also convenience macros available which create multiple implicit
 targets:
 ```python
-load("@io_bazel_rules_r//R:defs.bzl", "r_package")
+load("@com_grail_rules_r//R:defs.bzl", "r_package")
 ```
 and
 ```python
-load("@io_bazel_rules_r//R:defs.bzl", "r_package_with_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
 ```
 
 ## Configuration

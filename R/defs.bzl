@@ -264,11 +264,11 @@ r_pkg = rule(
             doc="Additional arguments to supply to R CMD INSTALL"),
         "makevars_darwin": attr.label(
             allow_single_file=True,
-            default="@io_bazel_rules_r//R:Makevars.darwin",
+            default="@com_grail_rules_r//R:Makevars.darwin",
             doc="Makevars file to use for macOS overrides"),
         "makevars_linux": attr.label(
             allow_single_file=True,
-            default="@io_bazel_rules_r//R:Makevars.linux",
+            default="@com_grail_rules_r//R:Makevars.linux",
             doc="Makevars file to use for Linux overrides"),
         "shlib_name": attr.string(
             doc="Shared library name, if different from package name"),

@@ -99,7 +99,7 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE) {
   data_attr <- ifelse(tolower(pkg_description[1, "LazyData"]) %in% c("true", "yes"),
                       ", lazy_data=True", "")
 
-  header <- paste(c(paste0('load("@io_bazel_rules_r//R:defs.bzl", "r_pkg", ',
+  header <- paste(c(paste0('load("@com_grail_rules_r//R:defs.bzl", "r_pkg", ',
                            '"r_library", "r_unit_test", "r_pkg_test")'),
                     'package(default_visibility = ["//visibility:public"])'), sep = "\n")
 

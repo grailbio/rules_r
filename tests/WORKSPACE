@@ -19,6 +19,24 @@ local_repository(
     path = "..",
 )
 
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "f6600abeee3babfa18591961a0ff21e7db6a6d9ef82418a261ec4fee44ee6d44",
+    strip_prefix = "protobuf-3.4.0",
+    urls = ["https://github.com/google/protobuf/archive/v3.4.0.tar.gz"],
+)
+
+new_http_archive(
+    name = "R_bitops",
+    build_file = "cran/BUILD.bitops",
+    sha256 = "9b731397b7166dd54941fb0d2eac6df60c7a483b2e790f7eb15b4d7b79c9d69c",
+    strip_prefix = "bitops",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/bitops_1.0-6.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/bitops/bitops_1.0-6.tar.gz",
+    ],
+)
+
 new_http_archive(
     name = "R_crayon",
     build_file = "cran/BUILD.crayon",
@@ -75,6 +93,39 @@ new_http_archive(
 )
 
 new_http_archive(
+    name = "R_RCurl",
+    build_file = "cran/BUILD.RCurl",
+    sha256 = "e72243251bbbec341bc5864305bb8cc23d311d19c5d0d9310afec7eb35aa2bfb",
+    strip_prefix = "RCurl",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/RCurl_1.95-4.8.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/RCurl/RCurl_1.95-4.8.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_RProtoBuf",
+    build_file = "cran/BUILD.RProtoBuf",
+    sha256 = "35c4274af518c686db99f93b7372f8c1edd37ae00b3c4b024bf355bb0898de3a",
+    strip_prefix = "RProtoBuf",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/RProtoBuf_0.4.10.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/RProtoBuf/RProtoBuf_0.4.10.tar.gz",
+    ],
+)
+
+new_http_archive(
+    name = "R_Rcpp",
+    build_file = "cran/BUILD.Rcpp",
+    sha256 = "9f3eb1e6154f4d56b52ab550a22e522e9999c7998388fdc235e48af5e8c6deaf",
+    strip_prefix = "Rcpp",
+    urls = [
+        "https://cloud.r-project.org/src/contrib/Rcpp_0.12.12.tar.gz",
+        "https://cloud.r-project.org/src/contrib/Archive/Rcpp/Rcpp_0.12.12.tar.gz",
+    ],
+)
+
+new_http_archive(
     name = "R_testthat",
     build_file = "cran/BUILD.testthat",
     sha256 = "0ef7df0ace1fddf821d329f9d9a5d42296085350ae0d94af62c45bd203c8415e",
@@ -84,4 +135,3 @@ new_http_archive(
         "https://cloud.r-project.org/src/contrib/Archive/testthat/testthat_1.0.2.tar.gz",
     ],
 )
-

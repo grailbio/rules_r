@@ -12,10 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
+
 package(default_visibility = ["//visibility:public"])
 
-exports_files([
-    "Makevars.darwin",
-    "Makevars.linux",
-    "configure.empty",
-])
+r_pkg(
+    name = "Rcpp",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "**/*inst/doc/Makefile*",
+            "**/*inst/doc/Makefile*/**",
+            "**/*inst/doc/jss.bst*",
+            "**/*inst/doc/jss.bst*/**",
+            "**/*inst/doc/RJournal.sty*",
+            "**/*inst/doc/RJournal.sty*/**",
+            "**/*inst/unitTests/src*",
+            "**/*inst/unitTests/src*/**",
+        ],
+    ),
+    deps = [],
+)

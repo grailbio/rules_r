@@ -204,10 +204,24 @@ sandbox, so it can be depended upon by other package builds.
       </td>
     </tr>
     <tr>
+      <td><code>cc_deps</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>cc_library dependencies for this package.</p>
+      </td>
+    </tr>
+    <tr>
       <td><code>install_args</code></td>
       <td>
         <p><code>String; optional</code></p>
         <p>Additional arguments to supply to R CMD INSTALL.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>config_override</code></td>
+      <td>
+        <p><code>File; optional</code></p>
+        <p>Replace the package configure script with this file.</p>
       </td>
     </tr>
     <tr>
@@ -243,6 +257,13 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>List of strings; optional</code></p>
         <p>Additional files generated as part of the package build and installed with the package.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>environment_vars</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Extra environment variables to define for building the package.</p>
       </td>
     </tr>
   </tbody>

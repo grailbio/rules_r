@@ -183,13 +183,59 @@ def _library_deps(target_deps, path_prefix=""):
     }
 
 
-def _pkgconfig_paths():
-    # For macOS only: pkg-config opt paths when xcode provided
-    # versions are defaults but we want the Homebrew ones.
-    return ":".join([
-        "/usr/local/opt/icu4c/lib/pkgconfig",
-        "/usr/local/opt/openssl/lib/pkgconfig",
-    ])
+def _cc_deps(cc_deps, pkg_src_dir):
+    # Returns a subscript to execute and additional input files.
+
+    # Relative path of root from package's native code directory.
+    levels = pkg_src_dir.count("/") + 2
+    root_path = "/".join([".."] * levels) + "/"
+
+    files = depset()
+    c_libs_flags = depset()
+    cpp_flags = depset()
+    for d in cc_deps:
+        files += (d.cc.libs.to_list()
+                  + d.cc.transitive_headers.to_list())
+
+        c_libs_flags += d.cc.link_flags
+        for l in d.cc.libs:
+            c_libs_flags += [root_path + l.path]
+
+        cpp_flags += d.cc.defines
+        for i in d.cc.quote_include_directories:
+            cpp_flags += ["-iquote " + root_path + i]
+        for i in d.cc.system_include_directories:
+            cpp_flags += ["-isystem " + root_path + i]
+
+    script = ""
+    if cc_deps:
+        script = "\n".join([
+            # The original Makevars file will be read-only.
+            "TMP_MAKEVARS=$(mktemp)",
+            "cp ${{R_MAKEVARS_USER}} ${{TMP_MAKEVARS}}",
+            "export R_MAKEVARS_USER=${{TMP_MAKEVARS}}",
+            "",
+            "LIBS_LINE='PKG_LIBS += %s\\n'" % " ".join(c_libs_flags.to_list()),
+            "CPPFLAGS_LINE='PKG_CPPFLAGS += %s\\n'" % " ".join(cpp_flags.to_list()),
+            "echo -e ${{LIBS_LINE}} >> ${{R_MAKEVARS_USER}}",
+            "echo -e ${{CPPFLAGS_LINE}} >> ${{R_MAKEVARS_USER}}",
+        ])
+
+    return {
+        "files": files,
+        "script": script,
+    }
+
+
+def _remove_file(files, path_to_remove):
+    # Removes a file from a depset of a list, and returns the new depset.
+
+    new_depset = depset()
+    for f in files:
+        if f.path != path_to_remove:
+            new_depset += [f]
+
+    return new_depset
 
 
 def _build_impl(ctx):
@@ -205,12 +251,18 @@ def _build_impl(ctx):
     output_files = package_files + [pkg_bin_archive]
 
     library_deps = _library_deps(ctx.attr.deps, path_prefix=(ctx.bin_dir.path + "/"))
+    cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir)
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
+                       + cc_deps["files"].to_list()
                        + [ctx.file.makevars_darwin, ctx.file.makevars_linux])
 
-    env_dict = {
-        "PKG_CONFIG_PATH": _pkgconfig_paths(),
-    }
+    config_override_cmd = ""
+    if ctx.file.config_override != None:
+        all_input_files += [ctx.file.config_override]
+        orig_config = pkg_src_dir + "/configure"
+        all_input_files = _remove_file(all_input_files, orig_config)
+        config_override_cmd = " ".join(
+            ["cp", ctx.file.config_override.path, orig_config])
 
     command = ("\n".join([
         "set -euo pipefail",
@@ -219,6 +271,10 @@ def _build_impl(ctx):
         "mkdir -p {0}",
         "if [[ $(uname) == \"Darwin\" ]]; then export R_MAKEVARS_USER=${{PWD}}/{4};",
         "else export R_MAKEVARS_USER=${{PWD}}/{5}; fi",
+        "",
+        cc_deps["script"],
+        "%s" % config_override_cmd,
+        "",
         "export PATH",  # PATH needs to be exported to R.
         "",
         "export R_LIBS_USER=$(mktemp -d)",
@@ -239,7 +295,7 @@ def _build_impl(ctx):
               ctx.file.makevars_darwin.path, ctx.file.makevars_linux.path,
               ctx.attr.install_args))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
-                          env=env_dict, mnemonic="RBuild",
+                          env=ctx.attr.environment_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
 
     return [DefaultInfo(files=depset(output_files)),
@@ -260,8 +316,13 @@ r_pkg = rule(
         "deps": attr.label_list(
             providers=[RPackage],
             doc="R package dependencies of type r_pkg"),
+        "cc_deps": attr.label_list(
+            doc="cc_library dependencies for this package"),
         "install_args": attr.string(
             doc="Additional arguments to supply to R CMD INSTALL"),
+        "config_override": attr.label(
+            allow_single_file=True,
+            doc="Replace the package configure script with this file"),
         "makevars_darwin": attr.label(
             allow_single_file=True,
             default="@com_grail_rules_r//R:Makevars.darwin",
@@ -277,6 +338,8 @@ r_pkg = rule(
             doc="Set to True if the package uses the LazyData feature"),
         "post_install_files": attr.string_list(
             doc="Extra files that the install process generates"),
+        "environment_vars": attr.string_dict(
+            doc="Extra environment variables to define for building the package"),
     },
     doc=("Rule to install the package and its transitive dependencies" +
          "in the Bazel sandbox."),
@@ -285,10 +348,6 @@ r_pkg = rule(
 
 def _test_impl(ctx):
     library_deps = _library_deps(ctx.attr.deps)
-    lib_search_path = ":".join(library_deps["lib_search_path"])
-    env_dict = {
-        "R_LIBS_USER": lib_search_path
-    }
 
     pkg_name = ctx.attr.pkg_name
     pkg_tests_dir = _package_source_dir(_target_dir(ctx), pkg_name) + "/tests"
@@ -357,10 +416,6 @@ r_unit_test = rule(
 
 def _check_impl(ctx):
     library_deps = _library_deps(ctx.attr.deps)
-    lib_search_path = ":".join(library_deps["lib_search_path"])
-    env_dict = {
-        "R_LIBS_USER": lib_search_path
-    }
     all_input_files = library_deps["lib_files"] + ctx.files.srcs
 
     # Bundle the package as a runfile for the test.
@@ -368,12 +423,17 @@ def _check_impl(ctx):
     target_dir = _target_dir(ctx)
     pkg_src_dir = _package_source_dir(target_dir, pkg_name)
     pkg_src_archive = ctx.actions.declare_file(ctx.attr.pkg_name + ".tar.gz")
-    command = (_R + "CMD build {0} {1} > /dev/null && mv {2}*.tar.gz {3}"
-               .format(ctx.attr.build_args, pkg_src_dir, ctx.attr.pkg_name,
-                       pkg_src_archive.path))
+    command = "\n".join([
+        "OUT=$(%s CMD build {0} {1} 2>&1 )  && mv {2}*.tar.gz {3}" % _R,
+        "if (( $? )); then",
+        "  echo \"${{OUT}}\"",
+        "  exit 1",
+        "fi",
+        ]).format(ctx.attr.build_args, pkg_src_dir, ctx.attr.pkg_name,
+                  pkg_src_archive.path)
     ctx.actions.run_shell(
         outputs=[pkg_src_archive], inputs=all_input_files,
-        command=command, env=env_dict,
+        command=command, mnemonic="RBuildSource",
         progress_message="Building R (source) package %s" % pkg_name)
 
     script = "\n".join([
@@ -443,7 +503,7 @@ def _library_impl(ctx):
         "tar -c -C ${LIBRARY_DIR} -f %s ." % library_archive.path,
         "rm -rf ${LIBRARY_DIR}"
     ])
-    ctx.actions.run_shell(outputs=[library_archive], inputs = all_deps,
+    ctx.actions.run_shell(outputs=[library_archive], inputs=all_deps,
                           command=command)
 
     script = "\n".join([
@@ -521,7 +581,7 @@ r_library = rule(
 
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[]):
     """Convenience macro to generate the r_pkg and r_library targets."""
-   
+
     r_pkg(
         name = pkg_name,
         srcs = pkg_srcs,

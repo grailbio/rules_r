@@ -12,24 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
-
-PKG_NAME = "exampleC"
-
-PKG_SRCS = glob(
-    ["**"],
-    exclude = [
-        "BUILD",
-    ],
-)
-
-PKG_DEPS = [
-    "//exampleB",
-]
-
-PKG_CHECK_DEPS = [
-    "@R_RProtoBuf//:RProtoBuf",
-    "@R_testthat//:testthat",
-]
-
-r_package_with_test(PKG_NAME, PKG_SRCS, PKG_DEPS, PKG_CHECK_DEPS)
+test_that("Works!", {
+  expect_true(requireNamespace("RProtoBuf"))
+})

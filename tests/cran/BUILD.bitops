@@ -12,24 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
 
-PKG_NAME = "exampleC"
+package(default_visibility = ["//visibility:public"])
 
-PKG_SRCS = glob(
-    ["**"],
-    exclude = [
-        "BUILD",
-    ],
+r_pkg(
+    name = "bitops",
+    srcs = glob(
+        ["**"],
+        exclude = [],
+    ),
+    deps = [],
 )
-
-PKG_DEPS = [
-    "//exampleB",
-]
-
-PKG_CHECK_DEPS = [
-    "@R_RProtoBuf//:RProtoBuf",
-    "@R_testthat//:testthat",
-]
-
-r_package_with_test(PKG_NAME, PKG_SRCS, PKG_DEPS, PKG_CHECK_DEPS)

@@ -315,11 +315,10 @@ information.
 ## r_unit_test
 
 ```python
-r_unit_test(srcs, pkg_name, deps)
+r_unit_test(pkg, suggested_deps)
 ```
 
 Rule to keep all deps in the sandbox, and run the provided R test scripts.
-The package itself must be one of the deps.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -333,21 +332,14 @@ The package itself must be one of the deps.
   </thead>
   <tbody>
     <tr>
-      <td><code>srcs</code></td>
+      <td><code>pkg</code></td>
       <td>
-        <p><code>List of files, required</code></p>
-        <p>Test scripts and test data files for the package.</p>
+        <p><code>Label; required</code></p>
+        <p>R package (of type r_pkg) to test.</p>
       </td>
     </tr>
     <tr>
-      <td><code>pkg_name</code></td>
-      <td>
-        <p><code>String; required</code></p>
-        <p>Name of the package.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>deps</code></td>
+      <td><code>suggested_deps</code></td>
       <td>
         <p><code>List of labels; optional</code></p>
         <p>R package dependencies of type `r_pkg`.</p>
@@ -361,7 +353,7 @@ The package itself must be one of the deps.
 ## r_pkg_test
 
 ```python
-r_pkg_test(srcs, pkg_name, deps, build_args, check_args)
+r_pkg_test(pkg, suggested_deps, build_args, check_args)
 ```
 
 Rule to keep all deps of the package in the sandbox, build a source archive
@@ -380,21 +372,14 @@ sandbox.
   </thead>
   <tbody>
     <tr>
-      <td><code>srcs</code></td>
+      <td><code>pkg</code></td>
       <td>
-        <p><code>List of files, required</code></p>
-        <p>Source files to be included for building the package.</p>
+        <p><code>Label; required</code></p>
+        <p>R package (of type r_pkg) to test.</p>
       </td>
     </tr>
     <tr>
-      <td><code>pkg_name</code></td>
-      <td>
-        <p><code>String; required</code></p>
-        <p>Name of the package.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>deps</code></td>
+      <td><code>suggested_deps</code></td>
       <td>
         <p><code>List of labels; optional</code></p>
         <p>R package dependencies of type `r_pkg`.</p>

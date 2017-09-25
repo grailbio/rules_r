@@ -38,8 +38,10 @@ _Rscript = "Rscript --vanilla "
 # Provider with following fields:
 # "pkg_name": "Name of the package",
 # "lib_loc": "Directory where this package is installed",
-# "lib_files": "All files in this package",
+# "lib_files": "All installed files in this package",
+# "src_files": "All source files in this package",
 # "bin_archive": "Binary archive of this package",
+# "pkg_deps": "Direct dependencies of this package",
 # "transitive_pkg_deps": "depset of all dependencies of this target"
 RPackage = provider(doc="Build information about an R package dependency")
 
@@ -300,8 +302,11 @@ def _build_impl(ctx):
 
     return [DefaultInfo(files=depset(output_files)),
             RPackage(pkg_name=pkg_name,
-                     lib_loc=pkg_lib_dir, lib_files=package_files,
+                     lib_loc=pkg_lib_dir,
+                     lib_files=package_files,
+                     src_files=ctx.files.srcs,
                      bin_archive=pkg_bin_archive,
+                     pkg_deps=ctx.attr.deps,
                      transitive_pkg_deps=library_deps["transitive_pkg_deps"])]
 
 
@@ -347,12 +352,12 @@ r_pkg = rule(
 
 
 def _test_impl(ctx):
-    library_deps = _library_deps(ctx.attr.deps)
+    library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
 
-    pkg_name = ctx.attr.pkg_name
+    pkg_name = ctx.attr.pkg[RPackage].pkg_name
     pkg_tests_dir = _package_source_dir(_target_dir(ctx), pkg_name) + "/tests"
     test_files = []
-    for src_file in ctx.files.srcs:
+    for src_file in ctx.attr.pkg[RPackage].src_files:
         if src_file.path.startswith(pkg_tests_dir):
             test_files += [src_file]
 
@@ -397,13 +402,11 @@ def _test_impl(ctx):
 r_unit_test = rule(
     implementation=_test_impl,
     attrs={
-        "srcs": attr.label_list(
-            allow_files=True, mandatory=True,
-            doc="Test scripts and test data files for the package"),
-        "pkg_name": attr.string(
+        "pkg": attr.label(
             mandatory=True,
-            doc="Name of the package"),
-        "deps": attr.label_list(
+            providers=[RPackage],
+            doc="R package (of type r_pkg) to test"),
+        "suggested_deps": attr.label_list(
             providers=[RPackage],
             doc="R package dependencies of type r_pkg"),
     },
@@ -415,21 +418,21 @@ r_unit_test = rule(
 
 
 def _check_impl(ctx):
-    library_deps = _library_deps(ctx.attr.deps)
-    all_input_files = library_deps["lib_files"] + ctx.files.srcs
+    library_deps = _library_deps(ctx.attr.pkg[RPackage].pkg_deps + ctx.attr.suggested_deps)
+    all_input_files = library_deps["lib_files"] + ctx.attr.pkg[RPackage].src_files
 
     # Bundle the package as a runfile for the test.
-    pkg_name = ctx.attr.pkg_name
+    pkg_name = ctx.attr.pkg[RPackage].pkg_name
     target_dir = _target_dir(ctx)
     pkg_src_dir = _package_source_dir(target_dir, pkg_name)
-    pkg_src_archive = ctx.actions.declare_file(ctx.attr.pkg_name + ".tar.gz")
+    pkg_src_archive = ctx.actions.declare_file(pkg_name + ".tar.gz")
     command = "\n".join([
         "OUT=$(%s CMD build {0} {1} 2>&1 )  && mv {2}*.tar.gz {3}" % _R,
         "if (( $? )); then",
         "  echo \"${{OUT}}\"",
         "  exit 1",
         "fi",
-        ]).format(ctx.attr.build_args, pkg_src_dir, ctx.attr.pkg_name,
+        ]).format(ctx.attr.build_args, pkg_src_dir, pkg_name,
                   pkg_src_archive.path)
     ctx.actions.run_shell(
         outputs=[pkg_src_archive], inputs=all_input_files,
@@ -460,13 +463,11 @@ def _check_impl(ctx):
 r_pkg_test = rule(
     implementation=_check_impl,
     attrs={
-        "srcs": attr.label_list(
-            allow_files=True, mandatory=True,
-            doc="Source files to be included for building the package"),
-        "pkg_name": attr.string(
+        "pkg": attr.label(
             mandatory=True,
-            doc="Name of the package"),
-        "deps": attr.label_list(
+            providers=[RPackage],
+            doc="R package (of type r_pkg) to test"),
+        "suggested_deps": attr.label_list(
             providers=[RPackage],
             doc="R package dependencies of type r_pkg"),
         "build_args": attr.string(
@@ -606,22 +607,20 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
 
     r_library(
         name = "library",
-        pkgs = [":" + pkg_name],
+        pkgs = [pkg_name],
         tags = ["manual"],
     )
 
     r_unit_test(
         name = "test",
         timeout = test_timeout,
-        srcs = pkg_srcs,
-        pkg_name = pkg_name,
-        deps = [":" + pkg_name] + pkg_deps + pkg_suggested_deps,
+        pkg = pkg_name,
+        suggested_deps = pkg_suggested_deps,
     )
 
     r_pkg_test(
         name = "check",
         timeout = test_timeout,
-        srcs = pkg_srcs,
-        pkg_name = pkg_name,
-        deps = pkg_deps + pkg_suggested_deps,
+        pkg = pkg_name,
+        suggested_deps = pkg_suggested_deps,
     )

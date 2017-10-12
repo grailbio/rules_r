@@ -31,7 +31,7 @@ genrule(
     GFORTRAN=""
     if command -v gfortran > /dev/null; then
       GFORTRAN=$$(command -v gfortran)
-    elif brew --prefix gcc > /dev/null; then
+    elif brew ls --versions gcc > /dev/null 2>/dev/null; then
       GFORTRAN=$$(realpath -e $$(brew --prefix gcc))/bin/gfortran
     else
       echo "WARNING: gfortran not found"

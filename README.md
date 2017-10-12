@@ -227,7 +227,7 @@ sandbox, so it can be depended upon by other package builds.
     <tr>
       <td><code>makevars_darwin</code></td>
       <td>
-        <p><code>File; default to R/Makevars.darwin</code></p>
+        <p><code>File; default to //R:Makevars.darwin.generated</code></p>
         <p>Makevars file to use for macOS overrides.</p>
       </td>
     </tr>
@@ -443,4 +443,4 @@ We have tested only on macOS and Ubuntu (VM and Docker).
 [exampleC]: tests/exampleC/BUILD
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
-[Makevars]: https://github.com/grailbio/rules_r/blob/master/R/Makevars.darwin
+[Makevars]: R/Makevars.darwin.tpl

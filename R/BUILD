@@ -14,6 +14,50 @@
 
 package(default_visibility = ["//visibility:public"])
 
+# Generate the Makevars file for a non-default brew prefix.
+# Note that the generated file is cached after the first run.
+# To pick up any changes in the system, run `bazel clean`.
+genrule(
+    name = "Makevars.darwin.genrule",
+    srcs = ["Makevars.darwin.tpl"],
+    outs = ["Makevars.darwin.generated"],
+    cmd = """
+    if [[ $$(uname -s) != "Darwin" ]]; then
+      touch $@
+      exit
+    fi
+
+    export HOME=/tmp  # Needed for Homebrew.
+    GFORTRAN=""
+    if command -v gfortran > /dev/null; then
+      GFORTRAN=$$(command -v gfortran)
+    elif brew --prefix gcc > /dev/null; then
+      GFORTRAN=$$(realpath -e $$(brew --prefix gcc))/bin/gfortran
+    else
+      echo "WARNING: gfortran not found"
+      touch $@
+      exit
+    fi
+
+    # Find the version directory by looking for libgfortran.dylib in subdirectories.
+    GCC_LIB_PATH=$${GFORTRAN/%\/bin\/gfortran/}/lib/gcc
+    LIB=$$(find -L $${GCC_LIB_PATH} -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
+
+    if [[ -z $${LIB} ]]; then
+      echo "WARNING: libgfortran not found"
+      touch $@
+      exit
+    fi
+    GCC_LIB_PATH=$$(dirname $${LIB})
+
+    subst=(
+      's|@GFORTRAN@|'"$${GFORTRAN}"'|g;'
+      's|@GCC_LIB_PATH@|'"$${GCC_LIB_PATH}"'|g;'
+    )
+    sed -e "$${subst[*]}" $< > $@
+    """,
+)
+
 exports_files([
     "Makevars.darwin",
     "Makevars.linux",

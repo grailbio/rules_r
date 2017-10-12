@@ -330,7 +330,7 @@ r_pkg = rule(
             doc="Replace the package configure script with this file"),
         "makevars_darwin": attr.label(
             allow_single_file=True,
-            default="@com_grail_rules_r//R:Makevars.darwin",
+            default="@com_grail_rules_r//R:Makevars.darwin.generated",
             doc="Makevars file to use for macOS overrides"),
         "makevars_linux": attr.label(
             allow_single_file=True,

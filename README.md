@@ -32,8 +32,8 @@ following to your WORKSPACE file:
 ```python
 http_archive(
     name = "com_grail_rules_r",
-    strip_prefix = "rules_r-0.1.1",
-    urls = ["https://github.com/grailbio/rules_r/archive/0.1.1.tar.gz"],
+    strip_prefix = "rules_r-0.2.2",
+    urls = ["https://github.com/grailbio/rules_r/archive/0.2.2.tar.gz"],
 )
 ```
 

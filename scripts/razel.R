@@ -58,7 +58,7 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE) {
 
   # Dependency files
 
-  base_pkgs <- installed.packages(priority = "high")[, "Package"]
+  base_pkgs <- installed.packages(priority = "base")[, "Package"]
   process_deps <- function(pkgs_csv) {
     if ((length(pkgs_csv) == 1) && is.na(pkgs_csv[1])) {
       return(character(0))

@@ -298,6 +298,7 @@ def _build_impl(ctx):
               ctx.attr.install_args))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
                           env=ctx.attr.environment_vars, mnemonic="RBuild",
+                          use_default_shell_env=True,
                           progress_message="Building R package %s" % pkg_name)
 
     return [DefaultInfo(files=depset(output_files)),
@@ -437,6 +438,7 @@ def _check_impl(ctx):
     ctx.actions.run_shell(
         outputs=[pkg_src_archive], inputs=all_input_files,
         command=command, mnemonic="RBuildSource",
+        use_default_shell_env=True,
         progress_message="Building R (source) package %s" % pkg_name)
 
     script = "\n".join([
@@ -505,6 +507,7 @@ def _library_impl(ctx):
         "rm -rf ${LIBRARY_DIR}"
     ])
     ctx.actions.run_shell(outputs=[library_archive], inputs=all_deps,
+                          use_default_shell_env=True,
                           command=command)
 
     script = "\n".join([

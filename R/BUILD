@@ -28,6 +28,20 @@ genrule(
     fi
 
     export HOME=/tmp  # Needed for Homebrew.
+    # Prefer brew clang if available.
+    CC=""
+    OPENMP_FLAGS=""
+    if brew ls --versions llvm > /dev/null 2>/dev/null; then
+      CC=$$(realpath -e $$(brew --prefix llvm))/bin/clang
+      OPENMP_FLAGS="-fopenmp"
+    elif command -v clang > /dev/null; then
+      CC=$$(command -v clang)
+    else
+      echo "WARNING: clang not found"
+      touch $@
+      exit
+    fi
+
     GFORTRAN=""
     if command -v gfortran > /dev/null; then
       GFORTRAN=$$(command -v gfortran)
@@ -40,19 +54,24 @@ genrule(
     fi
 
     # Find the version directory by looking for libgfortran.dylib in subdirectories.
-    GCC_LIB_PATH=$${GFORTRAN/%\/bin\/gfortran/}/lib/gcc
-    LIB=$$(find -L $${GCC_LIB_PATH} -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
+    GCC_LIB_PATH=""
+    if [[ -n "$${GFORTRAN}" ]]; then
+      GCC_LIB_PATH=$${GFORTRAN/%\/bin\/gfortran/}/lib/gcc
+      LIB=$$(find -L $${GCC_LIB_PATH} -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
 
-    if [[ -z $${LIB} ]]; then
-      echo "WARNING: libgfortran not found"
-      touch $@
-      exit
+      if [[ -z $${LIB} ]]; then
+        echo "WARNING: libgfortran not found"
+        touch $@
+        exit
+      fi
+      GCC_LIB_PATH=$$(dirname $${LIB})
     fi
-    GCC_LIB_PATH=$$(dirname $${LIB})
 
     subst=(
+      's|@CC@|'"$${CC}"'|g;'
       's|@GFORTRAN@|'"$${GFORTRAN}"'|g;'
       's|@GCC_LIB_PATH@|'"$${GCC_LIB_PATH}"'|g;'
+      's|@OPENMP_FLAGS@|'"$${OPENMP_FLAGS}"'|g;'
     )
     sed -e "$${subst[*]}" $< > $@
     """,

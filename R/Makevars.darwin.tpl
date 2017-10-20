@@ -20,6 +20,8 @@ F77=@GFORTRAN@
 FC=${F77}
 FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
 
-# Apple's compilers from Command Line Tools do not have OpenMP support
-SHLIB_OPENMP_CFLAGS =
-SHLIB_OPENMP_CXXFLAGS =
+CC = @CC@
+CXX = @CC@
+
+SHLIB_OPENMP_CFLAGS = @OPENMP_FLAGS@
+SHLIB_OPENMP_CXXFLAGS = @OPENMP_FLAGS@

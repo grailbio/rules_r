@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright 2017 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,30 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
+set -eou pipefail
 
-r_library(
-    name = "library",
-    pkgs = [
-        "//exampleC",
-        "@R_bitops//:bitops",
-    ],
-    tar_dir = "r-libs",
-)
+readonly LAYER_TAR="image-layer.tar"
+readonly FILE_TO_CHECK="r-libs/exampleC/DESCRIPTION"
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-
-container_image(
-    name = "image",
-    base = "@r_base//image",
-    directory = "/",
-    env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":library.tar"],
-)
-
-sh_test(
-    name = "image_test",
-    size = "small",
-    srcs = ["image_test.sh"],
-    data = [":image-layer.tar"],
-)
+tar -tf "${LAYER_TAR}" | grep "${FILE_TO_CHECK}"

@@ -151,6 +151,7 @@ r_library(
         "//path/to/packageA:r_pkg_target",
         "//path/to/packageB:r_pkg_target",
     ],
+    tar_dir = "r-libs",
 )  
 
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
@@ -158,7 +159,7 @@ load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 container_image(
     name = "image",
     base = "@r_base//image",
-    directory = "/r-libs",
+    directory = "/",
     env = {"R_LIBS_USER": "/r-libs"},
     tars = [":my_r_library.tar"],
     repository = "my_repo",
@@ -286,6 +287,9 @@ Executable rule to install the given packages and all dependencies to a user
 provided or system default R library. Run the target with --help for usage
 information.
 
+This rule also creates an invisible {name}.tar target which outputs the R
+library as a tar file; mainly for use with the Docker rules.
+
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
     <col class="col-param" />
@@ -310,6 +314,14 @@ information.
         <p><code>String; optional</code></p>
         <p>If different from system default, default library location for installation.
         For runtime overrides, use bazel run [target] -- -l [path].</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>tar_dir</code></td>
+      <td>
+        <p><code>String; default "."</code></p>
+        <p>The root directory in the tar file under which the R library will be
+        copied.</p>
       </td>
     </tr>
   </tbody>

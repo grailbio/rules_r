@@ -116,23 +116,25 @@ You can also create Docker images of R packages using Bazel.
 In your `WORKSPACE` file, load the Docker rules and specify the base R image.
 
 ```python
-git_repository(
+# Change to the version of these rules you want and use sha256.
+http_archive(
     name = "io_bazel_rules_docker",
-    remote = "https://github.com/bazelbuild/rules_docker.git",
-    tag = "v0.1.0",
+    strip_prefix = "rules_docker-v0.3.0",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.3.0.tar.gz"],
 )
 
 load(
-    "@io_bazel_rules_docker//docker:docker.bzl",
-    "docker_repositories",
-    "docker_pull",
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_pull",
+    container_repositories = "repositories",
 )
-docker_repositories()
 
-docker_pull(
-    name = "r",
+container_repositories()
+
+container_pull(
+    name = "r_base",
     registry = "index.docker.io",
-    repository = "rocker/r-ver",
+    repository = "rocker/r-base",
     tag = "latest",
 )
 ```
@@ -140,7 +142,9 @@ docker_pull(
 And then, in a `BUILD` file, define your library of R packages and install them
 in a Docker image. Dependencies are installed implicitly.
 
-```
+```python
+load("@com_grail_rules_r//R:defs.bzl", "r_library")
+
 r_library(
     name = "my_r_library",
     pkgs = [
@@ -149,14 +153,15 @@ r_library(
     ],
 )  
 
-docker_build(
-    name = "dev",
-    base = "@r//image",
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+
+container_image(
+    name = "image",
+    base = "@r_base//image",
     directory = "/r-libs",
     env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":my_r_library"],
+    tars = [":my_r_library.tar"],
     repository = "my_repo",
-    cmd = ["R"]
 )
 ```
 

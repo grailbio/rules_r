@@ -26,6 +26,28 @@ http_archive(
     urls = ["https://github.com/google/protobuf/archive/v3.4.0.tar.gz"],
 )
 
+# Check against the master branch to pick up latest developments.
+http_archive(
+    name = "io_bazel_rules_docker",
+    strip_prefix = "rules_docker-master",
+    urls = ["https://github.com/bazelbuild/rules_docker/archive/master.tar.gz"],
+)
+
+load(
+    "@io_bazel_rules_docker//container:container.bzl",
+    "container_pull",
+    container_repositories = "repositories",
+)
+
+container_repositories()
+
+container_pull(
+    name = "r_base",
+    registry = "index.docker.io",
+    repository = "rocker/r-base",
+    tag = "latest",
+)
+
 new_http_archive(
     name = "R_bitops",
     build_file = "cran/BUILD.bitops",

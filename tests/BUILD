@@ -12,26 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library")
 
-package(default_visibility = ["//visibility:public"])
-
-PKG_NAME = "exampleC"
-
-PKG_SRCS = glob(
-    ["**"],
-    exclude = [
-        "BUILD",
+r_library(
+    name = "library",
+    pkgs = [
+        "//exampleC",
+        "@R_bitops//:bitops",
     ],
 )
 
-PKG_DEPS = [
-    "//exampleB",
-]
+load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
-PKG_CHECK_DEPS = [
-    "@R_RProtoBuf//:RProtoBuf",
-    "@R_testthat//:testthat",
-]
-
-r_package_with_test(PKG_NAME, PKG_SRCS, PKG_DEPS, PKG_CHECK_DEPS)
+container_image(
+    name = "image",
+    base = "@r_base//image",
+    directory = "/r-libs",
+    env = {"R_LIBS_USER": "/r-libs"},
+    tars = [":library.tar"],
+)

@@ -484,29 +484,32 @@ r_pkg_test = rule(
 )
 
 
-def _library_impl(ctx):
-    library_deps = _library_deps(ctx.attr.pkgs)
-    bin_archive_files = []
-    for bin_archive in library_deps["bin_archives"]:
-        bin_archive_files += [bin_archive.path]
-    all_deps = library_deps["bin_archives"]
-
-    library_archive = ctx.actions.declare_file("library.tar")
+def _library_tar_impl(ctx):
+    library_deps = _library_deps(ctx.attr.pkgs, path_prefix=(ctx.bin_dir.path + "/"))
     command = "\n".join([
         "#!/bin/bash",
         "set -euo pipefail",
         "",
-        "BIN_ARCHIVES=(",
-    ] + bin_archive_files + [
-        ")",
-        "LIBRARY_DIR=$(mktemp -d)",
-        _R + "CMD INSTALL --library=${LIBRARY_DIR} ${BIN_ARCHIVES[*]} > /dev/null",
-        "tar -c -C ${LIBRARY_DIR} -f %s ." % library_archive.path,
-        "rm -rf ${LIBRARY_DIR}"
-    ])
-    ctx.actions.run_shell(outputs=[library_archive], inputs=all_deps,
+        "R_LIBS_USER=$(mktemp -d)",
+        library_deps["symlinked_library_command"],
+        "",
+        "TAR_TRANSFORM_OPT=\"--transform s|\.|%s|\"" % ctx.attr.tar_dir,
+        "if [[ $(uname -s) == \"Darwin\" ]]; then",
+        "  TAR_TRANSFORM_OPT=\"-s |\.|%s|\"" % ctx.attr.tar_dir,
+        "fi",
+        "",
+        "tar -c -h -C ${{R_LIBS_USER}} -f %s ${{TAR_TRANSFORM_OPT}} ." % ctx.outputs.tar.path,
+        "rm -rf ${{R_LIBS_USER}}"
+    ]).format()  # symlinked_library_command assumed formatted string.
+    ctx.actions.run_shell(outputs=[ctx.outputs.tar], inputs=library_deps["lib_files"],
                           command=command)
+    return
 
+
+def _library_impl(ctx):
+    _library_tar_impl(ctx)
+
+    library_deps = _library_deps(ctx.attr.pkgs)
     script = "\n".join([
         "#!/bin/bash",
         "set -euo pipefail",
@@ -529,7 +532,7 @@ def _library_impl(ctx):
         "       LIBRARY_PATH=${2}; shift;",
         "       shift;;",
         "    -s)",
-        "       SOFT_INSTALL=1; BAZEL_BIN=${2}/bazel-bin; shift;",
+        "       SOFT_INSTALL=1; BIN_DIR=${2}/bazel-bin; shift;",
         "       shift;;",
         "  esac",
         "done",
@@ -542,24 +545,25 @@ def _library_impl(ctx):
     ] + library_deps["lib_search_path"] + [
         ")",
         "if (( ${SOFT_INSTALL} )); then",
-        "  echo \"Installing package symlinks from ${BAZEL_BIN} to ${LIBRARY_PATH}\"",
-        "  for LIB_DIR in ${BAZEL_LIB_DIRS[*]}; do",
-        "    for PKG in ${BAZEL_BIN}/${LIB_DIR}/*; do",
-        "      ln -s -f ${PKG} ${LIBRARY_PATH}",
-        "    done",
-        "  done",
+        "  echo \"Installing package symlinks from ${BIN_DIR} to ${LIBRARY_PATH}\"",
+        "  CMD=\"ln -s -f\"",
         "else",
         "  echo \"Copying installed packages to ${LIBRARY_PATH}\"",
-        "  tar -x -C ${LIBRARY_PATH} -f %s" % library_archive.short_path,
+        "  BIN_DIR=\".\"",
+        "  CMD=\"cp -R -L -f\"",
         "fi",
+        "for LIB_DIR in ${BAZEL_LIB_DIRS[*]}; do",
+        "  for PKG in ${BIN_DIR}/${LIB_DIR}/*; do",
+        "    ${CMD} ${PKG} \"${LIBRARY_PATH}\"",
+        "  done",
+        "done",
     ])
-
     ctx.actions.write(
         output=ctx.outputs.executable,
         content=script)
 
-    runfiles = ctx.runfiles(files=([library_archive]))
-    return [DefaultInfo(runfiles=runfiles, files=depset([library_archive]))]
+    runfiles = ctx.runfiles(files=library_deps["lib_files"])
+    return [DefaultInfo(runfiles=runfiles, files=depset([ctx.outputs.executable]))]
 
 
 r_library = rule(
@@ -573,8 +577,15 @@ r_library = rule(
             doc=("If different from system default, default library " +
                  "location for installation. For runtime overrides, " +
                  "use bazel run [target] -- -l [path]")),
+        "tar_dir": attr.string(
+            default=".",
+            doc=("Subdirectory within the tarball where all the " +
+                 "packages are installed")),
     },
     executable=True,
+    outputs = {
+        "tar": "%{name}.tar",
+    },
     doc=("Rule to install the given package and all dependencies to " +
          "a user provided or system default R library site.")
 )

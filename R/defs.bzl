@@ -45,7 +45,6 @@ _Rscript = "Rscript --vanilla "
 # "transitive_pkg_deps": "depset of all dependencies of this target"
 RPackage = provider(doc="Build information about an R package dependency")
 
-
 def _package_name(ctx):
     # Package name from attribute with fallback to label name.
 
@@ -79,11 +78,14 @@ def _package_files(ctx):
     pkg_src_dir = _package_source_dir(target_dir, pkg_name)
 
     has_R_code = False
+    has_sysdata = False
     has_native_code = False
     has_data_files = False
     inst_files = []
     for src_file in ctx.files.srcs:
-        if src_file.path.startswith(pkg_src_dir + "/R/"):
+        if src_file.path == (pkg_src_dir + "/R/sysdata.rda"):
+            has_sysdata = True
+        elif src_file.path.startswith(pkg_src_dir + "/R/"):
             has_R_code = True
         elif src_file.path.startswith(pkg_src_dir + "/src/"):
             has_native_code = True
@@ -115,6 +117,12 @@ def _package_files(ctx):
             ctx.actions.declare_file("lib/{0}/R/{0}.rdb".format(pkg_name)),
             ctx.actions.declare_file("lib/{0}/R/{0}.rdx".format(pkg_name)),
         ]
+
+    if has_sysdata:
+       pkg_files += [
+           ctx.actions.declare_file("lib/{0}/R/sysdata.rdb".format(pkg_name)),
+           ctx.actions.declare_file("lib/{0}/R/sysdata.rdx".format(pkg_name)),
+       ]
 
     if has_native_code:
         shlib_name = ctx.attr.shlib_name

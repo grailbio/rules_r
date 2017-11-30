@@ -22,6 +22,6 @@ r_pkg(
             "BUILD",
         ],
     ),
-    deps = ["//exampleA"],
     visibility = ["//exampleC:__pkg__"],
+    deps = ["//exampleA"],
 )

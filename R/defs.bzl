@@ -30,10 +30,9 @@ folder as a single tar. The target can also be executed using bazel run.
 See usage by running with -h flag.
 """
 
-
 _R = "R --vanilla --slave "
-_Rscript = "Rscript --vanilla "
 
+_Rscript = "Rscript --vanilla "
 
 # Provider with following fields:
 # "pkg_name": "Name of the package",
@@ -43,7 +42,7 @@ _Rscript = "Rscript --vanilla "
 # "bin_archive": "Binary archive of this package",
 # "pkg_deps": "Direct dependencies of this package",
 # "transitive_pkg_deps": "depset of all dependencies of this target"
-RPackage = provider(doc="Build information about an R package dependency")
+RPackage = provider(doc = "Build information about an R package dependency")
 
 def _package_name(ctx):
     # Package name from attribute with fallback to label name.
@@ -52,7 +51,6 @@ def _package_name(ctx):
     if pkg_name == "":
         pkg_name = ctx.label.name
     return pkg_name
-
 
 def _target_dir(ctx):
     # Relative path to target directory.
@@ -63,12 +61,10 @@ def _target_dir(ctx):
     target_dir = workspace_root + ctx.label.package
     return target_dir
 
-
 def _package_source_dir(target_dir, pkg_name):
     # Relative path to R package source.
 
     return target_dir
-
 
 def _package_files(ctx):
     # Returns files that are installed as an R package.
@@ -150,7 +146,6 @@ def _package_files(ctx):
 
     return pkg_files
 
-
 def _library_deps(target_deps, path_prefix=""):
     # Returns information about all dependencies of this package.
 
@@ -191,7 +186,6 @@ def _library_deps(target_deps, path_prefix=""):
         "bin_archives": bin_archives,
         "symlinked_library_command": symlink_deps_command,
     }
-
 
 def _cc_deps(cc_deps, pkg_src_dir):
     # Returns a subscript to execute and additional input files.
@@ -236,7 +230,6 @@ def _cc_deps(cc_deps, pkg_src_dir):
         "script": script,
     }
 
-
 def _remove_file(files, path_to_remove):
     # Removes a file from a depset of a list, and returns the new depset.
 
@@ -246,7 +239,6 @@ def _remove_file(files, path_to_remove):
             new_depset += [f]
 
     return new_depset
-
 
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
@@ -317,47 +309,58 @@ def _build_impl(ctx):
                      pkg_deps=ctx.attr.deps,
                      transitive_pkg_deps=library_deps["transitive_pkg_deps"])]
 
-
 r_pkg = rule(
-    implementation=_build_impl,
-    attrs={
+    attrs = {
         "srcs": attr.label_list(
-            allow_files=True, mandatory=True,
-            doc="Source files to be included for building the package"),
+            allow_files = True,
+            mandatory = True,
+            doc = "Source files to be included for building the package",
+        ),
         "pkg_name": attr.string(
-            doc="Name of the package if different from the target name"),
+            doc = "Name of the package if different from the target name",
+        ),
         "deps": attr.label_list(
-            providers=[RPackage],
-            doc="R package dependencies of type r_pkg"),
+            providers = [RPackage],
+            doc = "R package dependencies of type r_pkg",
+        ),
         "cc_deps": attr.label_list(
-            doc="cc_library dependencies for this package"),
+            doc = "cc_library dependencies for this package",
+        ),
         "install_args": attr.string(
-            doc="Additional arguments to supply to R CMD INSTALL"),
+            doc = "Additional arguments to supply to R CMD INSTALL",
+        ),
         "config_override": attr.label(
-            allow_single_file=True,
-            doc="Replace the package configure script with this file"),
+            allow_single_file = True,
+            doc = "Replace the package configure script with this file",
+        ),
         "makevars_darwin": attr.label(
-            allow_single_file=True,
-            default="@com_grail_rules_r//R:Makevars.darwin.generated",
-            doc="Makevars file to use for macOS overrides"),
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:Makevars.darwin.generated",
+            doc = "Makevars file to use for macOS overrides",
+        ),
         "makevars_linux": attr.label(
-            allow_single_file=True,
-            default="@com_grail_rules_r//R:Makevars.linux",
-            doc="Makevars file to use for Linux overrides"),
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:Makevars.linux",
+            doc = "Makevars file to use for Linux overrides",
+        ),
         "shlib_name": attr.string(
-            doc="Shared library name, if different from package name"),
+            doc = "Shared library name, if different from package name",
+        ),
         "lazy_data": attr.bool(
-            default=False,
-            doc="Set to True if the package uses the LazyData feature"),
+            default = False,
+            doc = "Set to True if the package uses the LazyData feature",
+        ),
         "post_install_files": attr.string_list(
-            doc="Extra files that the install process generates"),
+            doc = "Extra files that the install process generates",
+        ),
         "environment_vars": attr.string_dict(
-            doc="Extra environment variables to define for building the package"),
+            doc = "Extra environment variables to define for building the package",
+        ),
     },
-    doc=("Rule to install the package and its transitive dependencies" +
-         "in the Bazel sandbox."),
+    doc = ("Rule to install the package and its transitive dependencies" +
+           "in the Bazel sandbox."),
+    implementation = _build_impl,
 )
-
 
 def _test_impl(ctx):
     library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
@@ -406,24 +409,24 @@ def _test_impl(ctx):
     runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files)
     return [DefaultInfo(runfiles=runfiles)]
 
-
 r_unit_test = rule(
-    implementation=_test_impl,
-    attrs={
+    attrs = {
         "pkg": attr.label(
-            mandatory=True,
-            providers=[RPackage],
-            doc="R package (of type r_pkg) to test"),
+            mandatory = True,
+            providers = [RPackage],
+            doc = "R package (of type r_pkg) to test",
+        ),
         "suggested_deps": attr.label_list(
-            providers=[RPackage],
-            doc="R package dependencies of type r_pkg"),
+            providers = [RPackage],
+            doc = "R package dependencies of type r_pkg",
+        ),
     },
-    test=True,
-    doc=("Rule to keep all deps in the sandbox, and run the test " +
-         "scripts of the specified package. The package itself must " +
-         "be one of the deps."),
+    doc = ("Rule to keep all deps in the sandbox, and run the test " +
+           "scripts of the specified package. The package itself must " +
+           "be one of the deps."),
+    test = True,
+    implementation = _test_impl,
 )
-
 
 def _check_impl(ctx):
     library_deps = _library_deps(ctx.attr.pkg[RPackage].pkg_deps + ctx.attr.suggested_deps)
@@ -467,30 +470,32 @@ def _check_impl(ctx):
         files=[pkg_src_archive] + library_deps["lib_files"])
     return [DefaultInfo(runfiles=runfiles)]
 
-
 r_pkg_test = rule(
-    implementation=_check_impl,
-    attrs={
+    attrs = {
         "pkg": attr.label(
-            mandatory=True,
-            providers=[RPackage],
-            doc="R package (of type r_pkg) to test"),
+            mandatory = True,
+            providers = [RPackage],
+            doc = "R package (of type r_pkg) to test",
+        ),
         "suggested_deps": attr.label_list(
-            providers=[RPackage],
-            doc="R package dependencies of type r_pkg"),
+            providers = [RPackage],
+            doc = "R package dependencies of type r_pkg",
+        ),
         "build_args": attr.string(
-            default="--no-build-vignettes --no-manual",
-            doc="Additional arguments to supply to R CMD build"),
+            default = "--no-build-vignettes --no-manual",
+            doc = "Additional arguments to supply to R CMD build",
+        ),
         "check_args": attr.string(
-            default="--no-build-vignettes --no-manual",
-            doc="Additional arguments to supply to R CMD check"),
+            default = "--no-build-vignettes --no-manual",
+            doc = "Additional arguments to supply to R CMD check",
+        ),
     },
-    test=True,
-    doc=("Rule to keep all deps of the package in the sandbox, build " +
-         "a source archive of this package, and run R CMD check on " +
-         "the package source archive in the sandbox."),
+    doc = ("Rule to keep all deps of the package in the sandbox, build " +
+           "a source archive of this package, and run R CMD check on " +
+           "the package source archive in the sandbox."),
+    test = True,
+    implementation = _check_impl,
 )
-
 
 def _library_tar_impl(ctx):
     library_deps = _library_deps(ctx.attr.pkgs, path_prefix=(ctx.bin_dir.path + "/"))
@@ -512,7 +517,6 @@ def _library_tar_impl(ctx):
     ctx.actions.run_shell(outputs=[ctx.outputs.tar], inputs=library_deps["lib_files"],
                           command=command)
     return
-
 
 def _library_impl(ctx):
     _library_tar_impl(ctx)
@@ -573,31 +577,33 @@ def _library_impl(ctx):
     runfiles = ctx.runfiles(files=library_deps["lib_files"])
     return [DefaultInfo(runfiles=runfiles, files=depset([ctx.outputs.executable]))]
 
-
 r_library = rule(
-    implementation=_library_impl,
-    attrs={
+    attrs = {
         "pkgs": attr.label_list(
-            providers=[RPackage], mandatory=True,
-            doc="Package (and dependencies) to install"),
+            providers = [RPackage],
+            mandatory = True,
+            doc = "Package (and dependencies) to install",
+        ),
         "library_path": attr.string(
-            default="",
-            doc=("If different from system default, default library " +
-                 "location for installation. For runtime overrides, " +
-                 "use bazel run [target] -- -l [path]")),
+            default = "",
+            doc = ("If different from system default, default library " +
+                   "location for installation. For runtime overrides, " +
+                   "use bazel run [target] -- -l [path]"),
+        ),
         "tar_dir": attr.string(
-            default=".",
-            doc=("Subdirectory within the tarball where all the " +
-                 "packages are installed")),
+            default = ".",
+            doc = ("Subdirectory within the tarball where all the " +
+                   "packages are installed"),
+        ),
     },
-    executable=True,
+    doc = ("Rule to install the given package and all dependencies to " +
+           "a user provided or system default R library site."),
+    executable = True,
     outputs = {
         "tar": "%{name}.tar",
     },
-    doc=("Rule to install the given package and all dependencies to " +
-         "a user provided or system default R library site.")
+    implementation = _library_impl,
 )
-
 
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[]):
     """Convenience macro to generate the r_pkg and r_library targets."""
@@ -613,7 +619,6 @@ def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[]):
         pkgs = [":" + pkg_name],
         tags = ["manual"],
     )
-
 
 def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], test_timeout="short"):
     """Convenience macro to generate the r_pkg, r_unit_test, r_pkg_test, and r_library targets."""

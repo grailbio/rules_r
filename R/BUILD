@@ -30,9 +30,14 @@ genrule(
     export HOME=/tmp  # Needed for Homebrew.
     # Prefer brew clang if available.
     CC=""
+    CPPFLAGS=""
+    LDFLAGS=""
     OPENMP_FLAGS=""
     if brew ls --versions llvm > /dev/null 2>/dev/null; then
-      CC=$$(realpath -e $$(brew --prefix llvm))/bin/clang
+      LLVM_PREFIX="$$(realpath -e $$(brew --prefix llvm))"
+      CC="$${LLVM_PREFIX}/bin/clang"
+      CPPFLAGS="-I$${LLVM_PREFIX}/include"
+      LDFLAGS="-L$${LLVM_PREFIX}/lib"
       OPENMP_FLAGS="-fopenmp"
     elif command -v clang > /dev/null; then
       CC=$$(command -v clang)
@@ -69,6 +74,8 @@ genrule(
 
     subst=(
       's|@CC@|'"$${CC}"'|g;'
+      's|@CPPFLAGS@|'"$${CPPFLAGS}"'|g;'
+      's|@LDFLAGS@|'"$${LDFLAGS}"'|g;'
       's|@GFORTRAN@|'"$${GFORTRAN}"'|g;'
       's|@GCC_LIB_PATH@|'"$${GCC_LIB_PATH}"'|g;'
       's|@OPENMP_FLAGS@|'"$${OPENMP_FLAGS}"'|g;'

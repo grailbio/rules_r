@@ -240,6 +240,11 @@ def _remove_file(files, path_to_remove):
 
     return new_depset
 
+def _env_vars(env_vars):
+    # Array of commands to export environment variables.
+
+    return ["export %s=%s" % (name, value) for name, value in env_vars.items()]
+
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
@@ -297,7 +302,7 @@ def _build_impl(ctx):
               ctx.file.makevars_darwin.path, ctx.file.makevars_linux.path,
               ctx.attr.install_args))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
-                          env=ctx.attr.environment_vars, mnemonic="RBuild",
+                          env=ctx.attr.env_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
 
     return [DefaultInfo(files=depset(output_files)),
@@ -353,7 +358,7 @@ r_pkg = rule(
         "post_install_files": attr.string_list(
             doc = "Extra files that the install process generates",
         ),
-        "environment_vars": attr.string_dict(
+        "env_vars": attr.string_dict(
             doc = "Extra environment variables to define for building the package",
         ),
     },
@@ -376,6 +381,8 @@ def _test_impl(ctx):
         "#!/bin/bash",
         "set -euo pipefail",
         "test -d {0}",
+        "",
+    ] + _env_vars(ctx.attr.env_vars) + [
         "",
         "if ! compgen -G '{0}/*.R' >/dev/null; then", 
         "  echo 'No test files found.'",
@@ -430,6 +437,9 @@ r_unit_test = rule(
             providers = [RPackage],
             doc = "R package dependencies of type r_pkg",
         ),
+        "env_vars": attr.string_dict(
+            doc = "Extra environment variables to define before running the test",
+        ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +
            "scripts of the specified package. The package itself must " +
@@ -465,6 +475,8 @@ def _check_impl(ctx):
         "set -euxo pipefail",
         "test -e {0}",
         "",
+    ] + _env_vars(ctx.attr.env_vars) + [
+        "",
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
         _R + "CMD check {1} {0}",
@@ -498,6 +510,9 @@ r_pkg_test = rule(
         "check_args": attr.string(
             default = "--no-build-vignettes --no-manual",
             doc = "Additional arguments to supply to R CMD check",
+        ),
+        "env_vars": attr.string_dict(
+            doc = "Extra environment variables to define before running the test",
         ),
     },
     doc = ("Rule to keep all deps of the package in the sandbox, build " +

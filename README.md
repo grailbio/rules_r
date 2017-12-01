@@ -266,7 +266,7 @@ sandbox, so it can be depended upon by other package builds.
       </td>
     </tr>
     <tr>
-      <td><code>environment_vars</code></td>
+      <td><code>env_vars</code></td>
       <td>
         <p><code>Dictionary; optional</code></p>
         <p>Extra environment variables to define for building the package.</p>
@@ -362,6 +362,13 @@ Rule to keep all deps in the sandbox, and run the provided R test scripts.
         <p>R package dependencies of type `r_pkg`.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>env_vars</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Extra environment variables to define before running the test.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -414,6 +421,13 @@ sandbox.
       <td>
         <p><code>String; default "--no-build-vignettes --no-manual"</code></p>
         <p>Additional arguments to supply to R CMD check.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>env_vars</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Extra environment variables to define before running the test.</p>
       </td>
     </tr>
   </tbody>

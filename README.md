@@ -272,6 +272,13 @@ sandbox, so it can be depended upon by other package builds.
         <p>Extra environment variables to define for building the package.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables that code in this package will try to find in the system.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -369,6 +376,13 @@ Rule to keep all deps in the sandbox, and run the provided R test scripts.
         <p>Extra environment variables to define before running the test.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables to be made available to the test.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -428,6 +442,13 @@ sandbox.
       <td>
         <p><code>Dictionary; optional</code></p>
         <p>Extra environment variables to define before running the test.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables to be made available to the test.</p>
       </td>
     </tr>
   </tbody>

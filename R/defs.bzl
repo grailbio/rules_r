@@ -41,7 +41,8 @@ _Rscript = "Rscript --vanilla "
 # "src_files": "All source files in this package",
 # "bin_archive": "Binary archive of this package",
 # "pkg_deps": "Direct dependencies of this package",
-# "transitive_pkg_deps": "depset of all dependencies of this target"
+# "transitive_pkg_deps": "depset of all dependencies of this target",
+# "transitive_tools": "depset of all system tools",
 RPackage = provider(doc = "Build information about an R package dependency")
 
 def _package_name(ctx):
@@ -151,9 +152,11 @@ def _library_deps(target_deps, path_prefix=""):
 
     # Transitive closure of all package dependencies.
     transitive_pkg_deps = depset()
+    transitive_tools = depset()
     for target_dep in target_deps:
         transitive_pkg_deps += (target_dep[RPackage].transitive_pkg_deps +
                                 depset([target_dep[RPackage]]))
+        transitive_tools += target_dep[RPackage].transitive_tools
 
     # Colon-separated search path to individual package libraries.
     lib_search_path = []
@@ -185,6 +188,7 @@ def _library_deps(target_deps, path_prefix=""):
         "lib_files": lib_files,
         "bin_archives": bin_archives,
         "symlinked_library_command": symlink_deps_command,
+        "transitive_tools": transitive_tools,
     }
 
 def _cc_deps(cc_deps, pkg_src_dir):
@@ -244,6 +248,17 @@ def _env_vars(env_vars):
     # Array of commands to export environment variables.
 
     return ["export %s=%s" % (name, value) for name, value in env_vars.items()]
+
+def _executables(labels):
+    # depset of executable files for this list of labels.
+
+    return depset([label.files_to_run.executable for label in labels])
+
+def _path(executables):
+    # ":" separated path to directories of desired tools.
+
+    return ":".join(["$(cd $(dirname %s); echo \"${PWD}\")" %
+                     exe.short_path for exe in executables])
 
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
@@ -305,6 +320,8 @@ def _build_impl(ctx):
                           env=ctx.attr.env_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
 
+    transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
+
     return [DefaultInfo(files=depset(output_files)),
             RPackage(pkg_name=pkg_name,
                      lib_loc=pkg_lib_dir,
@@ -312,7 +329,9 @@ def _build_impl(ctx):
                      src_files=ctx.files.srcs,
                      bin_archive=pkg_bin_archive,
                      pkg_deps=ctx.attr.deps,
-                     transitive_pkg_deps=library_deps["transitive_pkg_deps"])]
+                     transitive_pkg_deps=library_deps["transitive_pkg_deps"],
+                     transitive_tools=transitive_tools)
+            ]
 
 r_pkg = rule(
     attrs = {
@@ -361,6 +380,9 @@ r_pkg = rule(
         "env_vars": attr.string_dict(
             doc = "Extra environment variables to define for building the package",
         ),
+        "tools": attr.label_list(
+            doc = "Executables that code in this package will try to find in the system",
+        ),
     },
     doc = ("Rule to install the package and its transitive dependencies" +
            "in the Bazel sandbox."),
@@ -377,6 +399,8 @@ def _test_impl(ctx):
         if src_file.path.startswith(pkg_tests_dir):
             test_files += [src_file]
 
+    tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
+
     script = "\n".join([
         "#!/bin/bash",
         "set -euo pipefail",
@@ -388,6 +412,8 @@ def _test_impl(ctx):
         "  echo 'No test files found.'",
         "  exit 1",
         "fi",
+        "",
+        "export PATH=\"${{PATH}}:{1}\"",
         "",
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
@@ -417,13 +443,14 @@ def _test_impl(ctx):
         "done",
         "",
         "cleanup",
-    ]).format(pkg_tests_dir)
+    ]).format(pkg_tests_dir, _path(tools))
 
     ctx.actions.write(
         output=ctx.outputs.executable,
         content=script)
 
-    runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files)
+    runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files,
+                            transitive_files = tools)
     return [DefaultInfo(runfiles=runfiles)]
 
 r_unit_test = rule(
@@ -439,6 +466,9 @@ r_unit_test = rule(
         ),
         "env_vars": attr.string_dict(
             doc = "Extra environment variables to define before running the test",
+        ),
+        "tools": attr.label_list(
+            doc = "Executables to be made available to the test",
         ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +
@@ -470,10 +500,14 @@ def _check_impl(ctx):
         command=command, mnemonic="RBuildSource",
         progress_message="Building R (source) package %s" % pkg_name)
 
+    tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
+
     script = "\n".join([
         "#!/bin/bash",
         "set -euxo pipefail",
         "test -e {0}",
+        "",
+        "export PATH=\"${{PATH}}:{2}\"",
         "",
     ] + _env_vars(ctx.attr.env_vars) + [
         "",
@@ -482,14 +516,15 @@ def _check_impl(ctx):
         _R + "CMD check {1} {0}",
         "rm -rf ${{R_LIBS_USER}}",
         ""
-    ]).format(pkg_src_archive.short_path, ctx.attr.check_args)
+    ]).format(pkg_src_archive.short_path, ctx.attr.check_args,
+              _path(tools))
 
     ctx.actions.write(
         output=ctx.outputs.executable,
         content=script)
 
-    runfiles = ctx.runfiles(
-        files=[pkg_src_archive] + library_deps["lib_files"])
+    runfiles = ctx.runfiles(files=[pkg_src_archive] + library_deps["lib_files"],
+                            transitive_files=tools)
     return [DefaultInfo(runfiles=runfiles)]
 
 r_pkg_test = rule(
@@ -513,6 +548,9 @@ r_pkg_test = rule(
         ),
         "env_vars": attr.string_dict(
             doc = "Extra environment variables to define before running the test",
+        ),
+        "tools": attr.label_list(
+            doc = "Executables to be made available to the test",
         ),
     },
     doc = ("Rule to keep all deps of the package in the sandbox, build " +

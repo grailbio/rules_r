@@ -16,7 +16,17 @@
 
 set -eou pipefail
 
-readonly LAYER_TAR="image-layer.tar"
-readonly FILE_TO_CHECK="r-libs/exampleC/DESCRIPTION"
+if [[ "${TEST_SRCDIR:-}" ]]; then
+  # Ensure we are in the correct workspace for this test.
+  echo "Moving to the right bazel workspace:"
+  pushd "${TEST_SRCDIR}/com_grail_rules_r_tests"
+  echo ""
+fi
 
-tar -tf "${LAYER_TAR}" | grep "${FILE_TO_CHECK}"
+readonly LAYER_TAR="image-layer.tar"
+readonly FILE_TO_CHECK="^./r-libs/exampleC/DESCRIPTION$"
+
+echo "Looking for file ${FILE_TO_CHECK}:"
+tar -tf "${LAYER_TAR}" | tee /dev/stderr 2| (grep -q "${FILE_TO_CHECK}" || (echo "Not found!" && exit 1))
+
+echo "Found!"

@@ -222,7 +222,7 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA, bioc_ver
 
   updateRepoIndex(repo_dir)
 
-  packageSHAs(packages_merged[,c("Package", "Version")], repo_dir = repo_dir)
+  packageSHAs(packages_merged[, c("Package", "Version")], repo_dir = repo_dir)
 }
 
 #' Adds all deps of a dev package to the repo, if not already present.

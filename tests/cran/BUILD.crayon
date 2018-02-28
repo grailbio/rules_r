@@ -25,4 +25,3 @@ r_pkg(
     lazy_data = True,
     deps = [],
 )
-

@@ -30,4 +30,3 @@ r_pkg(
         "@R_praise//:praise",
     ],
 )
-

@@ -22,5 +22,8 @@ r_pkg(
             "BUILD",
         ],
     ),
-    visibility = ["//exampleB:__pkg__"],
+    visibility = [
+        "//binary:__pkg__",
+        "//exampleB:__pkg__",
+    ],
 )

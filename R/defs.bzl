@@ -28,6 +28,10 @@ dependencies (as a side effect of installing them to Bazel's sandbox),
 install all the binary archives into a folder, and make available the
 folder as a single tar. The target can also be executed using bazel run.
 See usage by running with -h flag.
+
+r_binary will generate a shell script for running an R script with the
+Rscript tool, along with the appropriate run files.  The target can be
+executed with an `sh_test` rule, standalone or with bazel run.
 """
 
 _R = "R --vanilla --slave "
@@ -711,3 +715,91 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
         pkg = pkg_name,
         suggested_deps = pkg_suggested_deps,
     )
+
+load(":runfiles_commands.bzl", "runfiles_commands")
+
+def _r_binary_impl(ctx):
+    if len(ctx.files.srcs) > 1:
+        fail("only one srcs file is allowed; got " + len(ctx.files.srcs))
+
+    ldeps = _library_deps(ctx.attr.deps, path_prefix=ctx.workspace_name + "/")
+
+    tools = _executables(ctx.attr.tools)
+    for dep in ctx.attr.deps:
+        tools += dep[RPackage].transitive_tools
+
+    script = "\n".join([
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "",
+    ] + _env_vars(ctx.attr.env_vars) + runfiles_commands() + [("\n".join([
+        "",
+        "export PATH=\"${{PATH}}:{0}\"",
+        "",
+        "export R_LIBS_USER=$(mktemp -d)",
+        "pushd ${{RUNFILES}} > /dev/null",
+        ldeps["symlinked_library_command"],
+        "",
+        "pushd {2} > /dev/null",
+        "cleanup() {{",
+        "  set -e",
+        "  popd > /dev/null",
+        "  rm -rf ${{R_LIBS_USER}}",
+        "}}",
+        "",
+        "set +e",
+        _Rscript + "{3} {1} \"$@\"",
+        "code=$?",
+        "if [ $code -ne 0 ]; then",
+        "  cleanup",
+        "  echo \"Rscript error code: $code\"",
+        "  exit $code",
+        "fi",
+        "",
+        "cleanup",
+    ])).format(
+        _path(tools), ctx.files.srcs[0].short_path, ctx.workspace_name,
+        ctx.attr.rscript_args)])
+
+    ctx.actions.write(output = ctx.outputs.executable, content = script)
+
+    runfiles = ctx.runfiles(
+        files = ldeps["lib_files"] + ctx.files.srcs + ctx.files.data,
+        transitive_files = tools)
+    return [DefaultInfo(runfiles = runfiles)]
+
+r_binary = rule(
+    attrs = {
+        "srcs": attr.label_list(
+            # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+            allow_files = FileType([
+                ".R",
+                ".r",
+                ".S",
+                ".s",
+                ".q",
+            ]),
+            mandatory = True,
+            doc = "Single R script file to run",
+        ),
+        "deps": attr.label_list(
+            providers = [RPackage],
+            doc = "R package dependencies of type r_pkg",
+        ),
+        "data": attr.label_list(allow_files = True),
+        "env_vars": attr.string_dict(
+            doc =
+                "Extra environment variables to define before running the script",
+        ),
+        "tools": attr.label_list(
+            doc = "Executables to be made available to the script",
+        ),
+        "rscript_args": attr.string(
+            default = "--default-packages=methods,utils,grDevices,graphics",
+            doc = "Additional arguments to pass to Rscript",
+        ),
+    },
+    doc = "Rule to run a single R script",
+    executable = True,
+    implementation = _r_binary_impl,
+)

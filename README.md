@@ -11,6 +11,7 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
     <li><a href="#r_package">r_package</a></li>
     <li><a href="#r_package_with_test">r_package_with_test</a></li>
     <li><a href="#r_binary">r_binary</a></li>
+    <li><a href="#r_test">r_test</a></li>
   </ul>
 </div>
 
@@ -542,6 +543,15 @@ The target can be executed with an `sh_test` rule, standalone or with `bazel run
     </tr>
   </tbody>
 </table>
+
+<a name="r_test"></a>
+## r_test
+
+```python
+r_test(name, srcs, deps, data, env_vars, tools, rscript_args)
+```
+
+See <a href="#r_binary">r_binary</a>.
 
 Contributing
 ------------

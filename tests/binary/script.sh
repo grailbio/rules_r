@@ -1,4 +1,6 @@
-# Copyright 2017 GRAIL, Inc.
+#!/bin/bash
+
+# Copyright 2018 The Bazel R Rules Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
+# To test passing arguments
+echo "$@"
 
-r_pkg(
-    name = "exampleA",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            "BUILD",
-        ],
-    ),
-    visibility = [
-        "//binary:__pkg__",
-        "//exampleB:__pkg__",
-    ],
-)
+Rscript -e "cat(exampleA::exampleA()); cat('yDja77yb\n')" | grep AyDja77yb

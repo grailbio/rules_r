@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 The Bazel R Rules Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ dependencies (as a side effect of installing them to Bazel's sandbox),
 install all the binary archives into a folder, and make available the
 folder as a single tar. The target can also be executed using bazel run.
 See usage by running with -h flag.
+
+r_binary will generate a shell script for running an R script with the
+Rscript tool, along with the appropriate run files.  The target can be
+executed with an `sh_test` rule, standalone or with bazel run.
 """
 
 _R = "R --vanilla --slave "
@@ -194,10 +198,6 @@ def _library_deps(target_deps, path_prefix=""):
 def _cc_deps(cc_deps, pkg_src_dir):
     # Returns a subscript to execute and additional input files.
 
-    # Relative path of root from package's native code directory.
-    levels = pkg_src_dir.count("/") + 2
-    root_path = "/".join([".."] * levels) + "/"
-
     files = depset()
     c_libs_flags = depset()
     cpp_flags = depset()
@@ -207,13 +207,13 @@ def _cc_deps(cc_deps, pkg_src_dir):
 
         c_libs_flags += d.cc.link_flags
         for l in d.cc.libs:
-            c_libs_flags += [root_path + l.path]
+            c_libs_flags += ["$(pwd)/" + l.path]
 
-        cpp_flags += d.cc.defines
+        cpp_flags += ["-D" + df for df in d.cc.defines]
         for i in d.cc.quote_include_directories:
-            cpp_flags += ["-iquote " + root_path + i]
+            cpp_flags += ["-iquote " + "$(pwd)/" + i]
         for i in d.cc.system_include_directories:
-            cpp_flags += ["-isystem " + root_path + i]
+            cpp_flags += ["-isystem " + "$(pwd)/" + i]
 
     script = ""
     if cc_deps:
@@ -223,8 +223,8 @@ def _cc_deps(cc_deps, pkg_src_dir):
             "cp ${{R_MAKEVARS_USER}} ${{TMP_MAKEVARS}}",
             "export R_MAKEVARS_USER=${{TMP_MAKEVARS}}",
             "",
-            "LIBS_LINE='PKG_LIBS += %s\\n'" % " ".join(c_libs_flags.to_list()),
-            "CPPFLAGS_LINE='PKG_CPPFLAGS += %s\\n'" % " ".join(cpp_flags.to_list()),
+            "LIBS_LINE=\"PKG_LIBS += %s\\n\"" % " ".join(c_libs_flags.to_list()),
+            "CPPFLAGS_LINE=\"PKG_CPPFLAGS += %s\\n\"" % " ".join(cpp_flags.to_list()),
             "echo -e ${{LIBS_LINE}} >> ${{R_MAKEVARS_USER}}",
             "echo -e ${{CPPFLAGS_LINE}} >> ${{R_MAKEVARS_USER}}",
         ])
@@ -267,7 +267,7 @@ def _build_impl(ctx):
     target_dir = _target_dir(ctx)
     pkg_src_dir = _package_source_dir(target_dir, pkg_name)
     pkg_lib_dir = "{0}/lib".format(target_dir)
-    pkg_lib_path = "{0}/{1}".format(ctx.bin_dir.path, pkg_lib_dir)
+    pkg_lib_path = "$CURWD/{0}/{1}".format(ctx.bin_dir.path, pkg_lib_dir)
     pkg_bin_archive = ctx.actions.declare_file(ctx.label.name + ".bin.tar.gz")
     package_files = _package_files(ctx)
     output_files = package_files + [pkg_bin_archive]
@@ -286,13 +286,29 @@ def _build_impl(ctx):
         config_override_cmd = " ".join(
             ["cp", ctx.file.config_override.path, orig_config])
 
+    if not ctx.attr.local:
+      local_cmd_in = ""
+      local_cmd_out = ""
+      local_pkg_src_dir = pkg_src_dir
+    else:
+      local_cmd_in = "\n".join([
+        "LOCAL_DIR=$(mktemp -d ${{TMPDIR-/tmp}}/tmp.XXXXXXX)",
+        "(cd %s && cp -Lrf . \"$LOCAL_DIR\")",
+        "echo \"LOCAL_DIR: $LOCAL_DIR\"",
+        "pushd \"$LOCAL_DIR\" > /dev/null",
+      ]) % (pkg_src_dir)
+      local_cmd_out = "\n".join([
+        "popd",
+        "rm -rf \"$LOCAL_DIR\"",
+      ])
+      local_pkg_src_dir = "."
+
     command = ("\n".join([
         "set -euo pipefail",
         "",
-        "PWD=$(pwd)",
-        "mkdir -p {0}",
-        "if [[ $(uname) == \"Darwin\" ]]; then export R_MAKEVARS_USER=${{PWD}}/{4};",
-        "else export R_MAKEVARS_USER=${{PWD}}/{5}; fi",
+        "CURWD=$(pwd)",
+        "if [[ $(uname) == \"Darwin\" ]]; then export R_MAKEVARS_USER=${{CURWD}}/{4};",
+        "else export R_MAKEVARS_USER=${{CURWD}}/{5}; fi",
         "",
         cc_deps["script"],
         "%s" % config_override_cmd,
@@ -302,18 +318,21 @@ def _build_impl(ctx):
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
         "",
+        local_cmd_in,
+        "mkdir -p {0}",
         "set +e",
-        "OUT=$(%s CMD INSTALL {6} --build --library={0} {1} 2>&1 )" % _R,
+        "OUT=$(%s CMD INSTALL --no-lock {6} --build --no-docs --library=\"{0}\" {1} 2>&1 )" % _R,
         "if (( $? )); then",
         "  echo \"${{OUT}}\"",
-        "  rm -rf ${{R_LIBS_USER}}",
+        #"  rm -rf ${{R_LIBS_USER}}",
         "  exit 1",
         "fi",
         "set -e",
         "",
-        "mv {2}*gz {3}",  # .tgz on macOS and .tar.gz on Linux.
+        "mv {2}*gz \"$CURWD/{3}\"",  # .tgz on macOS and .tar.gz on Linux.
+        local_cmd_out,
         "rm -rf ${{R_LIBS_USER}}",
-    ]).format(pkg_lib_path, pkg_src_dir, pkg_name, pkg_bin_archive.path,
+    ]).format(pkg_lib_path, local_pkg_src_dir, pkg_name, pkg_bin_archive.path,
               ctx.file.makevars_darwin.path, ctx.file.makevars_linux.path,
               ctx.attr.install_args))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
@@ -322,7 +341,8 @@ def _build_impl(ctx):
 
     transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
 
-    return [DefaultInfo(files=depset(output_files)),
+    return [DefaultInfo(files=depset(output_files),
+                        runfiles=ctx.runfiles(package_files, collect_default=True)),
             RPackage(pkg_name=pkg_name,
                      lib_loc=pkg_lib_dir,
                      lib_files=package_files,
@@ -383,6 +403,7 @@ r_pkg = rule(
         "tools": attr.label_list(
             doc = "Executables that code in this package will try to find in the system",
         ),
+        "local": attr.bool(default = False),
     },
     doc = ("Rule to install the package and its transitive dependencies" +
            "in the Bazel sandbox."),
@@ -683,13 +704,14 @@ def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[]):
         tags = ["manual"],
     )
 
-def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], test_timeout="short"):
+def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], test_timeout="short", lazy_data=None, check_args=None):
     """Convenience macro to generate the r_pkg, r_unit_test, r_pkg_test, and r_library targets."""
 
     r_pkg(
         name = pkg_name,
         srcs = pkg_srcs,
         deps = pkg_deps,
+        lazy_data = lazy_data,
     )
 
     r_library(
@@ -703,6 +725,7 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
         timeout = test_timeout,
         pkg = pkg_name,
         suggested_deps = pkg_suggested_deps,
+        check_args = check_args,
     )
 
     r_pkg_test(
@@ -711,3 +734,122 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
         pkg = pkg_name,
         suggested_deps = pkg_suggested_deps,
     )
+
+load(":runfiles_commands.bzl", "runfiles_commands")
+
+# https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+R_SCRIPT_EXTENSIONS = [
+    ".R",
+    ".r",
+    ".S",
+    ".s",
+    ".q",
+]
+
+def _is_r_script(path):
+    for ext in R_SCRIPT_EXTENSIONS:
+        if path.endswith(ext):
+            return True
+    return False
+
+def _r_binary_impl(ctx):
+    ldeps = _library_deps(ctx.attr.deps, path_prefix=ctx.workspace_name + "/")
+
+    tools = _executables(ctx.attr.tools)
+    for dep in ctx.attr.deps:
+        tools += dep[RPackage].transitive_tools
+
+    if _is_r_script(ctx.file.src.path):
+        invocation = _Rscript + "{0} {1} \"$@\"".format(
+            ctx.attr.rscript_args, 
+            ctx.file.src.short_path)
+    else:
+        if ctx.attr.rscript_args:
+            fail("'rscript_args' cannot be specified if 'src' is not an R script")
+        invocation = ctx.file.src.short_path + " \"$@\""
+
+    script = "\n".join([
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "",
+    ] + _env_vars(ctx.attr.env_vars) + runfiles_commands() + [("\n".join([
+        "",
+        "export PATH=\"${{PATH}}:{0}\"",
+        "",
+        "export R_LIBS_USER=$(mktemp -d)",
+        "pushd ${{RUNFILES}} > /dev/null",
+        ldeps["symlinked_library_command"],
+        "",
+        "pushd {2} > /dev/null",
+        "cleanup() {{",
+        "  set -e",
+        "  popd > /dev/null",
+        "  rm -rf ${{R_LIBS_USER}}",
+        "}}",
+        "",
+        "set +e",
+        invocation,
+        "code=$?",
+        "if [ $code -ne 0 ]; then",
+        "  cleanup",
+        "  exit $code",
+        "fi",
+        "",
+        "cleanup",
+    ])).format(
+        _path(tools), ctx.file.src.short_path, ctx.workspace_name,
+        ctx.attr.rscript_args)])
+
+    ctx.actions.write(output = ctx.outputs.executable, content = script)
+
+    runfiles = ctx.runfiles(
+        files = [ctx.file.src, ctx.outputs.executable],
+        transitive_files = tools,
+        collect_default = True,
+        collect_data = True,)
+    return [
+        DefaultInfo(runfiles = runfiles),
+    ]
+
+_R_BINARY_ATTRS = {
+    "src": attr.label(
+        # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+        allow_single_file = True,
+        mandatory = True,
+        doc = ("Entry point: either an executable (with a mandatory leading shebang) " +
+               "or a single R script file to run (ending in '.R', '.r', '.S', '.s' or '.q')"),
+    ),
+    "deps": attr.label_list(
+        providers = [RPackage],
+        doc = "R package dependencies of type r_pkg",
+    ),
+    "data": attr.label_list(
+        allow_files = True,
+        cfg = "data",
+    ),
+    "env_vars": attr.string_dict(
+        doc =
+            "Extra environment variables to define before running the script",
+    ),
+    "tools": attr.label_list(
+        doc = "Executables to be made available to the script",
+    ),
+    "rscript_args": attr.string(
+        doc = "Additional arguments to pass to Rscript.  It is an error to specify this if 'src' is not an R script.",
+    ),
+}
+
+r_binary = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to run a single R script",
+    executable = True,
+    implementation = _r_binary_impl,
+)
+
+r_test = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to test a single R script",
+    executable = True,
+    test = True,
+    implementation = _r_binary_impl,
+)

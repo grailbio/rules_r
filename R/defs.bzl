@@ -326,7 +326,8 @@ def _build_impl(ctx):
 
     transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
 
-    return [DefaultInfo(files=depset(output_files)),
+    return [DefaultInfo(files=depset(output_files),
+                        runfiles=ctx.runfiles(package_files, collect_default=True)),
             RPackage(pkg_name=pkg_name,
                      lib_loc=pkg_lib_dir,
                      lib_files=package_files,
@@ -764,9 +765,13 @@ def _r_binary_impl(ctx):
     ctx.actions.write(output = ctx.outputs.executable, content = script)
 
     runfiles = ctx.runfiles(
-        files = ldeps["lib_files"] + ctx.files.srcs + ctx.files.data,
-        transitive_files = tools)
-    return [DefaultInfo(runfiles = runfiles)]
+        files = ctx.files.srcs + [ctx.outputs.executable],
+        transitive_files = tools,
+        collect_default = True,
+        collect_data = True,)
+    return [
+        DefaultInfo(runfiles = runfiles),
+    ]
 
 _R_BINARY_ATTRS = {
     "srcs": attr.label_list(

@@ -768,74 +768,50 @@ def _r_binary_impl(ctx):
         transitive_files = tools)
     return [DefaultInfo(runfiles = runfiles)]
 
+_R_BINARY_ATTRS = {
+    "srcs": attr.label_list(
+        # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+        allow_files = FileType([
+            ".R",
+            ".r",
+            ".S",
+            ".s",
+            ".q",
+        ]),
+        mandatory = True,
+        doc = "Single R script file to run",
+    ),
+    "deps": attr.label_list(
+        providers = [RPackage],
+        doc = "R package dependencies of type r_pkg",
+    ),
+    "data": attr.label_list(
+        allow_files = True,
+        cfg = "data",
+    ),
+    "env_vars": attr.string_dict(
+        doc =
+            "Extra environment variables to define before running the script",
+    ),
+    "tools": attr.label_list(
+        doc = "Executables to be made available to the script",
+    ),
+    "rscript_args": attr.string(
+        default = "--default-packages=methods,utils,grDevices,graphics",
+        doc = "Additional arguments to pass to Rscript",
+    ),
+}
+
 r_binary = rule(
-    attrs = {
-        "srcs": attr.label_list(
-            # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
-            allow_files = FileType([
-                ".R",
-                ".r",
-                ".S",
-                ".s",
-                ".q",
-            ]),
-            mandatory = True,
-            doc = "Single R script file to run",
-        ),
-        "deps": attr.label_list(
-            providers = [RPackage],
-            doc = "R package dependencies of type r_pkg",
-        ),
-        "data": attr.label_list(allow_files = True),
-        "env_vars": attr.string_dict(
-            doc =
-                "Extra environment variables to define before running the script",
-        ),
-        "tools": attr.label_list(
-            doc = "Executables to be made available to the script",
-        ),
-        "rscript_args": attr.string(
-            default = "--default-packages=methods,utils,grDevices,graphics",
-            doc = "Additional arguments to pass to Rscript",
-        ),
-    },
+    attrs = _R_BINARY_ATTRS,
     doc = "Rule to run a single R script",
     executable = True,
     implementation = _r_binary_impl,
 )
 
 r_test = rule(
-    attrs = {
-        "srcs": attr.label_list(
-            # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
-            allow_files = FileType([
-                ".R",
-                ".r",
-                ".S",
-                ".s",
-                ".q",
-            ]),
-            mandatory = True,
-            doc = "Single R script file to run",
-        ),
-        "deps": attr.label_list(
-            providers = [RPackage],
-            doc = "R package dependencies of type r_pkg",
-        ),
-        "data": attr.label_list(allow_files = True),
-        "env_vars": attr.string_dict(
-            doc =
-                "Extra environment variables to define before running the script",
-        ),
-        "tools": attr.label_list(
-            doc = "Executables to be made available to the script",
-        ),
-        "rscript_args": attr.string(
-            default = "--default-packages=methods,utils,grDevices,graphics",
-            doc = "Additional arguments to pass to Rscript",
-        ),
-    },
-    doc = "Rule to run a single R script",
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to test a single R script",
     executable = True,
     test = True,
     implementation = _r_binary_impl,

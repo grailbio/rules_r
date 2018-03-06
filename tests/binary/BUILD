@@ -2,10 +2,23 @@ load("@com_grail_rules_r//R:defs.bzl", "r_binary", "r_test")
 
 r_binary(
     name = "binary",
-    srcs = ["script.R"],
+    src = "script.R",
     data = [
         "data.txt",
     ],
+    env_vars = {
+        "FOO": "bar",
+    },
+    rscript_args = "--default-packages=base,exampleA",
+    deps = [
+        "//exampleA",
+        "@R_testthat//:testthat",
+    ],
+)
+
+r_binary(
+    name = "binary_shebang",
+    src = "script.sh",
     env_vars = {
         "FOO": "bar",
     },
@@ -25,13 +38,14 @@ sh_test(
 r_test(
     name = "test",
     size = "small",
-    srcs = ["script.R"],
+    src = "script.R",
     data = [
         "data.txt",
     ],
     env_vars = {
         "FOO": "bar",
     },
+    rscript_args = "--default-packages=base,exampleA",
     deps = [
         "//exampleA",
         "@R_testthat//:testthat",

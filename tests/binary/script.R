@@ -1,8 +1,8 @@
-# Loaded with --default-packages=
+# Test that rscript_args are passed along
 testthat::expect(
   setequal(
-    sessionInfo()$basePkgs,
-    c("methods", "utils", "grDevices", "graphics", "base")),
+    utils::sessionInfo()$basePkgs,
+    c("base")),
   "unexpected base packages")
 
 library(testthat)
@@ -21,5 +21,8 @@ expect_equal(readLines("binary/data.txt"), c("Test"))
 
 # Environment variable is set
 expect_equal(Sys.getenv("FOO"), "bar")
+
+# Package exampleA is accessible
+expect_equal(exampleA(), "A")
 
 cat("yDja77yb\n")

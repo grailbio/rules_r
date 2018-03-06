@@ -719,15 +719,36 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
 
 load(":runfiles_commands.bzl", "runfiles_commands")
 
-def _r_binary_impl(ctx):
-    if len(ctx.files.srcs) > 1:
-        fail("only one srcs file is allowed; got " + len(ctx.files.srcs))
+# https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+R_SCRIPT_EXTENSIONS = [
+    ".R",
+    ".r",
+    ".S",
+    ".s",
+    ".q",
+]
 
+def _is_r_script(path):
+    for ext in R_SCRIPT_EXTENSIONS:
+        if path.endswith(ext):
+            return True
+    return False
+
+def _r_binary_impl(ctx):
     ldeps = _library_deps(ctx.attr.deps, path_prefix=ctx.workspace_name + "/")
 
     tools = _executables(ctx.attr.tools)
     for dep in ctx.attr.deps:
         tools += dep[RPackage].transitive_tools
+
+    if _is_r_script(ctx.file.src.path):
+        invocation = _Rscript + "{0} {1} \"$@\"".format(
+            ctx.attr.rscript_args, 
+            ctx.file.src.short_path)
+    else:
+        if ctx.attr.rscript_args:
+            fail("'rscript_args' cannot be specified if 'src' is not an R script")
+        invocation = ctx.file.src.short_path + " \"$@\""
 
     script = "\n".join([
         "#!/bin/bash",
@@ -749,23 +770,22 @@ def _r_binary_impl(ctx):
         "}}",
         "",
         "set +e",
-        _Rscript + "{3} {1} \"$@\"",
+        invocation,
         "code=$?",
         "if [ $code -ne 0 ]; then",
         "  cleanup",
-        "  echo \"Rscript error code: $code\"",
         "  exit $code",
         "fi",
         "",
         "cleanup",
     ])).format(
-        _path(tools), ctx.files.srcs[0].short_path, ctx.workspace_name,
+        _path(tools), ctx.file.src.short_path, ctx.workspace_name,
         ctx.attr.rscript_args)])
 
     ctx.actions.write(output = ctx.outputs.executable, content = script)
 
     runfiles = ctx.runfiles(
-        files = ctx.files.srcs + [ctx.outputs.executable],
+        files = [ctx.file.src, ctx.outputs.executable],
         transitive_files = tools,
         collect_default = True,
         collect_data = True,)
@@ -774,17 +794,12 @@ def _r_binary_impl(ctx):
     ]
 
 _R_BINARY_ATTRS = {
-    "srcs": attr.label_list(
+    "src": attr.label(
         # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
-        allow_files = FileType([
-            ".R",
-            ".r",
-            ".S",
-            ".s",
-            ".q",
-        ]),
+        allow_single_file = True,
         mandatory = True,
-        doc = "Single R script file to run",
+        doc = ("Entry point: either an executable (with a mandatory leading shebang) " +
+               "or a single R script file to run (ending in '.R', '.r', '.S', '.s' or '.q')"),
     ),
     "deps": attr.label_list(
         providers = [RPackage],
@@ -802,8 +817,7 @@ _R_BINARY_ATTRS = {
         doc = "Executables to be made available to the script",
     ),
     "rscript_args": attr.string(
-        default = "--default-packages=methods,utils,grDevices,graphics",
-        doc = "Additional arguments to pass to Rscript",
+        doc = "Additional arguments to pass to Rscript.  It is an error to specify this if 'src' is not an R script.",
     ),
 }
 

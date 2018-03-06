@@ -500,10 +500,12 @@ The target can be executed with an `sh_test` rule, standalone or with `bazel run
   </thead>
   <tbody>
     <tr>
-      <td><code>srcs</code></td>
+      <td><code>src</code></td>
       <td>
-        <p><code>List of files; required</code></p>
-        <p>Singleton list with the R script to execute (extension <code>.R</code>, <code>.r</code>, ...).</p>
+        <p><code>Script file or executable; required</code></p>
+        <p>R script to execute (extension <code>.R</code>, <code>.r</code>, ...)
+        or an executable with a leading shebang that is executed with the proper context
+        (working directory, R_LIBS_USER, ...).</p>
       </td>
     </tr>
     <tr>

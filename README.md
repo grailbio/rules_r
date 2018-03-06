@@ -141,30 +141,42 @@ container_pull(
 )
 ```
 
-And then, in a `BUILD` file, define your library of R packages and install them
-in a Docker image. Dependencies are installed implicitly.
+And then, in a `BUILD` file, use the `r_image` rule to create a Docker image
+from a script.  Dependencies are given in `deps` and `layers`.  Put the
+dependencies in `layers` to have them on a different Docker image, speeding
+up build time and saving space.
+
+For instance, in the example below, three images are created:
+- An image, with base image `rocker/r-base`, which contains the `RProtoBuf`
+R package and all the R packages it depends on.
+- An image `image1` with a dependency on `RProtoBuf` through the image above.
+- An image `image2` with the same dependency.
 
 ```python
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
+load("@com_grail_rules_r//R:image.bzl", "r_image")
 
-r_library(
-    name = "my_r_library",
-    pkgs = [
+r_image(
+    name = "image1",
+    src = "script1.R",
+    deps = [
         "//path/to/packageA:r_pkg_target",
         "//path/to/packageB:r_pkg_target",
     ],
-    tar_dir = "r-libs",
-)  
+    layers = [
+      "@R_RProtoBuf//:RProtoBuf",
+    ],
+)
 
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-
-container_image(
-    name = "image",
-    base = "@r_base//image",
-    directory = "/",
-    env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":my_r_library.tar"],
-    repository = "my_repo",
+r_image(
+    name = "image2",
+    src = "script1.R",
+    deps = [
+        "//path/to/packageA:r_pkg_target",
+        "//path/to/packageB:r_pkg_target",
+    ],
+    layers = [
+      "@R_RProtoBuf//:RProtoBuf",
+    ],
 )
 ```
 

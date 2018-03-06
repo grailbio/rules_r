@@ -1,0 +1,22 @@
+schemaVersion: 2.0.0
+
+fileExistenceTests:
+# testthat and its dependencies
+- name: R_R6
+  path: "/app/R_R6"
+  shouldExist: true
+- name: R_crayon
+  path: "/app/R_crayon"
+  shouldExist: true
+- name: R_digest
+  path: "/app/R_digest"
+  shouldExist: true
+- name: R_magrittr
+  path: "/app/R_magrittr"
+  shouldExist: true
+- name: R_praise
+  path: "/app/R_praise"
+  shouldExist: true
+- name: R_testthat
+  path: "/app/R_testthat"
+  shouldExist: true

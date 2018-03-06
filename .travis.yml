@@ -1,4 +1,7 @@
-sudo: false  # Not needing sudo enables container builds.
+sudo: required
+
+services:
+  - docker
 
 addons:
   apt:
@@ -15,3 +18,4 @@ script:
   - bazel build //...
   - bazel test //...
   - ./binary/execution_tests.sh
+  - ./r_image/e2e_tests.sh

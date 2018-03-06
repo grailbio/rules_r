@@ -14,6 +14,8 @@
 
 load("@com_grail_rules_r//R:defs.bzl", "r_binary", "r_test")
 
+exports_files(["script.R"])
+
 r_binary(
     name = "binary",
     src = "script.R",
@@ -24,6 +26,7 @@ r_binary(
         "FOO": "bar",
     },
     rscript_args = "--default-packages=base,exampleA",
+    visibility = ["//r_image:__pkg__"],
     deps = [
         "//exampleA",
         "@R_testthat//:testthat",

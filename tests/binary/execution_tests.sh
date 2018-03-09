@@ -1,4 +1,6 @@
-# Copyright 2017 GRAIL, Inc.
+#!/bin/bash
+
+# Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
+set -eou pipefail
 
-r_pkg(
-    name = "exampleA",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            "BUILD",
-        ],
-    ),
-    visibility = [
-        "//binary:__pkg__",
-        "//exampleB:__pkg__",
-    ],
-)
+# The rule can be executed with bazel run
+bazel run //binary | grep -q yDja77yb
+bazel run //binary:binary_shebang | grep -q yDja77yb
+
+# Or standalone
+bazel-bin/binary/binary | grep -q yDja77yb
+bazel-bin/binary/binary_shebang | grep -q yDja77yb
+
+# And arguments can be passed
+bazel run //binary:binary_shebang -- hello world | grep "hello world" > /dev/null

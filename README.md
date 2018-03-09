@@ -10,6 +10,8 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
     <li><a href="#r_pkg_test">r_pkg_test</a></li>
     <li><a href="#r_package">r_package</a></li>
     <li><a href="#r_package_with_test">r_package_with_test</a></li>
+    <li><a href="#r_binary">r_binary</a></li>
+    <li><a href="#r_test">r_test</a></li>
   </ul>
 </div>
 
@@ -475,6 +477,83 @@ r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], test_ti
 Convenience macro to generate the `r_pkg`, `r_library`,
 `r_unit_test`, and `r_pkg_test` targets.
 
+<a name="r_binary"></a>
+## r_binary
+
+```python
+r_binary(name, srcs, deps, data, env_vars, tools, rscript_args)
+```
+
+Build a wrapper shell script for executing an R script, along with the necessary runfiles.
+
+The target can be executed with an `sh_test` rule, standalone or with `bazel run`.
+
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>src</code></td>
+      <td>
+        <p><code>Script file or executable; required</code></p>
+        <p>R script to execute (extension <code>.R</code>, <code>.r</code>, ...)
+        or an executable with a leading shebang that is executed with the proper context
+        (working directory, R_LIBS_USER, ...).</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>deps</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>R package dependencies of type <code>r_pkg</code>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>data</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Files needed by this rule at runtime.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>env_vars</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Extra environment variables to pass to the R script (available through <code>Sys.getenv()</code>).</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables that code in this script will try to find in the system.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>rscript_args</code></td>
+      <td>
+        <p><code>String; default "--default-packages=methods,utils,grDevices,graphics"</code></p>
+        <p>Additional arguments to pass to <code>Rscript</code>.  Used by default to include common base packages.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<a name="r_test"></a>
+## r_test
+
+```python
+r_test(name, srcs, deps, data, env_vars, tools, rscript_args)
+```
+
+See <a href="#r_binary">r_binary</a>.
 
 Contributing
 ------------

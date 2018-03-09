@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ dependencies (as a side effect of installing them to Bazel's sandbox),
 install all the binary archives into a folder, and make available the
 folder as a single tar. The target can also be executed using bazel run.
 See usage by running with -h flag.
+
+r_binary will generate a shell script for running an R script with the
+Rscript tool, along with the appropriate run files.  The target can be
+executed with an `sh_test` rule, standalone or with bazel run.
 """
 
 _R = "R --vanilla --slave "
@@ -322,7 +326,8 @@ def _build_impl(ctx):
 
     transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
 
-    return [DefaultInfo(files=depset(output_files)),
+    return [DefaultInfo(files=depset(output_files),
+                        runfiles=ctx.runfiles(package_files, collect_default=True)),
             RPackage(pkg_name=pkg_name,
                      lib_loc=pkg_lib_dir,
                      lib_files=package_files,
@@ -711,3 +716,122 @@ def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], tes
         pkg = pkg_name,
         suggested_deps = pkg_suggested_deps,
     )
+
+load(":runfiles_commands.bzl", "runfiles_commands")
+
+# https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+R_SCRIPT_EXTENSIONS = [
+    ".R",
+    ".r",
+    ".S",
+    ".s",
+    ".q",
+]
+
+def _is_r_script(path):
+    for ext in R_SCRIPT_EXTENSIONS:
+        if path.endswith(ext):
+            return True
+    return False
+
+def _r_binary_impl(ctx):
+    ldeps = _library_deps(ctx.attr.deps, path_prefix=ctx.workspace_name + "/")
+
+    tools = _executables(ctx.attr.tools)
+    for dep in ctx.attr.deps:
+        tools += dep[RPackage].transitive_tools
+
+    if _is_r_script(ctx.file.src.path):
+        invocation = _Rscript + "{0} {1} \"$@\"".format(
+            ctx.attr.rscript_args, 
+            ctx.file.src.short_path)
+    else:
+        if ctx.attr.rscript_args:
+            fail("'rscript_args' cannot be specified if 'src' is not an R script")
+        invocation = ctx.file.src.short_path + " \"$@\""
+
+    script = "\n".join([
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "",
+    ] + _env_vars(ctx.attr.env_vars) + runfiles_commands() + [("\n".join([
+        "",
+        "export PATH=\"${{PATH}}:{0}\"",
+        "",
+        "export R_LIBS_USER=$(mktemp -d)",
+        "pushd ${{RUNFILES}} > /dev/null",
+        ldeps["symlinked_library_command"],
+        "",
+        "pushd {2} > /dev/null",
+        "cleanup() {{",
+        "  set -e",
+        "  popd > /dev/null",
+        "  rm -rf ${{R_LIBS_USER}}",
+        "}}",
+        "",
+        "set +e",
+        invocation,
+        "code=$?",
+        "if [ $code -ne 0 ]; then",
+        "  cleanup",
+        "  exit $code",
+        "fi",
+        "",
+        "cleanup",
+    ])).format(
+        _path(tools), ctx.file.src.short_path, ctx.workspace_name,
+        ctx.attr.rscript_args)])
+
+    ctx.actions.write(output = ctx.outputs.executable, content = script)
+
+    runfiles = ctx.runfiles(
+        files = [ctx.file.src, ctx.outputs.executable],
+        transitive_files = tools,
+        collect_default = True,
+        collect_data = True,)
+    return [
+        DefaultInfo(runfiles = runfiles),
+    ]
+
+_R_BINARY_ATTRS = {
+    "src": attr.label(
+        # https://cran.r-project.org/doc/manuals/r-release/R-exts.html
+        allow_single_file = True,
+        mandatory = True,
+        doc = ("Entry point: either an executable (with a mandatory leading shebang) " +
+               "or a single R script file to run (ending in '.R', '.r', '.S', '.s' or '.q')"),
+    ),
+    "deps": attr.label_list(
+        providers = [RPackage],
+        doc = "R package dependencies of type r_pkg",
+    ),
+    "data": attr.label_list(
+        allow_files = True,
+        cfg = "data",
+    ),
+    "env_vars": attr.string_dict(
+        doc =
+            "Extra environment variables to define before running the script",
+    ),
+    "tools": attr.label_list(
+        doc = "Executables to be made available to the script",
+    ),
+    "rscript_args": attr.string(
+        doc = "Additional arguments to pass to Rscript.  It is an error to specify this if 'src' is not an R script.",
+    ),
+}
+
+r_binary = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to run a single R script",
+    executable = True,
+    implementation = _r_binary_impl,
+)
+
+r_test = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to test a single R script",
+    executable = True,
+    test = True,
+    implementation = _r_binary_impl,
+)

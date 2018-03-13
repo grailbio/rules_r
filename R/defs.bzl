@@ -254,11 +254,26 @@ def _executables(labels):
 
     return depset([label.files_to_run.executable for label in labels])
 
-def _path(executables):
-    # ":" separated path to directories of desired tools.
+def _runtime_path_export(executables):
+    # ":" separated path to directories of desired tools, for use in executables.
 
-    return ":".join(["$(cd $(dirname %s); echo \"${PWD}\")" %
-                     exe.short_path for exe in executables])
+    exe_dirs = ["$(cd $(dirname %s); echo \"${PWD}\")" %
+                exe.short_path for exe in executables]
+    if exe_dirs:
+        return "export PATH=\"" + ":".join(exe_dirs + ["${PATH}"]) + "\""
+    else:
+        return ""
+
+def _build_path_export(executables):
+    # ":" separated path to directories of desired tools, for use in build actions.
+
+    exe_dirs = ["$(cd $(dirname %s); echo \"${PWD}\")" %
+                exe.path for exe in executables]
+    if exe_dirs:
+        return "export PATH=\"" + ":".join(exe_dirs + ["${PATH}"]) + "\""
+    else:
+        # This is required because bazel does not export the variable.
+        return "export PATH"
 
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
@@ -274,8 +289,10 @@ def _build_impl(ctx):
 
     library_deps = _library_deps(ctx.attr.deps, path_prefix=(ctx.bin_dir.path + "/"))
     cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir)
+    build_tools = _executables(ctx.attr.build_tools)
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
+                       + build_tools.to_list()
                        + [ctx.file.makevars_darwin, ctx.file.makevars_linux])
 
     config_override_cmd = ""
@@ -297,7 +314,7 @@ def _build_impl(ctx):
         cc_deps["script"],
         "%s" % config_override_cmd,
         "",
-        "export PATH",  # PATH needs to be exported to R.
+        "{7}",
         "",
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
@@ -315,7 +332,7 @@ def _build_impl(ctx):
         "rm -rf ${{R_LIBS_USER}}",
     ]).format(pkg_lib_path, pkg_src_dir, pkg_name, pkg_bin_archive.path,
               ctx.file.makevars_darwin.path, ctx.file.makevars_linux.path,
-              ctx.attr.install_args))
+              ctx.attr.install_args, _build_path_export(build_tools)))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
                           env=ctx.attr.env_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
@@ -383,6 +400,9 @@ r_pkg = rule(
         "tools": attr.label_list(
             doc = "Executables that code in this package will try to find in the system",
         ),
+        "build_tools": attr.label_list(
+            doc = "Executables that native code compilation will try to find in the system",
+        ),
     },
     doc = ("Rule to install the package and its transitive dependencies" +
            "in the Bazel sandbox."),
@@ -413,7 +433,7 @@ def _test_impl(ctx):
         "  exit 1",
         "fi",
         "",
-        "export PATH=\"${{PATH}}:{1}\"",
+        "{1}",
         "",
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
@@ -443,7 +463,7 @@ def _test_impl(ctx):
         "done",
         "",
         "cleanup",
-    ]).format(pkg_tests_dir, _path(tools))
+    ]).format(pkg_tests_dir, _runtime_path_export(tools))
 
     ctx.actions.write(
         output=ctx.outputs.executable,
@@ -507,7 +527,7 @@ def _check_impl(ctx):
         "set -euxo pipefail",
         "test -e {0}",
         "",
-        "export PATH=\"${{PATH}}:{2}\"",
+        "{2}",
         "",
     ] + _env_vars(ctx.attr.env_vars) + [
         "",
@@ -517,7 +537,7 @@ def _check_impl(ctx):
         "rm -rf ${{R_LIBS_USER}}",
         ""
     ]).format(pkg_src_archive.short_path, ctx.attr.check_args,
-              _path(tools))
+              _runtime_path_export(tools))
 
     ctx.actions.write(
         output=ctx.outputs.executable,

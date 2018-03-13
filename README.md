@@ -279,6 +279,13 @@ sandbox, so it can be depended upon by other package builds.
         <p>Executables that code in this package will try to find in the system.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>build_tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables that native code compilation will try to find in the system.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 

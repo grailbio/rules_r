@@ -289,7 +289,8 @@ def _build_impl(ctx):
 
     library_deps = _library_deps(ctx.attr.deps, path_prefix=(ctx.bin_dir.path + "/"))
     cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir)
-    build_tools = _executables(ctx.attr.build_tools)
+    transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
+    build_tools = _executables(ctx.attr.build_tools) + transitive_tools
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
                        + build_tools.to_list()
@@ -336,8 +337,6 @@ def _build_impl(ctx):
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
                           env=ctx.attr.env_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
-
-    transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
 
     return [DefaultInfo(files=depset(output_files)),
             RPackage(pkg_name=pkg_name,

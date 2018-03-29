@@ -209,11 +209,14 @@ def _cc_deps(cc_deps, pkg_src_dir):
         for l in d.cc.libs:
             c_libs_flags += [root_path + l.path]
 
-        cpp_flags += d.cc.defines
+        for i in d.cc.defines:
+            cpp_flags += ["-D" + i]
         for i in d.cc.quote_include_directories:
             cpp_flags += ["-iquote " + root_path + i]
         for i in d.cc.system_include_directories:
             cpp_flags += ["-isystem " + root_path + i]
+        for i in d.cc.include_directories:
+            cpp_flags += ["-I " + root_path + i]
 
     script = ""
     if cc_deps:

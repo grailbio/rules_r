@@ -26,15 +26,20 @@ and tested as part of one build system in multi-language monorepos.
 
 The following assumes that you are familiar with how to use Bazel in general.
 
-In order to use the rules, you must have bazel 0.5.3 or later and add the
+In order to use the rules, you must have bazel 0.10.0 or later and add the
 following to your WORKSPACE file:
 
 ```python
+# Change master to the git tag you want.
 http_archive(
     name = "com_grail_rules_r",
-    strip_prefix = "rules_r-0.3.4",
-    urls = ["https://github.com/grailbio/rules_r/archive/0.3.4.tar.gz"],
+    strip_prefix = "rules_r-master",
+    urls = ["https://github.com/grailbio/rules_r/archive/master.tar.gz"],
 )
+
+load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+
+r_rules_dependencies()
 ```
 
 You can load the rules in your BUILD file like so:
@@ -62,7 +67,9 @@ variable in R).
 
 For each package, you can also specify a different Makevars file that can be
 used to have finer control over native code compilation. For macOS, the
-[Makevars][Makevars] file used as default helps find `gfortran`.
+[Makevars][Makevars] file used as default helps find `gfortran`. To change the
+defaults for your repository, you can provide arguments `makevars_darwin`
+and/or `makevars_linux` to `r_rules_dependencies`.
 
 For _macOS_, this setup will help you cover the requirements for a large number
 of packages:
@@ -170,8 +177,8 @@ container_image(
 ## r_pkg
 
 ```python
-r_pkg(srcs, pkg_name, deps, install_args, makevars_darwin, makevars_linux,
-      shlib_name, lazy_data, post_install_files)
+r_pkg(srcs, pkg_name, deps, cc_deps, install_args, config_override, makevars_user,
+      shlib_name, lazy_data, post_install_files, env_vars, tools, build_tools)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -231,17 +238,10 @@ sandbox, so it can be depended upon by other package builds.
       </td>
     </tr>
     <tr>
-      <td><code>makevars_darwin</code></td>
+      <td><code>makevars_user</code></td>
       <td>
-        <p><code>File; default to //R:Makevars.darwin.generated</code></p>
-        <p>Makevars file to use for macOS overrides.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>makevars_linux</code></td>
-      <td>
-        <p><code>File; default to R/Makevars.linux</code></p>
-        <p>Makevars file to use for Linux overrides.</p>
+        <p><code>File; default to @com_grail_rules_r_makevars//:Makevars</code></p>
+        <p>User level Makevars file.</p>
       </td>
     </tr>
     <tr>
@@ -502,4 +502,4 @@ We have tested only on macOS and Ubuntu (VM and Docker).
 [exampleC]: tests/exampleC/BUILD
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
-[Makevars]: R/Makevars.darwin.tpl
+[Makevars]: R/makevars/Makevars.darwin.tpl

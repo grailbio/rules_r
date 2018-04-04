@@ -1,5 +1,5 @@
-#!/bin/bash
-
+# Copyright 2017 GRAIL, Inc.
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,4 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Empty configure script to skip all dependency checks
+# macOS specific overrides
+# See https://cran.r-project.org/doc/manuals/R-admin.html#macOS-packages
+
+# gfortran paths when installed as part of `brew install gcc`
+F77=@GFORTRAN@
+FC=${F77}
+FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
+
+CC = @CC@
+CXX = @CC@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+
+# Apple's compilers from Command Line Tools do not have OpenMP support
+SHLIB_OPENMP_CFLAGS = @OPENMP_FLAGS@
+SHLIB_OPENMP_CXXFLAGS = @OPENMP_FLAGS@

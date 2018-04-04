@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# macOS specific overrides
-# See https://cran.r-project.org/doc/manuals/R-admin.html#macOS-packages
-
-# gfortran paths when installed as part of `brew install gcc`
-F77=/usr/local/bin/gfortran
-FC=${F77}
-FLIBS=-L/usr/local/lib/gcc/7 -lgfortran -lquadmath -lm
-
-# Apple's compilers from Command Line Tools do not have OpenMP support
-SHLIB_OPENMP_CFLAGS =
-SHLIB_OPENMP_CXXFLAGS =
+exports_files([
+    "Makevars.darwin.sh",
+    "Makevars.darwin.tpl",
+])

@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# macOS specific overrides
-# See https://cran.r-project.org/doc/manuals/R-admin.html#macOS-packages
+def detect_os(rctx):
+    """Detects the host operating system.
 
-# gfortran paths when installed as part of `brew install gcc`
-F77=@GFORTRAN@
-FC=${F77}
-FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
-
-CC = @CC@
-CXX = @CC@
-CPPFLAGS = @CPPFLAGS@
-LDFLAGS = @LDFLAGS@
-
-SHLIB_OPENMP_CFLAGS = @OPENMP_FLAGS@
-SHLIB_OPENMP_CXXFLAGS = @OPENMP_FLAGS@
+    Returns one of "darwin" or "linux", or raises an error.
+    """
+    os_name = rctx.os.name.lower()
+    if os_name.startswith("mac os"):
+        return "darwin"
+    elif os_name == "linux":
+        return "linux"
+    else:
+        fail("unsupported %s" % os_name)

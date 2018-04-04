@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,3 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+def sh_quote(s):
+    """Quotes the given string for use in a shell command or script."""
+
+    return "'" + str(s).replace("'", "'\\''") + "'"
+
+def sh_quote_args(iterable):
+    """Quotes the individual elements and joins them together as a space separated list."""
+
+    return " ".join([sh_quote(i) for i in iterable])

@@ -16,6 +16,12 @@ load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_p
 
 package(default_visibility = ["//visibility:public"])
 
+genrule(
+    name = "genrule_empty",
+    outs = ["empty"],
+    cmd = "touch $@",
+)
+
 r_pkg(
     name = "RProtoBuf",
     srcs = glob(
@@ -26,7 +32,7 @@ r_pkg(
         ],
     ),
     cc_deps = ["@com_google_protobuf//:protobuf"],
-    config_override = "@com_grail_rules_r//R:configure.empty",
+    config_override = ":empty",
     deps = [
         "@R_RCurl//:RCurl",
         "@R_Rcpp//:Rcpp",

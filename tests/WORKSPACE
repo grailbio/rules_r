@@ -19,6 +19,10 @@ local_repository(
     path = "..",
 )
 
+load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+
+r_rules_dependencies()
+
 http_archive(
     name = "com_google_protobuf",
     sha256 = "f6600abeee3babfa18591961a0ff21e7db6a6d9ef82418a261ec4fee44ee6d44",

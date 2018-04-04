@@ -297,7 +297,7 @@ def _build_impl(ctx):
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
                        + build_tools.to_list()
-                       + [ctx.file.makevars_darwin, ctx.file.makevars_linux])
+                       + [ctx.file.makevars_user])
 
     config_override_cmd = ""
     if ctx.file.config_override != None:
@@ -312,19 +312,18 @@ def _build_impl(ctx):
         "",
         "PWD=$(pwd)",
         "mkdir -p {0}",
-        "if [[ $(uname) == \"Darwin\" ]]; then export R_MAKEVARS_USER=${{PWD}}/{4};",
-        "else export R_MAKEVARS_USER=${{PWD}}/{5}; fi",
+        "export R_MAKEVARS_USER=${{PWD}}/{4};",
         "",
         cc_deps["script"],
         "%s" % config_override_cmd,
         "",
-        "{7}",
+        "{6}",
         "",
         "export R_LIBS_USER=$(mktemp -d)",
         library_deps["symlinked_library_command"],
         "",
         "set +e",
-        "OUT=$(%s CMD INSTALL {6} --build --library={0} {1} 2>&1 )" % _R,
+        "OUT=$(%s CMD INSTALL {5} --build --library={0} {1} 2>&1 )" % _R,
         "if (( $? )); then",
         "  echo \"${{OUT}}\"",
         "  rm -rf ${{R_LIBS_USER}}",
@@ -335,8 +334,8 @@ def _build_impl(ctx):
         "mv {2}*gz {3}",  # .tgz on macOS and .tar.gz on Linux.
         "rm -rf ${{R_LIBS_USER}}",
     ]).format(pkg_lib_path, pkg_src_dir, pkg_name, pkg_bin_archive.path,
-              ctx.file.makevars_darwin.path, ctx.file.makevars_linux.path,
-              ctx.attr.install_args, _build_path_export(build_tools)))
+              ctx.file.makevars_user.path, ctx.attr.install_args,
+              _build_path_export(build_tools)))
     ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
                           env=ctx.attr.env_vars, mnemonic="RBuild",
                           progress_message="Building R package %s" % pkg_name)
@@ -376,15 +375,10 @@ r_pkg = rule(
             allow_single_file = True,
             doc = "Replace the package configure script with this file",
         ),
-        "makevars_darwin": attr.label(
+        "makevars_user": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R:Makevars.darwin.generated",
-            doc = "Makevars file to use for macOS overrides",
-        ),
-        "makevars_linux": attr.label(
-            allow_single_file = True,
-            default = "@com_grail_rules_r//R:Makevars.linux",
-            doc = "Makevars file to use for Linux overrides",
+            default = "@com_grail_rules_r_makevars//:Makevars",
+            doc = "User level Makevars file",
         ),
         "shlib_name": attr.string(
             doc = "Shared library name, if different from package name",
@@ -403,7 +397,7 @@ r_pkg = rule(
             doc = "Executables that code in this package will try to find in the system",
         ),
         "build_tools": attr.label_list(
-            doc = "Executables that native code compilation will try to find in the system",
+            doc = "Executables that package build and load will try to find in the system",
         ),
     },
     doc = ("Rule to install the package and its transitive dependencies" +

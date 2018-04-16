@@ -42,7 +42,7 @@ CPPFLAGS=""
 LDFLAGS=""
 OPENMP_FLAGS=""
 if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
-  LLVM_PREFIX="$(realpath -e "$(brew --prefix llvm)")"
+  LLVM_PREFIX="$(brew --prefix llvm)"
   CC="${LLVM_PREFIX}/bin/clang"
   CPPFLAGS="-I${LLVM_PREFIX}/include"
   LDFLAGS="-L${LLVM_PREFIX}/lib"
@@ -56,7 +56,7 @@ fi
 
 GFORTRAN=""
 if $BREW && brew ls --versions gcc > /dev/null 2>/dev/null; then
-  GFORTRAN=$(realpath -e "$(brew --prefix gcc)")/bin/gfortran
+  GFORTRAN="$(brew --prefix gcc)/bin/gfortran"
 elif command -v gfortran > /dev/null; then
   GFORTRAN=$(command -v gfortran)
 else

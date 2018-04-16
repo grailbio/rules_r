@@ -59,6 +59,15 @@ def _dict_to_r_vec(d):
     return ", ".join([k + "='" + v + "'" for k, v in d.items()])
 
 def _r_repository_list_impl(rctx):
+    rctx.file("BUILD", content="", executable=False)
+
+    if not rctx.which("Rscript"):
+        rctx.file("r_repositories.bzl", content="""
+def r_repositories():
+    return
+""", executable=False)
+        return
+
     razel = sh_quote(rctx.path(rctx.attr._razel))
     repos = "c(%s)" % _dict_to_r_vec(rctx.attr.remote_repos)
 
@@ -83,7 +92,6 @@ def _r_repository_list_impl(rctx):
     if exec_result.stderr:
         print(exec_result.stderr)
 
-    rctx.file("BUILD", content="", executable=False)
     return
 
 # Repository rule that will generate a bzl file containing a macro for

@@ -30,20 +30,35 @@ folder as a single tar. The target can also be executed using bazel run.
 See usage by running with -h flag.
 """
 
-_R = "R --vanilla --slave "
+load("@com_grail_rules_r//R/internal:shell.bzl", "sh_quote", "sh_quote_args")
 
-_Rscript = "Rscript --vanilla "
+_R = [
+    "R",
+    "--vanilla",
+    "--slave",
+]
 
-# Provider with following fields:
-# "pkg_name": "Name of the package",
-# "lib_loc": "Directory where this package is installed",
-# "lib_files": "All installed files in this package",
-# "src_files": "All source files in this package",
-# "bin_archive": "Binary archive of this package",
-# "pkg_deps": "Direct dependencies of this package",
-# "transitive_pkg_deps": "depset of all dependencies of this target",
-# "transitive_tools": "depset of all system tools",
-RPackage = provider(doc = "Build information about an R package dependency")
+_Rscript = [
+    "Rscript",
+    "--vanilla",
+]
+
+RPackage = provider(
+    doc = "Build information about an R package dependency",
+    fields = {
+        "pkg_name": "Name of the package",
+        "lib_path": "Directory where this package is installed",
+        "lib_files": "All installed files in this package",
+        "src_files": "All source files in this package",
+        "src_archive": "Source archive of this package",
+        "bin_archive": "Binary archive of this package",
+        "pkg_deps": "Direct deps of this package",
+        "transitive_pkg_deps": "depset of all dependencies of this target",
+        "transitive_tools": "depset of all system tools",
+        "makevars_user": "user level makevars file for native code compilation",
+        "cc_deps": "cc_deps struct for the package",
+    },
+)
 
 def _package_name(ctx):
     # Package name from attribute with fallback to label name.
@@ -53,26 +68,36 @@ def _package_name(ctx):
         pkg_name = ctx.label.name
     return pkg_name
 
-def _target_dir(ctx):
+def _package_dir(ctx):
     # Relative path to target directory.
 
     workspace_root = ctx.label.workspace_root
     if workspace_root != "" and ctx.label.package != "":
         workspace_root += "/"
-    target_dir = workspace_root + ctx.label.package
-    return target_dir
+    package_dir = workspace_root + ctx.label.package
+    return package_dir
 
-def _package_source_dir(target_dir, pkg_name):
-    # Relative path to R package source.
+def _strip_path_prefixes(iterable, p1, p2):
+    # Given an iterable of paths and two path prefixes, removes the prefixes and
+    # filter empty paths.
 
-    return target_dir
+    res = []
+    for s in iterable:
+        if not s or s == p1 or s == p2:
+            res.append(".")
+        elif s.startswith(p1 + "/"):
+            res.append(s[(len(p1) + 1):])
+        elif s.startswith(p2 + "/"):
+            res.append(s[(len(p2) + 1):])
+        else:
+            res.append(s)
+    return res
 
 def _package_files(ctx):
     # Returns files that are installed as an R package.
 
     pkg_name = _package_name(ctx)
-    target_dir = _target_dir(ctx)
-    pkg_src_dir = _package_source_dir(target_dir, pkg_name)
+    pkg_src_dir = _package_dir(ctx)
 
     has_R_code = False
     has_sysdata = False
@@ -147,7 +172,7 @@ def _package_files(ctx):
 
     return pkg_files
 
-def _library_deps(target_deps, path_prefix=""):
+def _library_deps(target_deps):
     # Returns information about all dependencies of this package.
 
     # Transitive closure of all package dependencies.
@@ -158,8 +183,11 @@ def _library_deps(target_deps, path_prefix=""):
                                 depset([target_dep[RPackage]]))
         transitive_tools += target_dep[RPackage].transitive_tools
 
-    # Colon-separated search path to individual package libraries.
-    lib_search_path = []
+    # Individual R library directories.
+    lib_dirs = []
+
+    # Installed package directory paths.
+    pkg_dir_paths = []
 
     # Files in the aggregated library of all dependency packages.
     lib_files = []
@@ -167,40 +195,32 @@ def _library_deps(target_deps, path_prefix=""):
     # Binary archives of all dependency packages.
     bin_archives = []
 
-    # R 3.3 has a bug in which some relative paths are not recognized in
-    # R_LIBS_USER when running R CMD INSTALL (works fine for other
-    # uses).  We work around this bug by creating a single directory
-    # with symlinks to all deps.  Without this bug, lib_search_path can
-    # be used directly.  This bug is fixed in R 3.4.
-    symlink_deps_command = "mkdir -p ${{R_LIBS_USER}}\n"
-
     for pkg_dep in transitive_pkg_deps:
-        dep_lib_loc = path_prefix + pkg_dep.lib_loc
-        lib_search_path += [dep_lib_loc]
         lib_files += pkg_dep.lib_files
+        lib_dirs += [pkg_dep.lib_path]
+        pkg_dir_paths += ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
         bin_archives += [pkg_dep.bin_archive]
-        symlink_deps_command += "ln -s $(pwd)/%s/%s ${{R_LIBS_USER}}/\n" % (dep_lib_loc,
-                                                                            pkg_dep.pkg_name)
 
     return {
         "transitive_pkg_deps": transitive_pkg_deps,
-        "lib_search_path": lib_search_path,
+        "lib_dirs": lib_dirs,
         "lib_files": lib_files,
+        "pkg_dir_paths": pkg_dir_paths,
         "bin_archives": bin_archives,
-        "symlinked_library_command": symlink_deps_command,
         "transitive_tools": transitive_tools,
     }
 
-def _cc_deps(cc_deps, pkg_src_dir):
+def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
     # Returns a subscript to execute and additional input files.
 
-    # Relative path of root from package's native code directory.
-    levels = pkg_src_dir.count("/") + 2
-    root_path = "/".join([".."] * levels) + "/"
+    # Give absolute paths to R.
+    root_path = "_EXEC_ROOT_"
 
     files = depset()
     c_libs_flags = depset()
-    cpp_flags = depset()
+    c_libs_flags_short = depset()
+    c_cpp_flags = depset()
+    c_cpp_flags_short = depset()
     for d in cc_deps:
         files += (d.cc.libs.to_list()
                   + d.cc.transitive_headers.to_list())
@@ -208,33 +228,31 @@ def _cc_deps(cc_deps, pkg_src_dir):
         c_libs_flags += d.cc.link_flags
         for l in d.cc.libs:
             c_libs_flags += [root_path + l.path]
+            c_libs_flags_short += [root_path + l.short_path]
 
         for i in d.cc.defines:
-            cpp_flags += ["-D" + i]
+            c_cpp_flags += ["-D" + i]
+            c_cpp_flags_short += ["-D" + i]
         for i in d.cc.quote_include_directories:
-            cpp_flags += ["-iquote " + root_path + i]
+            c_cpp_flags += ["-iquote " + root_path + i]
         for i in d.cc.system_include_directories:
-            cpp_flags += ["-isystem " + root_path + i]
+            c_cpp_flags += ["-isystem " + root_path + i]
         for i in d.cc.include_directories:
-            cpp_flags += ["-I " + root_path + i]
+            c_cpp_flags += ["-I " + root_path + i]
 
-    script = ""
-    if cc_deps:
-        script = "\n".join([
-            # The original Makevars file will be read-only.
-            "TMP_MAKEVARS=$(mktemp)",
-            "cp ${{R_MAKEVARS_USER}} ${{TMP_MAKEVARS}}",
-            "export R_MAKEVARS_USER=${{TMP_MAKEVARS}}",
-            "",
-            "LIBS_LINE='PKG_LIBS += %s\\n'" % " ".join(c_libs_flags.to_list()),
-            "CPPFLAGS_LINE='PKG_CPPFLAGS += %s\\n'" % " ".join(cpp_flags.to_list()),
-            "echo -e ${{LIBS_LINE}} >> ${{R_MAKEVARS_USER}}",
-            "echo -e ${{CPPFLAGS_LINE}} >> ${{R_MAKEVARS_USER}}",
-        ])
+        for i in _strip_path_prefixes(d.cc.quote_include_directories, bin_dir, gen_dir):
+            c_cpp_flags_short += ["-iquote " + root_path + i]
+        for i in _strip_path_prefixes(d.cc.system_include_directories, bin_dir, gen_dir):
+            c_cpp_flags_short += ["-isystem " + root_path + i]
+        for i in _strip_path_prefixes(d.cc.include_directories, bin_dir, gen_dir):
+            c_cpp_flags_short += ["-I " + root_path + i]
 
     return {
         "files": files,
-        "script": script,
+        "c_libs_flags": c_libs_flags.to_list(),
+        "c_libs_flags_short": c_libs_flags_short.to_list(),
+        "c_cpp_flags": c_cpp_flags.to_list(),
+        "c_cpp_flags_short": c_cpp_flags_short.to_list(),
     }
 
 def _remove_file(files, path_to_remove):
@@ -250,7 +268,7 @@ def _remove_file(files, path_to_remove):
 def _env_vars(env_vars):
     # Array of commands to export environment variables.
 
-    return ["export %s=%s" % (name, value) for name, value in env_vars.items()]
+    return ["export %s=%s" % (name, sh_quote(value)) for name, value in env_vars.items()]
 
 def _executables(labels):
     # depset of executable files for this list of labels.
@@ -282,16 +300,15 @@ def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
     pkg_name = _package_name(ctx)
-    target_dir = _target_dir(ctx)
-    pkg_src_dir = _package_source_dir(target_dir, pkg_name)
-    pkg_lib_dir = "{0}/lib".format(target_dir)
-    pkg_lib_path = "{0}/{1}".format(ctx.bin_dir.path, pkg_lib_dir)
-    pkg_bin_archive = ctx.actions.declare_file(ctx.label.name + ".bin.tar.gz")
+    pkg_src_dir = _package_dir(ctx)
+    pkg_lib_path = ctx.actions.declare_directory("lib")
+    pkg_bin_archive = ctx.outputs.bin_archive
+    pkg_src_archive = ctx.outputs.src_archive
     package_files = _package_files(ctx)
-    output_files = package_files + [pkg_bin_archive]
+    output_files = package_files + [pkg_lib_path, pkg_bin_archive]
 
-    library_deps = _library_deps(ctx.attr.deps, path_prefix=(ctx.bin_dir.path + "/"))
-    cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir)
+    library_deps = _library_deps(ctx.attr.deps)
+    cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir, ctx.bin_dir.path, ctx.genfiles_dir.path)
     transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
     build_tools = _executables(ctx.attr.build_tools) + transitive_tools
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
@@ -299,56 +316,54 @@ def _build_impl(ctx):
                        + build_tools.to_list()
                        + [ctx.file.makevars_user])
 
-    config_override_cmd = ""
-    if ctx.file.config_override != None:
+    if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
         orig_config = pkg_src_dir + "/configure"
         all_input_files = _remove_file(all_input_files, orig_config)
-        config_override_cmd = " ".join(
-            ["cp", ctx.file.config_override.path, orig_config])
 
-    command = ("\n".join([
-        "set -euo pipefail",
-        "",
-        "PWD=$(pwd)",
-        "mkdir -p {0}",
-        "export R_MAKEVARS_USER=${{PWD}}/{4};",
-        "",
-        cc_deps["script"],
-        "%s" % config_override_cmd,
-        "",
-        "{6}",
-        "",
-        "export R_LIBS_USER=$(mktemp -d)",
-        library_deps["symlinked_library_command"],
-        "",
-        "set +e",
-        "OUT=$(%s CMD INSTALL {5} --build --library={0} {1} 2>&1 )" % _R,
-        "if (( $? )); then",
-        "  echo \"${{OUT}}\"",
-        "  rm -rf ${{R_LIBS_USER}}",
-        "  exit 1",
-        "fi",
-        "set -e",
-        "",
-        "mv {2}*gz {3}",  # .tgz on macOS and .tar.gz on Linux.
-        "rm -rf ${{R_LIBS_USER}}",
-    ]).format(pkg_lib_path, pkg_src_dir, pkg_name, pkg_bin_archive.path,
-              ctx.file.makevars_user.path, ctx.attr.install_args,
-              _build_path_export(build_tools)))
-    ctx.actions.run_shell(outputs=output_files, inputs=all_input_files, command=command,
-                          env=ctx.attr.env_vars, mnemonic="RBuild",
-                          progress_message="Building R package %s" % pkg_name)
+    build_env = {
+        "PKG_LIB_PATH": pkg_lib_path.path,
+        "PKG_SRC_DIR": pkg_src_dir,
+        "PKG_NAME": pkg_name,
+        "PKG_SRC_ARCHIVE": pkg_src_archive.path,
+        "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
+        "R_MAKEVARS_USER": ctx.file.makevars_user.path if ctx.file.makevars_user else "",
+        "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
+        "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
+        "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
+        "C_CPP_FLAGS": " ".join(cc_deps["c_cpp_flags"]),
+        "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "BUILD_ARGS": sh_quote_args(ctx.attr.build_args),
+        "INSTALL_ARGS": sh_quote_args(ctx.attr.install_args),
+        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
+        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
+        "REPRODUCIBLE_BUILD": "true" if "rlang-no-stamp" in ctx.features else "false",
+        "R": " ".join(_R),
+        "RSCRIPT": " ".join(_Rscript),
+    }
+    ctx.actions.run(outputs=output_files, inputs=all_input_files, executable=ctx.executable._build_sh,
+                    env=build_env,
+                    mnemonic="RBuild", use_default_shell_env=False,
+                    progress_message="Building R package %s" % pkg_name)
+
+    # Lightweight action to build just the source archive.
+    ctx.actions.run(outputs=[pkg_src_archive], inputs=ctx.files.srcs, executable=ctx.executable._build_sh,
+                    env=build_env + {"BUILD_SRC_ARCHIVE": "true"},
+                    mnemonic="RSrcBuild", use_default_shell_env=False,
+                    progress_message="Building R (source) package %s" % pkg_name)
 
     return [DefaultInfo(files=depset(output_files)),
             RPackage(pkg_name=pkg_name,
-                     lib_loc=pkg_lib_dir,
+                     lib_path=pkg_lib_path,
                      lib_files=package_files,
                      src_files=ctx.files.srcs,
+                     src_archive=pkg_src_archive,
                      bin_archive=pkg_bin_archive,
                      pkg_deps=ctx.attr.deps,
                      transitive_pkg_deps=library_deps["transitive_pkg_deps"],
-                     transitive_tools=transitive_tools)
+                     transitive_tools=transitive_tools,
+                     makevars_user=ctx.file.makevars_user,
+                     cc_deps=cc_deps)
             ]
 
 r_pkg = rule(
@@ -368,12 +383,23 @@ r_pkg = rule(
         "cc_deps": attr.label_list(
             doc = "cc_library dependencies for this package",
         ),
-        "install_args": attr.string(
+        "build_args": attr.string_list(
+            default = [
+                "--no-build-vignettes",
+                "--no-manual",
+            ],
+            doc = "Additional arguments to supply to R CMD build",
+        ),
+        "install_args": attr.string_list(
             doc = "Additional arguments to supply to R CMD INSTALL",
         ),
         "config_override": attr.label(
             allow_single_file = True,
             doc = "Replace the package configure script with this file",
+        ),
+        "roclets": attr.string_list(
+            doc = ("roclets to run before installing the package. If this is " +
+                   "non-empty, then roxygen2 must be a dependency of the package."),
         ),
         "makevars_user": attr.label(
             allow_single_file = True,
@@ -399,9 +425,19 @@ r_pkg = rule(
         "build_tools": attr.label_list(
             doc = "Executables that package build and load will try to find in the system",
         ),
+        "_build_sh": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:build.sh",
+            executable = True,
+            cfg = "host",
+        ),
     },
     doc = ("Rule to install the package and its transitive dependencies" +
            "in the Bazel sandbox."),
+    outputs = {
+        "bin_archive": "%{name}.bin.tar.gz",
+        "src_archive": "%{name}.tar.gz",
+    },
     implementation = _build_impl,
 )
 
@@ -409,7 +445,7 @@ def _test_impl(ctx):
     library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
-    pkg_tests_dir = _package_source_dir(_target_dir(ctx), pkg_name) + "/tests"
+    pkg_tests_dir = _package_dir(ctx) + "/tests"
     test_files = []
     for src_file in ctx.attr.pkg[RPackage].src_files:
         if src_file.path.startswith(pkg_tests_dir):
@@ -417,53 +453,19 @@ def _test_impl(ctx):
 
     tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
 
-    script = "\n".join([
-        "#!/bin/bash",
-        "set -euo pipefail",
-        "test -d {0}",
-        "",
-    ] + _env_vars(ctx.attr.env_vars) + [
-        "",
-        "if ! compgen -G '{0}/*.R' >/dev/null; then", 
-        "  echo 'No test files found.'",
-        "  exit 1",
-        "fi",
-        "",
-        "{1}",
-        "",
-        "export R_LIBS_USER=$(mktemp -d)",
-        library_deps["symlinked_library_command"],
-        "",
-        "if [[ ${{TEST_TMPDIR:-}} ]]; then",
-        "  readonly IS_TEST_SANDBOX=1",
-        "else",
-        "  readonly IS_TEST_SANDBOX=0",
-        "fi",
-        "(( IS_TEST_SANDBOX )) || TEST_TMPDIR=$(mktemp -d)",
-        "",
-        "# Copy the tests to a writable directory.",
-        "cp -LR {0}/* ${{TEST_TMPDIR}}",
-        "pushd ${{TEST_TMPDIR}} >/dev/null",
-        "",
-        "cleanup() {{",
-        "  popd >/dev/null",
-        "  (( IS_TEST_SANDBOX )) || rm -rf ${{TEST_TMPDIR}}",
-        "  rm -rf ${{R_LIBS_USER}}",
-        "}}",
-        "",
-        "for SCRIPT in *.R; do",
-        "  if ! " + _Rscript + "${{SCRIPT}}; then",
-        "    cleanup",
-        "    exit 1",
-        "  fi",
-        "done",
-        "",
-        "cleanup",
-    ]).format(pkg_tests_dir, _runtime_path_export(tools))
-
-    ctx.actions.write(
-        output=ctx.outputs.executable,
-        content=script)
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    ctx.actions.expand_template(
+        template = ctx.file._test_sh_tpl,
+        output = ctx.outputs.executable,
+        substitutions = {
+            "{pkg_tests_dir}": pkg_tests_dir,
+            "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
+            "{tools_export_cmd}": _runtime_path_export(tools),
+            "{lib_dirs}": ":".join(lib_dirs),
+            "{Rscript}": " ".join(_Rscript),
+        },
+        is_executable = True,
+    )
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files,
                             transitive_files = tools)
@@ -486,6 +488,10 @@ r_unit_test = rule(
         "tools": attr.label_list(
             doc = "Executables to be made available to the test",
         ),
+        "_test_sh_tpl": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:test.sh.tpl",
+        ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +
            "scripts of the specified package. The package itself must " +
@@ -495,52 +501,37 @@ r_unit_test = rule(
 )
 
 def _check_impl(ctx):
-    library_deps = _library_deps(ctx.attr.pkg[RPackage].pkg_deps + ctx.attr.suggested_deps)
-    all_input_files = library_deps["lib_files"] + ctx.attr.pkg[RPackage].src_files
+    src_archive = ctx.attr.pkg[RPackage].src_archive
+    pkg_deps = ctx.attr.pkg[RPackage].pkg_deps
+    transitive_tools = ctx.attr.pkg[RPackage].transitive_tools
+    cc_deps = ctx.attr.pkg[RPackage].cc_deps
+    makevars_user = ctx.attr.pkg[RPackage].makevars_user
 
-    # Bundle the package as a runfile for the test.
-    pkg_name = ctx.attr.pkg[RPackage].pkg_name
-    target_dir = _target_dir(ctx)
-    pkg_src_dir = _package_source_dir(target_dir, pkg_name)
-    pkg_src_archive = ctx.actions.declare_file(pkg_name + ".tar.gz")
-    command = "\n".join([
-        "OUT=$(%s CMD build {0} {1} 2>&1 )  && mv {2}*.tar.gz {3}" % _R,
-        "if (( $? )); then",
-        "  echo \"${{OUT}}\"",
-        "  exit 1",
-        "fi",
-        ]).format(ctx.attr.build_args, pkg_src_dir, pkg_name,
-                  pkg_src_archive.path)
-    ctx.actions.run_shell(
-        outputs=[pkg_src_archive], inputs=all_input_files,
-        command=command, mnemonic="RBuildSource",
-        progress_message="Building R (source) package %s" % pkg_name)
+    library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
+    tools = _executables(ctx.attr.tools) + transitive_tools
 
-    tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
+    all_input_files = ([src_archive] + library_deps["lib_files"]
+                       + tools.to_list()
+                       + cc_deps["files"].to_list() + [makevars_user])
 
-    script = "\n".join([
-        "#!/bin/bash",
-        "set -euxo pipefail",
-        "test -e {0}",
-        "",
-        "{2}",
-        "",
-    ] + _env_vars(ctx.attr.env_vars) + [
-        "",
-        "export R_LIBS_USER=$(mktemp -d)",
-        library_deps["symlinked_library_command"],
-        _R + "CMD check {1} {0}",
-        "rm -rf ${{R_LIBS_USER}}",
-        ""
-    ]).format(pkg_src_archive.short_path, ctx.attr.check_args,
-              _runtime_path_export(tools))
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    ctx.actions.expand_template(
+        template = ctx.file._check_sh_tpl,
+        output = ctx.outputs.executable,
+        substitutions = {
+            "{export_env_vars}": "\n".join(_env_vars(ctx.attr.env_vars)),
+            "{tools_export_cmd}": _runtime_path_export(tools),
+            "{c_libs_flags}": " ".join(cc_deps["c_libs_flags_short"]),
+            "{c_cpp_flags}": " ".join(cc_deps["c_cpp_flags_short"]),
+            "{r_makevars_user}": makevars_user.short_path if makevars_user else "",
+            "{lib_dirs}": ":".join(lib_dirs),
+            "{check_args}": sh_quote_args(ctx.attr.check_args),
+            "{pkg_src_archive}": src_archive.short_path,
+        },
+        is_executable = True,
+    )
 
-    ctx.actions.write(
-        output=ctx.outputs.executable,
-        content=script)
-
-    runfiles = ctx.runfiles(files=[pkg_src_archive] + library_deps["lib_files"],
-                            transitive_files=tools)
+    runfiles = ctx.runfiles(files=all_input_files)
     return [DefaultInfo(runfiles=runfiles)]
 
 r_pkg_test = rule(
@@ -554,12 +545,11 @@ r_pkg_test = rule(
             providers = [RPackage],
             doc = "R package dependencies of type r_pkg",
         ),
-        "build_args": attr.string(
-            default = "--no-build-vignettes --no-manual",
-            doc = "Additional arguments to supply to R CMD build",
-        ),
-        "check_args": attr.string(
-            default = "--no-build-vignettes --no-manual",
+        "check_args": attr.string_list(
+            default = [
+                "--no-build-vignettes",
+                "--no-manual",
+            ],
             doc = "Additional arguments to supply to R CMD check",
         ),
         "env_vars": attr.string_dict(
@@ -567,6 +557,10 @@ r_pkg_test = rule(
         ),
         "tools": attr.label_list(
             doc = "Executables to be made available to the test",
+        ),
+        "_check_sh_tpl": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:check.sh.tpl",
         ),
     },
     doc = ("Rule to keep all deps of the package in the sandbox, build " +
@@ -576,82 +570,30 @@ r_pkg_test = rule(
     implementation = _check_impl,
 )
 
-def _library_tar_impl(ctx):
-    library_deps = _library_deps(ctx.attr.pkgs, path_prefix=(ctx.bin_dir.path + "/"))
-    command = "\n".join([
-        "#!/bin/bash",
-        "set -euo pipefail",
-        "",
-        "R_LIBS_USER=$(mktemp -d)",
-        library_deps["symlinked_library_command"],
-        "",
-        "TAR_TRANSFORM_OPT=\"--transform s|\.|%s|\"" % ctx.attr.tar_dir,
-        "if [[ $(uname -s) == \"Darwin\" ]]; then",
-        "  TAR_TRANSFORM_OPT=\"-s |\.|%s|\"" % ctx.attr.tar_dir,
-        "fi",
-        "",
-        "tar -c -h -C ${{R_LIBS_USER}} -f %s ${{TAR_TRANSFORM_OPT}} ." % ctx.outputs.tar.path,
-        "rm -rf ${{R_LIBS_USER}}"
-    ]).format()  # symlinked_library_command assumed formatted string.
-    ctx.actions.run_shell(outputs=[ctx.outputs.tar], inputs=library_deps["lib_files"],
-                          command=command)
-    return
-
 def _library_impl(ctx):
-    _library_tar_impl(ctx)
-
     library_deps = _library_deps(ctx.attr.pkgs)
-    script = "\n".join([
-        "#!/bin/bash",
-        "set -euo pipefail",
-        "",
-        "args=`getopt l:s: $*`",
-        "if [ $? != 0 ]; then",
-        "  echo 'Usage: bazel run target_label -- [-l library_path] [-s repo_root]'",
-        "  echo '  -l  library_path is the directory where R packages will be installed'",
-        "  echo '  -s  if specified, will only install symlinks pointing into repo_root/bazel-bin'",
-        "  exit 2",
-        "fi",
-        "set -- $args",
-        "",
-        "LIBRARY_PATH=%s" % ctx.attr.library_path,
-        "SOFT_INSTALL=0",
-        "for i; do",
-        "  case $i",
-        "  in",
-        "    -l)",
-        "       LIBRARY_PATH=${2}; shift;",
-        "       shift;;",
-        "    -s)",
-        "       SOFT_INSTALL=1; BIN_DIR=${2}/bazel-bin; shift;",
-        "       shift;;",
-        "  esac",
-        "done",
-        "",
-        "DEFAULT_R_LIBRARY=$(%s -e 'cat(.libPaths()[1])')" % _R,
-        "LIBRARY_PATH=${LIBRARY_PATH:=${DEFAULT_R_LIBRARY}}",
-        "mkdir -p ${LIBRARY_PATH}",
-        "",
-        "BAZEL_LIB_DIRS=(",
-    ] + library_deps["lib_search_path"] + [
-        ")",
-        "if (( ${SOFT_INSTALL} )); then",
-        "  echo \"Installing package symlinks from ${BIN_DIR} to ${LIBRARY_PATH}\"",
-        "  CMD=\"ln -s -f\"",
-        "else",
-        "  echo \"Copying installed packages to ${LIBRARY_PATH}\"",
-        "  BIN_DIR=\".\"",
-        "  CMD=\"cp -R -L -f\"",
-        "fi",
-        "for LIB_DIR in ${BAZEL_LIB_DIRS[*]}; do",
-        "  for PKG in ${BIN_DIR}/${LIB_DIR}/*; do",
-        "    ${CMD} ${PKG} \"${LIBRARY_PATH}\"",
-        "  done",
-        "done",
-    ])
-    ctx.actions.write(
-        output=ctx.outputs.executable,
-        content=script)
+
+    ctx.actions.run(outputs=[ctx.outputs.tar], inputs=library_deps["lib_files"],
+                    executable=ctx.file._tar_sh, mnemonic="TAR",
+                    env={"TAR_DIR": ctx.attr.tar_dir},
+                    arguments = [ctx.outputs.tar.path] + library_deps["pkg_dir_paths"])
+
+    tools_tar_srcs = [t.path for t in library_deps["transitive_tools"].to_list()]
+    ctx.actions.run(outputs=[ctx.outputs.tools_tar], inputs=library_deps["transitive_tools"],
+                    executable=ctx.file._tar_sh, mnemonic="TAR",
+                    env={"TAR_DIR": ctx.attr.tools_tar_dir},
+                    arguments = [ctx.outputs.tools_tar.path] + tools_tar_srcs)
+
+    ctx.actions.expand_template(
+        template = ctx.file._library_sh_tpl,
+        output = ctx.outputs.executable,
+        substitutions = {
+            "{library_path}": ctx.attr.library_path,
+            "{lib_dirs}": "\n".join([d.short_path for d in library_deps["lib_dirs"]]),
+            "{R}": " ".join(_R),
+            },
+        is_executable = True,
+    )
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"])
     return [DefaultInfo(runfiles=runfiles, files=depset([ctx.outputs.executable]))]
@@ -670,9 +612,21 @@ r_library = rule(
                    "use bazel run [target] -- -l [path]"),
         ),
         "tar_dir": attr.string(
-            default = ".",
             doc = ("Subdirectory within the tarball where all the " +
                    "packages are installed"),
+        ),
+        "tools_tar_dir": attr.string(
+            default = "usr/local/bin",
+            doc = ("Subdirectory within the tarball where all the " +
+                   "tools are installed"),
+        ),
+        "_library_sh_tpl": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R:library.sh.tpl",
+        ),
+        "_tar_sh": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/internal:tar.sh",
         ),
     },
     doc = ("Rule to install the given package and all dependencies to " +
@@ -680,6 +634,7 @@ r_library = rule(
     executable = True,
     outputs = {
         "tar": "%{name}.tar",
+        "tools_tar": "%{name}_tools.tar",
     },
     implementation = _library_impl,
 )

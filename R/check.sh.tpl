@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2018 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-def sh_quote(s):
-    """Quotes the given string for use in a shell command or script."""
+set -euo pipefail
 
-    return "'" + str(s).replace("'", "'\\''") + "'"
+PWD=$(pwd -P)
 
-def sh_quote_args(iterable, sep=" "):
-    """Quotes the individual elements and joins them together as a space separated list."""
+# Export environment variables, if any.
+{export_env_vars}
 
-    return sep.join([sh_quote(i) for i in iterable])
+if "${BAZEL_R_DEBUG:-"false"}"; then
+  set -x
+fi
+
+# Export path to tool needed for the test.
+{tools_export_cmd}
+
+C_LIBS_FLAGS="{c_libs_flags}"
+C_CPP_FLAGS="{c_cpp_flags}"
+export PKG_LIBS="${C_LIBS_FLAGS//_EXEC_ROOT_/$PWD/}"
+export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/$PWD/}"
+export R_MAKEVARS_USER="${PWD}/{r_makevars_user}"
+
+R_LIBS="{lib_dirs}"
+R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
+export R_LIBS
+export R_LIBS_USER=dummy
+
+exec R CMD check {check_args} {pkg_src_archive}

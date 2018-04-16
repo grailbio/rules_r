@@ -62,10 +62,8 @@ load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
 
 ## Configuration
 
-These rules assume that you have R installed on your system and can be located
-using the `PATH` environment variable. They also assume that packages with
-priority `recommended` are in the default R library (given by `.Library`
-variable in R).
+These rules assume that you have R installed on your system (we recommend 3.4.3
+or above), and can be located using the `PATH` environment variable.
 
 For each package, you can also specify a different Makevars file that can be
 used to have finer control over native code compilation. For macOS, the
@@ -97,12 +95,12 @@ cleaning up existing machines:
 ```
 Rscript \
   -e 'options("repos"="https://cloud.r-project.org")' \
-  -e 'pkgs <- available.packages()' \
-  -e 'install.packages(pkgs[which(pkgs[, "Priority"] == "recommended"), "Package"], lib=.Library)' \
-  -e 'remove.packages(installed.packages(priority="NA")[, "Package"], lib=.Library)'
+  -e 'non_base_pkgs <- installed.packages(priority=c("recommended", "NA"))[, "Package"]' \
+  -e 'remove.packages(non_base_pkgs, lib=.Library)'
 
-# If not set up already, fix a directory for R_LIBS_USER.
-echo 'R_LIBS_USER="/opt/r-libs/"' >> ~/.Renviron
+# If not set up already, create the directory for R_LIBS_USER.
+Rscript \
+  -e 'dir.create(Sys.getenv("R_LIBS_USER"), recursive=TRUE, showWarnings=FALSE)'
 ```
 
 For more details on how R searches different paths for packages, see
@@ -219,8 +217,9 @@ container_image(
 ## r_pkg
 
 ```python
-r_pkg(srcs, pkg_name, deps, cc_deps, install_args, config_override, makevars_user,
-      shlib_name, lazy_data, post_install_files, env_vars, tools, build_tools)
+r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, roclets,
+      makevars_user, shlib_name, lazy_data, post_install_files, env_vars,
+      tools, build_tools)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -266,9 +265,16 @@ sandbox, so it can be depended upon by other package builds.
       </td>
     </tr>
     <tr>
+      <td><code>build_args</code></td>
+      <td>
+        <p><code>List of strings; default ["--no-build-vignettes", "--no-manual"]</code></p>
+        <p>Additional arguments to supply to R CMD build.</p>
+      </td>
+    </tr>
+    <tr>
       <td><code>install_args</code></td>
       <td>
-        <p><code>String; optional</code></p>
+        <p><code>List of strings; optional</code></p>
         <p>Additional arguments to supply to R CMD INSTALL.</p>
       </td>
     </tr>
@@ -277,6 +283,14 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>File; optional</code></p>
         <p>Replace the package configure script with this file.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>roclets</code></td>
+      <td>
+        <p><code>List of strings; optional</code></p>
+        <p>roclets to run before installing the package. If this is non-empty,
+           then roxygen2 must be a dependency of the package.</p>
       </td>
     </tr>
     <tr>
@@ -440,7 +454,7 @@ Rule to keep all deps in the sandbox, and run the provided R test scripts.
 ## r_pkg_test
 
 ```python
-r_pkg_test(pkg, suggested_deps, build_args, check_args)
+r_pkg_test(pkg, suggested_deps, check_args)
 ```
 
 Rule to keep all deps of the package in the sandbox, build a source archive
@@ -473,16 +487,9 @@ sandbox.
       </td>
     </tr>
     <tr>
-      <td><code>build_args</code></td>
-      <td>
-        <p><code>String; default "--no-build-vignettes --no-manual"</code></p>
-        <p>Additional arguments to supply to R CMD build.</p>
-      </td>
-    </tr>
-    <tr>
       <td><code>check_args</code></td>
       <td>
-        <p><code>String; default "--no-build-vignettes --no-manual"</code></p>
+        <p><code>List of strings; default ["--no-build-vignettes, "--no-manual"]</code></p>
         <p>Additional arguments to supply to R CMD check.</p>
       </td>
     </tr>

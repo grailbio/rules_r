@@ -34,7 +34,7 @@ r_pkg(
     cc_deps = ["@com_google_protobuf//:protobuf"],
     config_override = ":empty",
     deps = [
-        "@R_RCurl//:RCurl",
-        "@R_Rcpp//:Rcpp",
+        "@R_RCurl",
+        "@R_Rcpp",
     ],
 )

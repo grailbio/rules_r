@@ -8,6 +8,8 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
     <li><a href="#r_library">r_library</a></li>
     <li><a href="#r_unit_test">r_unit_test</a></li>
     <li><a href="#r_pkg_test">r_pkg_test</a></li>
+    <li><a href="#r_repository">r_repository</a></li>
+    <li><a href="#r_repository_list">r_repository_list</a></li>
     <li><a href="#r_package">r_package</a></li>
     <li><a href="#r_package_with_test">r_package_with_test</a></li>
   </ul>
@@ -105,6 +107,46 @@ echo 'R_LIBS_USER="/opt/r-libs/"' >> ~/.Renviron
 
 For more details on how R searches different paths for packages, see
 [libPaths][libPaths].
+
+## External packages
+
+To depend on external packages from CRAN and other remote repos, you can define the
+packages as a CSV with three columns -- Package, Version, and sha256. Then use
+`repository_list` rule to define R repositories for each package. For packages
+not in a CRAN like repo (e.g. github), you can use `r_repository` rule directly. For
+packages on your local system but outside your main repository, you will have to use
+`local_repository` with a saved BUILD file. Same for VCS repositories.
+
+```
+load("@com_grail_rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
+
+# R packages with non-standard sources.
+r_repository(
+    name = "R_plotly",
+    sha256 = "24c848fa2cbb6aed6a59fa94f8c9b917de5b777d14919268e88bff6c4562ed29",
+    strip_prefix = "plotly-a60510e4bbce5c6bed34ef6439d7a48cb54cad0a",
+    urls = [
+        "https://github.com/ropensci/plotly/archive/a60510e4bbce5c6bed34ef6439d7a48cb54cad0a.tar.gz",
+    ],
+)
+
+# R packages with standard sources.
+r_repository_list(
+    name = "r_repositories_bzl",
+    build_file_overrides = "@myrepo//third-party/R:build_file_overrides.csv",
+    package_list = "@myrepo//third-party/R:packages.csv",
+    remote_repos = {
+        "BioCsoft": "https://bioconductor.org/packages/3.6/bioc",
+        "BioCann": "https://bioconductor.org/packages/3.6/data/annotation",
+        "BioCexp": "https://bioconductor.org/packages/3.6/data/experiment",
+        "CRAN": "https://cloud.r-project.org",
+    },
+)
+
+load("@r_repositories_bzl//:r_repositories.bzl", "r_repositories")
+
+r_repositories()
+```
 
 ## Examples
 
@@ -456,6 +498,119 @@ sandbox.
       <td>
         <p><code>List of labels; optional</code></p>
         <p>Executables to be made available to the test.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+<a name="r_repository"></a>
+## r_repository
+
+```python
+r_repository(urls, strip_prefix, type, sha256, build_file)
+```
+
+Repository rule in place of `new_http_archive` that can run razel to generate
+the BUILD file automatically.
+
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>urls</code></td>
+      <td>
+        <p><code>List of strings; required</code></p>
+        <p>URLs from which the package source archive can be fetched.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>strip_prefix</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>The prefix to strip from all file paths in the archive.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>type</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>Type of the archive file (zip, tgz, etc.).</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>sha256</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>sha256 checksum of the archive to verify.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>build_file</code></td>
+      <td>
+        <p><code>File; optional</code></p>
+        <p>Optional BUILD file for this repo. If not provided, one will be generated.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+<a name="r_repository_list"></a>
+## r_repository_list
+
+```python
+r_repository_list(package_list, build_file_overrides, remote_repos, other_args)
+```
+
+Repository rule that will generate a bzl file containing a macro for
+`r_repository` definitions for s.
+
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>package_list</code></td>
+      <td>
+        <p><code>File; required</code></p>
+        <p>CSV containing packages with name, version and sha256; with a header.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>build_file_overrides</code></td>
+      <td>
+        <p><code>File; optional</code></p>
+        <p>CSV containing package name and BUILD file path; with a header.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>remote_repos</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Repos to use for fetching the archives.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>other_args</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Other arguments to supply to generateWorkspaceMacro function in razel.</p>
       </td>
     </tr>
   </tbody>

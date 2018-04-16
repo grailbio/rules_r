@@ -47,5 +47,5 @@ def r_rules_dependencies(makevars_darwin="@com_grail_rules_r_makevars_darwin",
     )
 
 def _maybe(repo_rule, name, **kwargs):
-    if name not in native.existing_rules():
+    if not native.existing_rule(name):
         repo_rule(name=name, **kwargs)

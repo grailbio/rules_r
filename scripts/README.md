@@ -30,50 +30,57 @@ dependencies.
 #' especially the exclude section of the srcs glob.
 #' @param pkg_directory
 #' @param no_test_rules If true, test rules are not generated.
+#' @param build_file_name Name of the BUILD file in the repo.
+#' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
-buildify <- function(pkg_directory = ".", no_test_rules = TRUE) ...
+buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
+                     build_file_name="BUILD.bazel", external=TRUE) ...
 
 
 #' Function to generate BUILD files for all packages in a local repo.
 #'
 #' @param local_repo_dir Local copy of the repository.
-#' @param build_file_prefix Prefix that will be prepended to the package name
-#'        to generate the BUILD file name.
-#' @param build_file_suffix Suffix that will be appended to the package name
-#'        to generate the BUILD file name.
+#' @param build_file_format Format string for the BUILD file location with
+#'        one string placeholder for package name.
 #' @param overwrite Recreate the build file if it exists already.
-buildifyRepo <- function(local_repo_dir, build_file_prefix = "BUILD.",
-                         build_file_suffix = "", overwrite = FALSE) ...
+buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwrite = FALSE) ...
 
 
-#' Generate Bazel WORKSPACE file.
+#' Generate Bazel WORKSPACE file macro.
 #'
-#' Generates http archive rules for the Bazel WORKSPACE file.
+#' Generates repository rules for the Bazel WORKSPACE file.
 #' @param local_repo_dir Local copy of the repository.
-#' @param workspace_file File path for generated output.
-#' @param build_file_prefix Prefix that will be prepended to the package name
-#'        to generate the BUILD file name.
-#' @param build_file_suffix Suffix that will be appended to the package name
-#'        to generate the BUILD file name.
+#' @param package_list_csv CSV file containing package name, version, and
+#'        possibly empty sha256, with header. If supplied, takes precedence
+#'        over local_repo_dir.
+#' @param output_file File path for generated output.
+#' @param build_file_format Format string for the BUILD file location with
+#'        one string placeholder for package name. Can be NULL to use
+#'        auto generated BUILD file.
+#' @param build_file_overrides_csv CSV file containing package name and
+#'        build file path to use in the rule; no headers. If present in this
+#'        table, build_file_format will be ignored.
 #' @param sha256 If TRUE, calculate the SHA256 digest (using
 #'        \code{\link[digest]{digest}}) and include it in the WORKSPACE rule.
+#' @param rule_type The type of rule to use. If new_http_archive, then
+#'        build_file_format must be provided.
+#' @param remote_repos Repo URLs to use.
 #' @param mirror_repo_url If not NA, will place this as the first entry in the
 #'        WORKSPACE rule URLs, before the repos returned by
 #'        \code{getOption("repos")}.
 #' @param use_only_mirror_repo If true, will use only the provided mirror repo
 #'        URL.
-#' @param bioc_version If not NA, release version of Bioconductor to use for
-#'        generating remote repo URLs, overriding the values returned by
-#'        \code{getOption("repos")}.
 #' @export
-generateWorkspaceFile <- function(local_repo_dir,
-                                  workspace_file = "WORKSPACE",
-                                  build_file_prefix = "BUILD.",
-                                  build_file_suffix = "",
-                                  sha256 = TRUE,
-                                  mirror_repo_url = NA_character_,
-                                  use_only_mirror_repo = FALSE,
-                                  bioc_version = NA_character_) ...
+generateWorkspaceMacro <- function(local_repo_dir = NULL,
+                                   package_list_csv = NULL,
+                                   output_file = "r_repositories.bzl",
+                                   build_file_format = NULL,
+                                   build_file_overrides_csv = NULL,
+                                   sha256 = TRUE,
+                                   rule_type = c("r_repository", "new_http_archive"),
+                                   remote_repos = getOption("repos"),
+                                   mirror_repo_url = NULL,
+                                   use_only_mirror_repo = FALSE) ...
 ```
 
 ## repo_management.R
@@ -115,23 +122,28 @@ updateRepoIndex <- function(repo_dir) ...
 #' @param repo_dir Directory where the repository structure will be created.
 #' @param deps If FALSE, will not automatically download (unstated) dependencies. See argument
 #'        dependencies in \link{install.packages}.
-#' @param biocVersion If provided, will use this to get remote repos, else will use repos returned
-#'        by \code{getOption("repos")}.
 #' @return Data frame containing package name, version and sha256 of the source archive for all
 #'         packages added to the repo that were not previously present.
 #' @export
-addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA, bioc_version = NA) ...
+addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) ...
 
 
 #' Adds all deps of a dev package to the repo, if not already present.
 #'
 #' @param pkg Name of the package directory or tarball.
 #' @param repo_dir Directory where the repository structure will be created.
-#' @param biocVersion If provided, will use this to get remote repos, else will use repos returned
-#'        by \code{getOption("repos")}.
 #' @return Same as addPackagesToRepo.
 #' @export
-addDevPackageDepsToRepo <- function(pkg, repo_dir, bioc_version = NA) ...
+addDevPackageDepsToRepo <- function(pkg, repo_dir) ...
+
+
+#' Writes a CSV of all packages in the repo.
+#'
+#' @param repo_dir Directory with the repository structure.
+#' @param output_file Output CSV file path.
+#' @param sha256 If TRUE, compute sha256 of package archives.
+#' @export
+packageList <- function(repo_dir, output_file, sha256=TRUE) ...
 
 
 #' Dumps the packages installed in this library into a repo structure.

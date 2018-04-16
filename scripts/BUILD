@@ -1,4 +1,4 @@
-# Copyright 2017 GRAIL, Inc.
+# Copyright 2018 GRAIL, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
-
-package(default_visibility = ["//visibility:public"])
-
-r_pkg(
-    name = "bitops",
-    srcs = glob(
-        ["**"],
-        exclude = [],
-    ),
-    deps = [],
-)
+exports_files([
+    "razel.R",
+])

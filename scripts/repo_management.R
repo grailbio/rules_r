@@ -62,7 +62,8 @@ isValidBinRepo <- function(repo, r_version) {
   }
 
   bioc_version <- gsub("(.*packages/|/bioc)", "", repo)
-  return((bioc_version == "3.5" && r_version == "3.4") ||
+  return((bioc_version == "3.6" && r_version == "3.4") ||
+         (bioc_version == "3.5" && r_version == "3.4") ||
          (bioc_version == "3.4" && r_version == "3.3"))
 }
 
@@ -168,12 +169,10 @@ updateRepoIndex <- function(repo_dir) {
 #' @param repo_dir Directory where the repository structure will be created.
 #' @param deps If FALSE, will not automatically download (unstated) dependencies. See argument
 #'        dependencies in \link{install.packages}.
-#' @param biocVersion If provided, will use this to get remote repos, else will use repos returned
-#'        by \code{getOption("repos")}.
 #' @return Data frame containing package name, version and sha256 of the source archive for all
 #'         packages added to the repo that were not previously present.
 #' @export
-addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA, bioc_version = NA) {
+addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
   stopifnot(is.character(pkgs))
   if ((length(versions) == 1) && is.na(versions[1])) {
     versions <- rep(NA_character_, length(pkgs))
@@ -192,9 +191,6 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA, bioc_ver
   implicit_package_deps <- setdiff(implicit_package_deps, repo_packages$Package)
 
   repos <- getOption("repos")
-  if (!is.na(bioc_version)) {
-    repos <- BiocInstaller::biocinstallRepos(version = bioc_version)
-  }
   packages_available <- as.data.frame(available.packages(repos = repos)[, c("Package", "Version")])
 
   packages_to_download <- data.frame(Package = c(pkgs, implicit_package_deps),
@@ -225,24 +221,35 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA, bioc_ver
   packageSHAs(packages_merged[, c("Package", "Version")], repo_dir = repo_dir)
 }
 
+#' Writes a CSV of all packages in the repo.
+#'
+#' @param repo_dir Directory with the repository structure.
+#' @param output_file Output CSV file path.
+#' @param sha256 If TRUE, compute sha256 of package archives.
+#' @export
+packageList <- function(repo_dir, output_file, sha256=TRUE) {
+  repo_packages <- repoPackages(repo_dir)
+  if (sha256) {
+    repo_packages <- packageSHAs(repo_packages, repo_dir)
+  } else {
+    repo_packages <- cbind(repo_packages, "sha256"="")
+  }
+  write.table(repo_packages, file=output_file, col.names=TRUE, row.names=FALSE, sep=",")
+}
+
 #' Adds all deps of a dev package to the repo, if not already present.
 #'
 #' @param pkg Name of the package directory or tarball.
 #' @param repo_dir Directory where the repository structure will be created.
-#' @param biocVersion If provided, will use this to get remote repos, else will use repos returned
-#'        by \code{getOption("repos")}.
 #' @return Same as addPackagesToRepo.
 #' @export
-addDevPackageDepsToRepo <- function(pkg, repo_dir, bioc_version = NA) {
+addDevPackageDepsToRepo <- function(pkg, repo_dir) {
   repos <- getOption("repos")
-  if (!is.na(bioc_version)) {
-    repos <- BiocInstaller::biocinstallRepos(version = bioc_version)
-  }
 
   # Also get suggested deps to build vignettes, etc. with dependencies = TRUE.
   deps <- devtools::dev_package_deps(pkg, dependencies = TRUE, repos = repos, type="source")$package
   addPackagesToRepo(pkgs = deps, versions = rep(NA_character_, length(deps)),
-                    repo_dir = repo_dir, bioc_version)
+                    repo_dir = repo_dir)
 }
 
 #' Dumps the packages installed in this library into a repo structure.
@@ -255,9 +262,7 @@ cloneLibraryToRepo <- function(repo_dir, keep_versions = TRUE) {
   pkgs <- installed.packages()
   pkgs <- pkgs[pkgs$Priority != "base", ]  # Do not include base packages.
   vers <- {if (keep_versions) pkgs[, "Version"] else rep(NA_character_, nrow(pkgs))}
-  bioc_version <- ifelse(requireNamespace("BiocInstaller"), BiocInstaller::biocVersion(), NA)
-  addPackagesToRepo(pkgs = pkgs[, "Package"], versions = vers,
-                    bioc_version = bioc_version, repo_dir = repo_dir)
+  addPackagesToRepo(pkgs = pkgs[, "Package"], versions = vers, repo_dir = repo_dir)
 }
 
 #' Install the packages in the repo to a given library, if not already installed.

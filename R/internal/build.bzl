@@ -246,22 +246,41 @@ def _build_impl(ctx):
                     mnemonic="RSrcBuild", use_default_shell_env=False,
                     progress_message="Building R (source) package %s" % pkg_name)
 
-    return [DefaultInfo(files=depset(output_files),
-                        runfiles=ctx.runfiles(package_files, collect_default=True)),
-            RPackage(pkg_name=pkg_name,
-                     lib_path=pkg_lib_path,
-                     lib_files=package_files,
-                     src_files=ctx.files.srcs,
-                     src_archive=pkg_src_archive,
-                     bin_archive=pkg_bin_archive,
-                     pkg_deps=ctx.attr.deps,
-                     transitive_pkg_deps=library_deps["transitive_pkg_deps"],
-                     transitive_tools=transitive_tools,
-                     build_tools=build_tools,
-                     makevars_user=ctx.file.makevars_user,
-                     cc_deps=cc_deps,
-                     external_repo=("external-r-repo" in ctx.attr.tags))
-            ]
+    # Lighweight action to check the package file list against the files in the
+    # binary archive.
+    pkg_file_list_diff = ctx.actions.declare_file("pkg_file_list_diff.txt")
+    ctx.actions.run(outputs=[pkg_file_list_diff],
+                    inputs=([pkg_bin_archive] + package_files),
+                    executable=ctx.executable._file_list_diff_sh,
+                    arguments=[pkg_bin_archive.path, pkg_lib_path.path, pkg_name,
+                               pkg_file_list_diff.path],
+                    mnemonic="RPkgFilesCheck",
+                    progress_message="Checking file list for package %s" %pkg_name)
+
+    return [
+        DefaultInfo(
+            files=depset(output_files),
+            runfiles=ctx.runfiles(package_files, collect_default=True),
+        ),
+        OutputGroupInfo(
+            pkg_file_list_diffs = [pkg_file_list_diff],
+        ),
+        RPackage(
+            pkg_name=pkg_name,
+            lib_path=pkg_lib_path,
+            lib_files=package_files,
+            src_files=ctx.files.srcs,
+            src_archive=pkg_src_archive,
+            bin_archive=pkg_bin_archive,
+            pkg_deps=ctx.attr.deps,
+            transitive_pkg_deps=library_deps["transitive_pkg_deps"],
+            transitive_tools=transitive_tools,
+            build_tools=build_tools,
+            makevars_user=ctx.file.makevars_user,
+            cc_deps=cc_deps,
+            external_repo=("external-r-repo" in ctx.attr.tags),
+        )
+    ]
 
 r_pkg = rule(
     attrs = {
@@ -330,6 +349,12 @@ r_pkg = rule(
         ),
         "_flock": attr.label(
             default = "@com_grail_rules_r//R/scripts:flock",
+            executable = True,
+            cfg = "host",
+        ),
+        "_file_list_diff_sh": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:file_list_diff.sh",
             executable = True,
             cfg = "host",
         ),

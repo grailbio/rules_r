@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files([
-    "build.sh",
-    "binary.sh.tpl",
-    "check.sh.tpl",
-    "file_list_diff.sh",
-    "library.sh.tpl",
-    "test.sh.tpl",
-])
+set -euo pipefail
 
-cc_binary(
-    name = "flock",
-    srcs = ["flock.c"],
-    visibility = ["//visibility:public"],
-)
+bin_archive=$1
+pkg_lib_path=$2
+pkg_name=$3
+out=$4
+
+# TODO: Make this fail if there is a non-empty diff, when this passes for all packages.
+diff \
+  <(tar -tf "${bin_archive}" | grep -v '/$' | sort) \
+  <(cd "${pkg_lib_path}" && find "${pkg_name}" -not -type d | sort) \
+  >"${out}" \
+  || true

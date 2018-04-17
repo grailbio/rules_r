@@ -8,6 +8,8 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
     <li><a href="#r_library">r_library</a></li>
     <li><a href="#r_unit_test">r_unit_test</a></li>
     <li><a href="#r_pkg_test">r_pkg_test</a></li>
+    <li><a href="#r_binary">r_binary</a></li>
+    <li><a href="#r_test">r_test</a></li>
     <li><a href="#r_repository">r_repository</a></li>
     <li><a href="#r_repository_list">r_repository_list</a></li>
     <li><a href="#r_package">r_package</a></li>
@@ -509,6 +511,89 @@ sandbox.
     </tr>
   </tbody>
 </table>
+
+
+<a name="r_binary"></a>
+## r_binary
+
+```python
+r_binary(name, srcs, deps, data, env_vars, tools, rscript_args)
+```
+
+Build a wrapper shell script for running an executable which will have all the
+specified R packages available.
+
+The target can be executed standalone, with `bazel run`, or called from other
+executables if <code>RUNFILES_DIR</code> is exported in the environment with
+the runfiles of the root executable.
+
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Attributes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>src</code></td>
+      <td>
+        <p><code>File; required</code></p>
+        <p>An Rscript interpreted file, or file with executable permissions.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>deps</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Dependencies of type <code>r_binary</code>, <code>r_pkg</code>,
+           or <code>r_library</code>.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>data</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Files needed by this rule at runtime.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>env_vars</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Extra environment variables to define before running the binary.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>tools</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Executables to be made available to the binary.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>rscript_args</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>If src file does not have executable permissions, arguments for the
+           Rscript interpreter. We recommend using the shebang line and giving
+           your script execute permissions instead of using this.</p>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<a name="r_test"></a>
+## r_test
+
+```python
+r_test(name, srcs, deps, data, env_vars, tools, rscript_args)
+```
+
+This is idential to <a href="#r_binary">r_binary</a> but is run as a test.
 
 
 <a name="r_repository"></a>

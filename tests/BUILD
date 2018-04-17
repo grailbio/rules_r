@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
+load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_binary", "r_test")
 
 r_library(
     name = "library",
@@ -38,4 +38,40 @@ sh_test(
     size = "small",
     srcs = ["image_test.sh"],
     data = [":image-layer.tar"],
+)
+
+r_binary(
+    name = "binary",
+    src = "binary.R",
+    data = ["binary_data.txt"],
+    deps = [
+        ":library",
+        "@R_R6",
+    ],
+)
+
+r_test(
+    name = "binary_test",
+    src = "binary.R",
+    data = ["binary_data.txt"],
+    deps = [
+        ":library",
+        "@R_R6",
+    ],
+)
+
+r_test(
+    name = "binary_r_test",
+    src = "binary_test.sh",
+    env_vars = {
+        "R_TEST": "true",
+    },
+    deps = [":binary"],
+)
+
+# Example of using the binary in sh_test instead of r_test.
+sh_test(
+    name = "binary_sh_test",
+    srcs = ["binary_test.sh"],
+    data = [":binary"],
 )

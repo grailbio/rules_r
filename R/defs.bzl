@@ -23,11 +23,16 @@ sandbox and generate a script to run the test scripts from the package.
 r_pkg_test will install all the dependencies of the package in Bazel's
 sandbox and generate a script to run R CMD CHECK on the package.
 
-r_library will generate binary archives for the package and its
-dependencies (as a side effect of installing them to Bazel's sandbox),
-install all the binary archives into a folder, and make available the
-folder as a single tar. The target can also be executed using bazel run.
-See usage by running with -h flag.
+r_library will install all the listed packages in Bazel's sandbox, and
+generate a script to install the packages on the user's machine.
+Additionally, a target '%{name}.tar' will be generated on demand and
+will contain the root of an R library containing all the listed
+packages.
+
+r_binary will install all the dependencies of the executable in Bazel's
+sandbox and generate a script to run the executable.
+
+r_test is similar to r_binary, but acts as a test.
 """
 
 load("@com_grail_rules_r//R/internal:shell.bzl", "sh_quote", "sh_quote_args")
@@ -55,8 +60,26 @@ RPackage = provider(
         "pkg_deps": "Direct deps of this package",
         "transitive_pkg_deps": "depset of all dependencies of this target",
         "transitive_tools": "depset of all system tools",
-        "makevars_user": "user level makevars file for native code compilation",
+        "build_tools": "tools needed to build this package",
+        "makevars_user": "User level makevars file for native code compilation",
         "cc_deps": "cc_deps struct for the package",
+    },
+)
+
+RLibrary = provider(
+    doc = "Build information about an R library",
+    fields = {
+        "pkgs": "list of directly specified packages in this library",
+    },
+)
+
+RBinary = provider(
+    doc = "Build information about an R binary",
+    fields = {
+        "srcs": "depset of src files for this and other binary dependencies",
+        "exe": "depset of exe wrapper files for this and other binary dependencies",
+        "tools": "depset of system tools for this and other binary dependencies",
+        "pkg_deps": "list of direct package dependencies for this and other binary dependencies",
     },
 )
 
@@ -309,7 +332,7 @@ def _build_impl(ctx):
 
     library_deps = _library_deps(ctx.attr.deps)
     cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir, ctx.bin_dir.path, ctx.genfiles_dir.path)
-    transitive_tools = (library_deps["transitive_tools"] + _executables(ctx.attr.tools))
+    transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
     build_tools = _executables(ctx.attr.build_tools) + transitive_tools
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
@@ -362,6 +385,7 @@ def _build_impl(ctx):
                      pkg_deps=ctx.attr.deps,
                      transitive_pkg_deps=library_deps["transitive_pkg_deps"],
                      transitive_tools=transitive_tools,
+                     build_tools=build_tools,
                      makevars_user=ctx.file.makevars_user,
                      cc_deps=cc_deps)
             ]
@@ -503,12 +527,12 @@ r_unit_test = rule(
 def _check_impl(ctx):
     src_archive = ctx.attr.pkg[RPackage].src_archive
     pkg_deps = ctx.attr.pkg[RPackage].pkg_deps
-    transitive_tools = ctx.attr.pkg[RPackage].transitive_tools
+    build_tools = ctx.attr.pkg[RPackage].build_tools
     cc_deps = ctx.attr.pkg[RPackage].cc_deps
     makevars_user = ctx.attr.pkg[RPackage].makevars_user
 
     library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
-    tools = _executables(ctx.attr.tools) + transitive_tools
+    tools = _executables(ctx.attr.tools) + build_tools
 
     all_input_files = ([src_archive] + library_deps["lib_files"]
                        + tools.to_list()
@@ -596,7 +620,8 @@ def _library_impl(ctx):
     )
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"])
-    return [DefaultInfo(runfiles=runfiles, files=depset([ctx.outputs.executable]))]
+    return [DefaultInfo(runfiles=runfiles, files=depset([ctx.outputs.executable])),
+            RLibrary(pkgs=ctx.attr.pkgs)]
 
 r_library = rule(
     attrs = {
@@ -637,6 +662,106 @@ r_library = rule(
         "tools_tar": "%{name}_tools.tar",
     },
     implementation = _library_impl,
+)
+
+def _r_binary_impl(ctx):
+    srcs = depset([ctx.file.src])
+    exe = depset([ctx.outputs.executable])
+    tools = depset(_executables(ctx.attr.tools))
+    pkg_deps = []
+    for dep in ctx.attr.deps:
+        if RPackage in dep:
+            pkg_deps += [dep]
+        elif RLibrary in dep:
+            pkg_deps += dep[RLibrary].pkgs
+        elif RBinary in dep:
+            srcs += dep[RBinary].srcs
+            exe += dep[RBinary].exe
+            tools += dep[RBinary].tools
+            pkg_deps += dep[RBinary].pkg_deps
+        else:
+            fail("Unknown dependency for %s: %s" % (str(ctx.label), str(dep)))
+
+    library_deps = _library_deps(pkg_deps)
+
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    transitive_tools = tools + library_deps["transitive_tools"]
+    ctx.actions.expand_template(
+        template = ctx.file._binary_sh_tpl,
+        output = ctx.outputs.executable,
+        substitutions = {
+            "{src}": ctx.file.src.short_path,
+            "{lib_dirs}": ":".join(lib_dirs),
+            "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
+            "{tools_export_cmd}": _runtime_path_export(transitive_tools),
+            "{workspace_name}": ctx.workspace_name,
+            "{Rscript}": " ".join(_Rscript),
+            "{Rscript_args}": sh_quote_args(ctx.attr.rscript_args),
+        },
+        is_executable = True,
+    )
+
+    runfiles = ctx.runfiles(files=library_deps["lib_files"],
+                            transitive_files = srcs + exe + transitive_tools,
+                            collect_data = True)
+    return [DefaultInfo(runfiles=runfiles),
+            RBinary(srcs=srcs,
+                    exe=exe,
+                    pkg_deps=pkg_deps,
+                    tools=tools)
+            ]
+
+_R_BINARY_ATTRS = {
+    "src": attr.label(
+        allow_single_file = True,
+        mandatory = True,
+        doc = "An Rscript interpreted file, or file with executable permissions",
+    ),
+    "deps": attr.label_list(
+        providers = [
+            [RBinary],
+            [RPackage],
+            [RLibrary],
+        ],
+        doc = "Dependencies of type r_binary, r_pkg or r_library",
+    ),
+    "data": attr.label_list(
+        allow_files = True,
+        doc = "Files needed by this rule at runtime",
+        cfg = "data",
+    ),
+    "env_vars": attr.string_dict(
+        doc = "Extra environment variables to define before running the binary",
+    ),
+    "tools": attr.label_list(
+        cfg = "target",
+        doc = "Executables to be made available to the binary",
+    ),
+    "rscript_args": attr.string_list(
+        doc = ("If src file does not have executable permissions, " +
+               "arguments for the Rscript interpreter. We recommend " +
+               "using the shebang line and giving your script " +
+               "execute permissions instead of using this."),
+    ),
+    "_binary_sh_tpl": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R:binary.sh.tpl",
+    ),
+}
+
+r_binary = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to run a binary with a configured R library.",
+    executable = True,
+    implementation = _r_binary_impl,
+)
+
+r_test = rule(
+    attrs = _R_BINARY_ATTRS,
+    doc = "Rule to run a binary with a configured R library.",
+    executable = True,
+    test = True,
+    implementation = _r_binary_impl,
 )
 
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[]):

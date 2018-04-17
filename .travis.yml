@@ -11,6 +11,4 @@ addons:
     - r-recommended
 
 script:
-  - cd tests
-  - bazel build //...
-  - bazel test //...
+  - tests/run_tests.sh

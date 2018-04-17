@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,16 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files([
-    "build.sh",
-    "binary.sh.tpl",
-    "library.sh.tpl",
-    "test.sh.tpl",
-    "check.sh.tpl",
-])
+# Providing features invalidates cache; hence this test suite is separate.
 
-cc_binary(
-    name = "flock",
-    srcs = ["flock.c"],
-    visibility = ["//visibility:public"],
-)
+set -euxo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# Just to see if this mode builds.
+bazel build --features=rlang-reproducible :library_image

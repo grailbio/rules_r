@@ -12,3 +12,4 @@ addons:
 
 script:
   - tests/run_tests.sh
+  - tests/run_reproducible_build_tests.sh

@@ -196,6 +196,7 @@ def _build_impl(ctx):
     pkg_src_archive = ctx.outputs.src_archive
     package_files = _package_files(ctx)
     output_files = package_files + [pkg_lib_path, pkg_bin_archive]
+    flock = ctx.attr._flock.files_to_run.executable
 
     library_deps = _library_deps(ctx.attr.deps)
     cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir, ctx.bin_dir.path, ctx.genfiles_dir.path)
@@ -204,7 +205,7 @@ def _build_impl(ctx):
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
                        + build_tools.to_list()
-                       + [ctx.file.makevars_user])
+                       + [ctx.file.makevars_user, flock])
 
     if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
@@ -227,7 +228,10 @@ def _build_impl(ctx):
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
-        "REPRODUCIBLE_BUILD": "true" if "rlang-no-stamp" in ctx.features else "false",
+        "FLOCK_PATH": flock.path,
+        "REPRODUCIBLE_BUILD": "true" if "rlang-reproducible" in ctx.features else "false",
+        "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
+        "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
         "R": " ".join(_R),
         "RSCRIPT": " ".join(_Rscript),
     }
@@ -321,6 +325,11 @@ r_pkg = rule(
         "_build_sh": attr.label(
             allow_single_file = True,
             default = "@com_grail_rules_r//R/scripts:build.sh",
+            executable = True,
+            cfg = "host",
+        ),
+        "_flock": attr.label(
+            default = "@com_grail_rules_r//R/scripts:flock",
             executable = True,
             cfg = "host",
         ),

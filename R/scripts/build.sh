@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-PWD=$(pwd -P)
+EXEC_ROOT=$(pwd -P)
 
 TMP_FILES=() # Temporary files to be cleaned up before exiting the script.
 
@@ -36,6 +36,39 @@ silent() {
     echo "${OUT}"
   fi
   set -e
+}
+
+# TODO: Log only when verbose is set.
+log() {
+  echo "$@"
+}
+
+# Function to lock the common temp library directory for this package, until we
+# have moved out of it.
+lock() {
+  local lock_dir="$1"
+  local lock_name="$2"
+  # Open the lock file and assign fd 200; file remains open as long as we are alive.
+  local lock_file="${lock_dir}/BZL_LOCK-${lock_name}"
+  TMP_FILES+=("${lock_file}")
+  # Use fd 200 for the lock; will be released when the fd is closed on process termination.
+  exec 200>"${lock_file}"
+
+  # We use a non-blocking lock to define our timeout and messaging strategy here.
+  local tries=0
+  local max_tries=20
+  local backoff=10
+  while (( tries++ < max_tries )) && ! "${FLOCK_PATH}" 200; do
+    log "Failed to acquire lock; will try again in $backoff seconds"
+    sleep $backoff
+  done
+  if (( tries >= max_tries )); then
+    log "Failed to acquire lock on ${lock_file} to build package; is another bazel build running?"
+    exit 1
+  elif (( tries > 1 )); then
+    # Message only if it took more than one attempt.
+    log "Acquired lock in $tries attempts"
+  fi
 }
 
 eval "${EXPORT_ENV_VARS_CMD}"
@@ -63,17 +96,19 @@ if "${BUILD_SRC_ARCHIVE:-"false"}"; then
   exit
 fi
 
-export PKG_LIBS="${C_LIBS_FLAGS//_EXEC_ROOT_/$PWD/}"
-export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/$PWD/}"
-export R_MAKEVARS_USER="${PWD}/${R_MAKEVARS_USER}"
+export PKG_LIBS="${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which
 # imposes length limits.
-export R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
+export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS_USER=dummy
 
 mkdir -p "${PKG_LIB_PATH}"
+
+# Easy case -- we allow timestamp and install paths to be stamped inside the package files.
 if ! ${REPRODUCIBLE_BUILD}; then
   silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --build --library="${PKG_LIB_PATH}" \
     "${PKG_SRC_DIR}"
@@ -84,10 +119,28 @@ if ! ${REPRODUCIBLE_BUILD}; then
   exit
 fi
 
-# There is additional complexity to ensure that the the build produces the same
-# file content.  This feature is turned off by default and can be enabled on
-# the bazel command line by --features=rlang-no-stamp.
+# Not so easy case -- we make builds reproducible by asking R to use a constant
+# timestamp, and by installing the packages to the same destination, from the
+# same source path, to get reproducibility in embedded paths.
+LOCK_DIR="/tmp/bazel/R/locks"
+TMP_LIB="/tmp/bazel/R/lib"
+TMP_SRC="/tmp/bazel/R/src"
+mkdir -p "${LOCK_DIR}"
+mkdir -p "${TMP_LIB}"
+mkdir -p "${TMP_SRC}"
+lock "${LOCK_DIR}" "${PKG_NAME}"
 
-# TODO: Implement locking mechanism for reproducible builds.
-echo "REPRODUCIBLE_BUILD not implemented yet."
-exit 1
+TMP_SRC_PKG="${TMP_SRC}/${PKG_NAME}"
+rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
+cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
+TMP_FILES+=("${TMP_SRC_PKG}")
+
+# Install the package to the common temp library.
+silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --built-timestamp='' --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"
+rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
+mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
+find "${PKG_LIB_PATH}" -name '*.so' -exec sed -i.orig -e "s|${EXEC_ROOT}|_EXEC_ROOT_|g" {} \;
+mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
+
+trap - EXIT
+cleanup

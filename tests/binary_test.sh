@@ -29,19 +29,20 @@ if ! [[ "${RUNFILES_DIR:-}" ]]; then
   cd "com_grail_rules_r_tests"
 fi
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+# shortpath to binary from runfiles dir.
+BINARY="../com_grail_rules_r_tests/binary"
 
-if ! ./binary; then
+if ! "${BINARY}"; then
   echo "Binary should have passed."
   exit 1
 fi
 
-if ! ./binary exampleA; then
+if ! "${BINARY}" exampleA; then
   echo "Binary should have passed with argument."
   exit 1
 fi
 
-if ./binary RProtoBuf 2>/dev/null; then
+if "${BINARY}" RProtoBuf 2>/dev/null; then
   echo "Binary should have failed."
   exit 1
 fi

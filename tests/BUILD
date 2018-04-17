@@ -16,28 +16,11 @@ load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_binary", "r_test")
 
 r_library(
     name = "library",
+    container_library_path = "r-libs",
     pkgs = [
         "//exampleC",
         "@R_bitops//:bitops",
     ],
-    tar_dir = "r-libs",
-)
-
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-
-container_image(
-    name = "image",
-    base = "@r_base//image",
-    directory = "/",
-    env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":library.tar"],
-)
-
-sh_test(
-    name = "image_test",
-    size = "small",
-    srcs = ["image_test.sh"],
-    data = [":image-layer.tar"],
 )
 
 r_binary(
@@ -74,4 +57,42 @@ sh_test(
     name = "binary_sh_test",
     srcs = ["binary_test.sh"],
     data = [":binary"],
+)
+
+## Image related tests
+
+load("@com_grail_rules_r//R/container:defs.bzl", "r_library_image", "r_binary_image")
+
+r_library_image(
+    name = "library_image",
+    base = "@r_base//image",
+    directory = "grail",
+    library = "library",
+)
+
+sh_test(
+    name = "image_test",
+    size = "small",
+    srcs = ["image_test.sh"],
+    data = [
+        ":library_image",
+    ],
+)
+
+# TODO: Introduce tests for binary_image after moving to rules_docker.
+
+r_binary_image(
+    name = "binary_image",
+    base = "@r_base//image",
+    binary = "binary",
+)
+
+r_binary_image(
+    name = "binary_image_explicit_layers",
+    base = "@r_base//image",
+    binary = "binary",
+    layers = [
+        "@R_bitops",
+        "@R_R6",
+    ],
 )

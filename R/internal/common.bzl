@@ -16,6 +16,10 @@ load(
     "@com_grail_rules_r//internal:shell.bzl",
     _sh_quote = "sh_quote",
 )
+load(
+    "@com_grail_rules_r//internal:paths.bzl",
+    _paths = "paths",
+)
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 R = [
@@ -37,44 +41,6 @@ def package_dir(ctx):
         workspace_root += "/"
     package_dir = workspace_root + ctx.label.package
     return package_dir
-
-def library_deps(target_deps):
-    # Returns information about all dependencies of this package.
-
-    # Transitive closure of all package dependencies.
-    transitive_pkg_deps = depset()
-    transitive_tools = depset()
-    for target_dep in target_deps:
-        transitive_pkg_deps += (target_dep[RPackage].transitive_pkg_deps +
-                                depset([target_dep[RPackage]]))
-        transitive_tools += target_dep[RPackage].transitive_tools
-
-    # Individual R library directories.
-    lib_dirs = []
-
-    # Installed package directory paths.
-    pkg_dir_paths = []
-
-    # Files in the aggregated library of all dependency packages.
-    lib_files = []
-
-    # Binary archives of all dependency packages.
-    bin_archives = []
-
-    for pkg_dep in transitive_pkg_deps:
-        lib_files += pkg_dep.lib_files
-        lib_dirs += [pkg_dep.lib_path]
-        pkg_dir_paths += ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
-        bin_archives += [pkg_dep.bin_archive]
-
-    return {
-        "transitive_pkg_deps": transitive_pkg_deps,
-        "lib_dirs": lib_dirs,
-        "lib_files": lib_files,
-        "pkg_dir_paths": pkg_dir_paths,
-        "bin_archives": bin_archives,
-        "transitive_tools": transitive_tools,
-    }
 
 def env_vars(env_vars):
     # Array of commands to export environment variables.
@@ -106,3 +72,77 @@ def build_path_export(executables):
     else:
         # This is required because bazel does not export the variable.
         return "export PATH"
+
+def library_deps(target_deps):
+    # Returns information about all dependencies of this package.
+
+    # Transitive closure of all package dependencies.
+    transitive_pkg_deps = depset()
+    transitive_tools = depset()
+    for target_dep in target_deps:
+        transitive_pkg_deps += (target_dep[RPackage].transitive_pkg_deps +
+                                depset([target_dep[RPackage]]))
+        transitive_tools += target_dep[RPackage].transitive_tools
+
+    # Individual R library directories.
+    lib_dirs = []
+
+    # Files in the aggregated library of all dependency packages.
+    lib_files = []
+
+    for pkg_dep in transitive_pkg_deps:
+        lib_files += pkg_dep.lib_files
+        lib_dirs += [pkg_dep.lib_path]
+
+    return {
+        "transitive_pkg_deps": transitive_pkg_deps,
+        "transitive_tools": transitive_tools,
+        "lib_dirs": lib_dirs,
+        "lib_files": lib_files,
+    }
+
+def layer_library_deps(ctx, library_deps, container_library_path=None, collector=None):
+    # We partition the library runfiles on the basis of whether origin repo of
+    # packages is external or internal. These are exposed as non-default output
+    # groups or tarballs, and are generated on demand. Mostly used for
+    # efficient layering in containers.
+
+    pkg_dirs = {"external": [], "internal": []}
+    lib_files = {"external": [], "internal": []}
+    collection_files = {"external": [], "internal": []}
+
+    # lib_file_map is a file map of files to a remapped file within a collected library.
+    lib_file_map = {"external": {}, "internal": {}}
+
+    collection_dir = None
+    if container_library_path:
+        collection_dir = ctx.actions.declare_directory(
+            ctx.label.name + "_container/" + container_library_path)
+
+    for pkg_dep in library_deps["transitive_pkg_deps"]:
+        pkg_container_layer = "external" if pkg_dep.external_repo else "internal"
+        pkg_dir_path = ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
+        pkg_dirs[pkg_container_layer] += pkg_dir_path
+        lib_files[pkg_container_layer] += pkg_dep.lib_files
+        if not container_library_path:
+            continue
+        pkg_file_map = {
+            container_library_path + "/" + _paths.relativize(f.path, pkg_dep.lib_path.path): f
+            for f in pkg_dep.lib_files
+        }
+        lib_file_map[pkg_container_layer] += pkg_file_map
+        collection_files[pkg_container_layer] += [
+            ctx.actions.declare_file(path, sibling=collection_dir)
+            for (path, f) in pkg_file_map.items()
+        ]
+
+    if container_library_path:
+        ctx.actions.run(outputs=(collection_files["external"] + collection_files["internal"] +
+                                 [collection_dir]),
+                        inputs=library_deps["lib_files"],
+                        executable=collector, mnemonic="COLLECT",
+                        use_default_shell_env = True,
+                        arguments=([collection_dir.path] +
+                                   [d.path for d in library_deps["lib_dirs"]]))
+
+    return (pkg_dirs, lib_files, lib_file_map, collection_files)

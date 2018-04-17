@@ -13,18 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euxo pipefail
+# This script collects the given src files and directories into a destination
+# directory by copying them.
 
-cd "$(dirname "${BASH_SOURCE[0]}")"
+set -euo pipefail
 
-# r_binary related tests.  Run these individually most layered target first,
-# before building everything so we don't have runfiles built for wrapped
-# targets. The alternative is to clean the workspace before each test.
-bazel run //:binary_sh_test
-bazel-bin/binary_sh_test
-bazel run //:binary_r_test
-bazel-bin/binary_r_test
-bazel run //:binary
-bazel-bin/binary
+if [[ $# -le 0 ]]; then >&2 echo "Insufficient arguments."; fi
 
-bazel test //...
+# First argument is the path to the output tar file followed by the input files being collected.
+DST_ROOT="$1"
+shift
+
+SRCS=("$@")
+
+mkdir -p "${DST_ROOT}"
+for SRC in "${SRCS[@]+"${SRCS[@]}"}"; do
+  cp -rf "${SRC}/" "${DST_ROOT}"
+done

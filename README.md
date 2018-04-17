@@ -2,7 +2,7 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
 =================
 
 <div class="toc">
-  <h2>Rules</h2>
+  <h4>Rules</h4>
   <ul>
     <li><a href="#r_pkg">r_pkg</a></li>
     <li><a href="#r_library">r_library</a></li>
@@ -10,8 +10,20 @@ R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?br
     <li><a href="#r_pkg_test">r_pkg_test</a></li>
     <li><a href="#r_binary">r_binary</a></li>
     <li><a href="#r_test">r_test</a></li>
+  </ul>
+</div>
+
+<div class="toc">
+  <h4>Workspace Rules</h4>
+  <ul>
     <li><a href="#r_repository">r_repository</a></li>
     <li><a href="#r_repository_list">r_repository_list</a></li>
+  </ul>
+</div>
+
+<div class="toc">
+  <h4>Convenience Macros</h4>
+  <ul>
     <li><a href="#r_package">r_package</a></li>
     <li><a href="#r_package_with_test">r_package_with_test</a></li>
   </ul>
@@ -160,60 +172,8 @@ and `WORKSPACE` rules for external packages.
 
 ## Docker
 
-You can also create Docker images of R packages using Bazel.
+See [container support][docker].
 
-In your `WORKSPACE` file, load the Docker rules and specify the base R image.
-
-```python
-# Change to the version of these rules you want and use sha256.
-http_archive(
-    name = "io_bazel_rules_docker",
-    strip_prefix = "rules_docker-v0.3.0",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/v0.3.0.tar.gz"],
-)
-
-load(
-    "@io_bazel_rules_docker//container:container.bzl",
-    "container_pull",
-    container_repositories = "repositories",
-)
-
-container_repositories()
-
-container_pull(
-    name = "r_base",
-    registry = "index.docker.io",
-    repository = "rocker/r-base",
-    tag = "latest",
-)
-```
-
-And then, in a `BUILD` file, define your library of R packages and install them
-in a Docker image. Dependencies are installed implicitly.
-
-```python
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
-
-r_library(
-    name = "my_r_library",
-    pkgs = [
-        "//path/to/packageA:r_pkg_target",
-        "//path/to/packageB:r_pkg_target",
-    ],
-    tar_dir = "r-libs",
-)  
-
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
-
-container_image(
-    name = "image",
-    base = "@r_base//image",
-    directory = "/",
-    env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":my_r_library.tar"],
-    repository = "my_repo",
-)
-```
 
 <a name="r_pkg"></a>
 ## r_pkg
@@ -226,6 +186,32 @@ r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, 
 
 Rule to install the package and its transitive dependencies in the Bazel
 sandbox, so it can be depended upon by other package builds.
+
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Implicit output targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code><i>name</i>.bin.tar.gz</code></td>
+      <td>
+        Binary archive of the package.
+      </td>
+    </tr>
+    <tr>
+      <td><code><i>name</i>.tar.gz</code></td>
+      <td>
+        Source archive of the package.
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -359,8 +345,48 @@ Executable rule to install the given packages and all dependencies to a user
 provided or system default R library. Run the target with --help for usage
 information.
 
-This rule also creates an invisible {name}.tar target which outputs the R
-library as a tar file; mainly for use with the Docker rules.
+<table class="table table-condensed table-bordered table-params">
+  <colgroup>
+    <col class="col-param" />
+    <col class="param-description" />
+  </colgroup>
+  <thead>
+    <tr>
+      <th colspan="2">Implicit output targets</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code><i>name</i>.tar</code></td>
+      <td>
+        The R library, rooted in the tarball at the path
+        given by <code>container_library_path</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><code><i>name</i>_tools.tar</code></td>
+      <td>
+        Executables specified in <code>tools</code> attribute of the
+        <code>r_pkg</code> targets, rooted in the tarball at the path
+        given by <code>container_tools_path</code>.
+      </td>
+    </tr>
+    <tr>
+      <td><code><i>name</i>_layered_external.tar</code></td>
+      <td>
+        R library partition consisting of only packages from external
+        repos. See <code>r_library_image</code> for more details. 
+      </td>
+    </tr>
+    <tr>
+      <td><code><i>name</i>_layered_internal.tar</code></td>
+      <td>
+        R library partition complement to the external layer archive
+        above.
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -389,11 +415,19 @@ library as a tar file; mainly for use with the Docker rules.
       </td>
     </tr>
     <tr>
-      <td><code>tar_dir</code></td>
+      <td><code>container_library_path</code></td>
       <td>
-        <p><code>String; default "."</code></p>
-        <p>The root directory in the tar file under which the R library will be
-        copied.</p>
+        <p><code>String; optional</code></p>
+        <p>Subdirectory within a tar or container where all the packages are
+           installed.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>container_tools_install_path</code></td>
+      <td>
+        <p><code>String; default 'usr/local/bin'</code></p>
+        <p>Subdirectory within a tar or container where all the tools are
+           installed.</p>
       </td>
     </tr>
   </tbody>
@@ -750,3 +784,4 @@ We have tested only on macOS and Ubuntu (VM and Docker).
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
 [Makevars]: R/makevars/Makevars.darwin.tpl
+[docker]: R/container/README.md

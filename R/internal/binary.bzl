@@ -21,6 +21,7 @@ load(
     _Rscript = "Rscript",
     _env_vars = "env_vars",
     _executables = "executables",
+    _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
     _runtime_path_export = "runtime_path_export",
 )
@@ -63,15 +64,23 @@ def _r_binary_impl(ctx):
         is_executable = True,
     )
 
+    (_, lib_files, _, _) = _layer_library_deps(ctx, library_deps)
+
     runfiles = ctx.runfiles(files=library_deps["lib_files"],
                             transitive_files = srcs + exe + transitive_tools,
                             collect_data = True)
-    return [DefaultInfo(runfiles=runfiles),
-            RBinary(srcs=srcs,
-                    exe=exe,
-                    pkg_deps=pkg_deps,
-                    tools=tools)
-            ]
+    return [
+        DefaultInfo(runfiles=runfiles),
+        RBinary(srcs=srcs,
+                exe=exe,
+                pkg_deps=pkg_deps,
+                tools=tools),
+        OutputGroupInfo(
+            external=lib_files["external"],
+            internal=lib_files["internal"],
+            tools=transitive_tools,
+            ),
+        ]
 
 _R_BINARY_ATTRS = {
     "src": attr.label(

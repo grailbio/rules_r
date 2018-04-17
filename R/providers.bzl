@@ -27,6 +27,7 @@ RPackage = provider(
         "build_tools": "tools needed to build this package",
         "makevars_user": "User level makevars file for native code compilation",
         "cc_deps": "cc_deps struct for the package",
+        "external_repo": "Boolean indicating if the package is from an external repo",
     },
 )
 
@@ -34,6 +35,8 @@ RLibrary = provider(
     doc = "Build information about an R library",
     fields = {
         "pkgs": "list of directly specified packages in this library",
+        "container_file_map": "file map of original files to remapped paths within a container",
+        "container_library_path": "Relative root of the library inside a container",
     },
 )
 

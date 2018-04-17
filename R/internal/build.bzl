@@ -242,7 +242,8 @@ def _build_impl(ctx):
                     mnemonic="RSrcBuild", use_default_shell_env=False,
                     progress_message="Building R (source) package %s" % pkg_name)
 
-    return [DefaultInfo(files=depset(output_files)),
+    return [DefaultInfo(files=depset(output_files),
+                        runfiles=ctx.runfiles(package_files, collect_default=True)),
             RPackage(pkg_name=pkg_name,
                      lib_path=pkg_lib_path,
                      lib_files=package_files,
@@ -254,7 +255,8 @@ def _build_impl(ctx):
                      transitive_tools=transitive_tools,
                      build_tools=build_tools,
                      makevars_user=ctx.file.makevars_user,
-                     cc_deps=cc_deps)
+                     cc_deps=cc_deps,
+                     external_repo=("external-r-repo" in ctx.attr.tags))
             ]
 
 r_pkg = rule(

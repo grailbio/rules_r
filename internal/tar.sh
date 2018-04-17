@@ -23,7 +23,7 @@ shift
 
 # Return early if no arguments were supplied.
 if ! (( $# )); then
-  touch "${TAR_PATH}"
+  tar -c -f "${TAR_PATH}" -T /dev/null
   exit
 fi
 

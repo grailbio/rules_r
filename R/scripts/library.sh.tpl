@@ -18,7 +18,7 @@ set -euo pipefail
 help() {
   echo 'Usage: bazel run target_label -- [-l library_path] [-s]'
   echo '  -l  library_path is the directory where R packages will be installed'
-  echo '  -s  if specified, will override -l and install symlinks pointing into bazel-bin directory'
+  echo '  -s  if specified, will install symlinks pointing into bazel-bin directory'
 }
 
 LIBRARY_PATH="{library_path}"
@@ -32,7 +32,7 @@ while getopts "l:sh" opt; do
   esac
 done
 
-DEFAULT_R_LIBRARY="$({R} -e 'cat(.libPaths()[1])')"
+DEFAULT_R_LIBRARY="$({Rscript} -e 'cat(.libPaths()[1])')"
 LIBRARY_PATH=${LIBRARY_PATH:-${DEFAULT_R_LIBRARY}}
 mkdir -p "${LIBRARY_PATH}"
 

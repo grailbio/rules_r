@@ -10,16 +10,7 @@ addons:
     - bazel
     - r-recommended
 
-cache:
-  directories:
-    - $HOME/.cache/bazel
-before_cache:
-  # Do not cache the install directory of bazel
-  - rm -rf $HOME/.cache/bazel/_bazel_travis/install
-
 script:
   - cd tests
-    # Run periodic tests with a clean cache
-  - if [[ "${TRAVIS_EVENT_TYPE}" == 'cron' ]]; then bazel clean --expunge; fi
-  - bazel test --color=yes --show_progress_rate_limit=30 --keep_going --test_output=errors //...
+  - bazel test --color=yes --noshow_progress --noshow_loading_progress --keep_going --test_output=errors //...
   - ./binary/execution_tests.sh

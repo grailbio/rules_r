@@ -64,7 +64,7 @@ def _r_binary_impl(ctx):
         is_executable = True,
     )
 
-    (_, lib_files, _, _) = _layer_library_deps(ctx, library_deps)
+    (lib_files, _) = _layer_library_deps(ctx, library_deps)
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"],
                             transitive_files = srcs + exe + transitive_tools,

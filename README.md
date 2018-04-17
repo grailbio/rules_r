@@ -345,48 +345,10 @@ Executable rule to install the given packages and all dependencies to a user
 provided or system default R library. Run the target with --help for usage
 information.
 
-<table class="table table-condensed table-bordered table-params">
-  <colgroup>
-    <col class="col-param" />
-    <col class="param-description" />
-  </colgroup>
-  <thead>
-    <tr>
-      <th colspan="2">Implicit output targets</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code><i>name</i>.tar</code></td>
-      <td>
-        The R library, rooted in the tarball at the path
-        given by <code>container_library_path</code>.
-      </td>
-    </tr>
-    <tr>
-      <td><code><i>name</i>_tools.tar</code></td>
-      <td>
-        Executables specified in <code>tools</code> attribute of the
-        <code>r_pkg</code> targets, rooted in the tarball at the path
-        given by <code>container_tools_path</code>.
-      </td>
-    </tr>
-    <tr>
-      <td><code><i>name</i>_layered_external.tar</code></td>
-      <td>
-        R library partition consisting of only packages from external
-        repos. See <code>r_library_image</code> for more details. 
-      </td>
-    </tr>
-    <tr>
-      <td><code><i>name</i>_layered_internal.tar</code></td>
-      <td>
-        R library partition complement to the external layer archive
-        above.
-      </td>
-    </tr>
-  </tbody>
-</table>
+The rule used to provide a tar archive of the library as an implicit output.
+That feature is now it's own rule -- `r_library_tar`. See documentation for
+[r_library_tar rule][r_library_tar] and [example][docker] usage for
+container_image rule.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -412,22 +374,6 @@ information.
         <p><code>String; optional</code></p>
         <p>If different from system default, default library location for installation.
         For runtime overrides, use bazel run [target] -- -l [path].</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>container_library_path</code></td>
-      <td>
-        <p><code>String; optional</code></p>
-        <p>Subdirectory within a tar or container where all the packages are
-           installed.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>container_tools_install_path</code></td>
-      <td>
-        <p><code>String; default 'usr/local/bin'</code></p>
-        <p>Subdirectory within a tar or container where all the tools are
-           installed.</p>
       </td>
     </tr>
   </tbody>
@@ -784,4 +730,5 @@ We have tested only on macOS and Ubuntu (VM and Docker).
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
 [Makevars]: R/makevars/Makevars.darwin.tpl
+[r_library_tar]: R/internal/library.bzl
 [docker]: R/container/README.md

@@ -36,7 +36,6 @@ RLibrary = provider(
     fields = {
         "pkgs": "list of directly specified packages in this library",
         "container_file_map": "file map of original files to remapped paths within a container",
-        "container_library_path": "Relative root of the library inside a container",
     },
 )
 

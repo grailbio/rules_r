@@ -24,11 +24,11 @@ if [[ "${TEST_SRCDIR:-}" ]]; then
 fi
 
 check() {
-  local LAYER_TAR="$1"
+  local TAR="$1"
   local FILE_TO_CHECK="$2"
   local EXPECT="$3"
   echo "Looking for file ${FILE_TO_CHECK}:"
-  if tar -tf "${LAYER_TAR}" | tee /dev/stderr 2| \
+  if tar -tf "${TAR}" | tee /dev/stderr 2| \
     (grep -q "${FILE_TO_CHECK}" || (echo "Not found!" && exit 1)); then $EXPECT
   elif $EXPECT; then exit 1
   fi
@@ -38,5 +38,8 @@ check "library_image_internal-layer.tar" "^./grail/r-libs/exampleC/DESCRIPTION$"
 check "library_image_external-layer.tar" "^./grail/r-libs/exampleC/DESCRIPTION$" "false"
 check "library_image_external-layer.tar" "^./grail/r-libs/bitops/DESCRIPTION$" "true"
 check "library_image_internal-layer.tar" "^./grail/r-libs/bitops/DESCRIPTION$" "false"
+
+check "library_archive.tar.gz" "^./grail/r-libs/exampleC/DESCRIPTION$" "false"
+check "library_archive.tar.gz" "^./grail/r-libs/bitops/DESCRIPTION" "true"
 
 echo "Found!"

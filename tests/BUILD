@@ -12,15 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_binary", "r_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_library_tar", "r_binary", "r_test")
 
 r_library(
     name = "library",
-    container_library_path = "r-libs",
     pkgs = [
         "//exampleC",
         "@R_bitops//:bitops",
     ],
+)
+
+r_library_tar(
+    name = "library_archive",
+    extension = "tar.gz",
+    layers = ["external"],
+    library = ":library",
+    library_path = "grail/r-libs",
 )
 
 r_binary(
@@ -68,6 +75,7 @@ r_library_image(
     base = "@r_base//image",
     directory = "grail",
     library = "library",
+    library_path = "r-libs",
 )
 
 sh_test(
@@ -75,6 +83,7 @@ sh_test(
     size = "small",
     srcs = ["image_test.sh"],
     data = [
+        ":library_archive",
         ":library_image",
     ],
 )

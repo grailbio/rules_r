@@ -44,13 +44,13 @@ r_library(
         "//path/to/packageA:r_pkg_target",
         "//path/to/packageB:r_pkg_target",
     ],
-    container_library_path = "r-libs",
 )  
 
 r_library_image(
     name = "my_r_library_image",
     base = "@r_base//image",
     library = "my_r_library",
+    library_path = "r-libs",
 )
 ```
 
@@ -58,17 +58,25 @@ The rule takes the same arguments as `container_image`, and
 additionally a `library` attribute. For more details on how the rule
 works, see the documentation in [library.bzl][library.bzl].
 
-Alternatively, if you want to use `container_image` rule directly, you can use
-the implicitly output tar files from the `r_library` target.
+Alternatively, if you want to use `container_image` rule directly for some
+reason, you can use the `r_library_tar` rule to provide a tar to the container.
 
 ```python
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+
+load("@com_grail_rules_r//R:defs.bzl", "r_library_tar")
+
+r_library_tar(
+    name = "my_r_library_archive",
+    library = ":my_r_library",
+    library_path = "r-libs",
+)
 
 container_image(
     name = "image",
     base = "@r_base//image",
     env = {"R_LIBS_USER": "/r-libs"},
-    tars = [":my_r_library.tar"],
+    tars = [":my_r_library_arhive.tar"],
     repository = "my_repo",
 )
 ```

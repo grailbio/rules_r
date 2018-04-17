@@ -101,48 +101,27 @@ def library_deps(target_deps):
         "lib_files": lib_files,
     }
 
-def layer_library_deps(ctx, library_deps, container_library_path=None, collector=None):
+def layer_library_deps(ctx, library_deps, file_map=False):
     # We partition the library runfiles on the basis of whether origin repo of
     # packages is external or internal. These are exposed as non-default output
     # groups or tarballs, and are generated on demand. Mostly used for
     # efficient layering in containers.
 
-    pkg_dirs = {"external": [], "internal": []}
     lib_files = {"external": [], "internal": []}
-    collection_files = {"external": [], "internal": []}
 
     # lib_file_map is a file map of files to a remapped file within a collected library.
     lib_file_map = {"external": {}, "internal": {}}
 
-    collection_dir = None
-    if container_library_path:
-        collection_dir = ctx.actions.declare_directory(
-            ctx.label.name + "_container/" + container_library_path)
-
     for pkg_dep in library_deps["transitive_pkg_deps"]:
         pkg_container_layer = "external" if pkg_dep.external_repo else "internal"
         pkg_dir_path = ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
-        pkg_dirs[pkg_container_layer] += pkg_dir_path
         lib_files[pkg_container_layer] += pkg_dep.lib_files
-        if not container_library_path:
+        if not file_map:
             continue
         pkg_file_map = {
-            container_library_path + "/" + _paths.relativize(f.path, pkg_dep.lib_path.path): f
+            _paths.relativize(f.path, pkg_dep.lib_path.path): f
             for f in pkg_dep.lib_files
         }
         lib_file_map[pkg_container_layer] += pkg_file_map
-        collection_files[pkg_container_layer] += [
-            ctx.actions.declare_file(path, sibling=collection_dir)
-            for (path, f) in pkg_file_map.items()
-        ]
 
-    if container_library_path:
-        ctx.actions.run(outputs=(collection_files["external"] + collection_files["internal"] +
-                                 [collection_dir]),
-                        inputs=library_deps["lib_files"],
-                        executable=collector, mnemonic="COLLECT",
-                        use_default_shell_env = True,
-                        arguments=([collection_dir.path] +
-                                   [d.path for d in library_deps["lib_dirs"]]))
-
-    return (pkg_dirs, lib_files, lib_file_map, collection_files)
+    return (lib_files, lib_file_map)

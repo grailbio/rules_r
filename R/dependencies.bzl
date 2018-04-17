@@ -13,15 +13,15 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//R/internal:process.bzl",
+    "@com_grail_rules_r//internal:process.bzl",
     _process_file = "process_file",
 )
 load(
-    "@com_grail_rules_r//R/internal:versions.bzl",
+    "@com_grail_rules_r//internal:versions.bzl",
     _is_at_least = "is_at_least",
 )
 load(
-    "@com_grail_rules_r//R/makevars:makevars.bzl",
+    "@com_grail_rules_r//makevars:makevars.bzl",
     _r_makevars = "r_makevars",
 )
 
@@ -35,9 +35,9 @@ def r_rules_dependencies(makevars_darwin="@com_grail_rules_r_makevars_darwin",
 
     _maybe(_process_file,
            name = "com_grail_rules_r_makevars_darwin",
-           processor = "@com_grail_rules_r//R/makevars:Makevars.darwin.sh",
+           processor = "@com_grail_rules_r//makevars:Makevars.darwin.sh",
            processor_args = ["-b"],
-           src = "@com_grail_rules_r//R/makevars:Makevars.darwin.tpl",
+           src = "@com_grail_rules_r//makevars:Makevars.darwin.tpl",
     )
 
     _maybe(_r_makevars,

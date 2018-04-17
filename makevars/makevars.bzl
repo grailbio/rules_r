@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R/internal:os.bzl", "detect_os")
+load("@com_grail_rules_r//internal:os.bzl", "detect_os")
 
 def _r_makevars_impl(rctx):
     if rctx.attr.makevars_darwin:

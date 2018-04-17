@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R/internal:shell.bzl", "sh_quote", "sh_quote_args")
+load("@com_grail_rules_r//internal:shell.bzl", "sh_quote", "sh_quote_args")
 
 def _process_file_impl(rctx):
     process_script = "exec {processor} {processor_args} < {src} > {out}".format(

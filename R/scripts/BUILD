@@ -13,6 +13,9 @@
 # limitations under the License.
 
 exports_files([
-    "Makevars.darwin.sh",
-    "Makevars.darwin.tpl",
+    "build.sh",
+    "binary.sh.tpl",
+    "library.sh.tpl",
+    "test.sh.tpl",
+    "check.sh.tpl",
 ])

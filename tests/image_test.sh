@@ -21,25 +21,32 @@ if [[ "${TEST_SRCDIR:-}" ]]; then
   echo "Moving to the right bazel workspace:"
   pushd "${TEST_SRCDIR}/com_grail_rules_r_tests"
   echo ""
+else
+  cd "$(dirname "${BASH_SOURCE[0]}")/bazel-bin"
 fi
 
 check() {
   local TAR="$1"
   local FILE_TO_CHECK="$2"
   local EXPECT="$3"
-  echo "Looking for file ${FILE_TO_CHECK}:"
-  if tar -tf "${TAR}" | tee /dev/stderr 2| \
-    (grep -q "${FILE_TO_CHECK}" || (echo "Not found!" && exit 1)); then $EXPECT
-  elif $EXPECT; then exit 1
+  if ! [[ -f "${TAR}" ]]; then
+    echo "${TAR}" not found.
+    exit 1
+  fi
+  echo "Looking for file ${FILE_TO_CHECK} in ${TAR}:"
+  if tar -tf "${TAR}" "${FILE_TO_CHECK}" >/dev/null 2>/dev/null; then
+    $EXPECT || (echo "Found but not expecting!" && exit 1)
+  elif $EXPECT; then
+    echo "Not found!" && exit 1
   fi
 }
 
-check "library_image_internal-layer.tar" "^./grail/r-libs/exampleC/DESCRIPTION$" "true"
-check "library_image_external-layer.tar" "^./grail/r-libs/exampleC/DESCRIPTION$" "false"
-check "library_image_external-layer.tar" "^./grail/r-libs/bitops/DESCRIPTION$" "true"
-check "library_image_internal-layer.tar" "^./grail/r-libs/bitops/DESCRIPTION$" "false"
+check "library_image_internal-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "true"
+check "library_image_external-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "true"
+check "library_image_internal-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
 
-check "library_archive.tar.gz" "^./grail/r-libs/exampleC/DESCRIPTION$" "false"
-check "library_archive.tar.gz" "^./grail/r-libs/bitops/DESCRIPTION" "true"
+check "library_archive.tar.gz" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_archive.tar.gz" "./grail/r-libs/bitops/DESCRIPTION" "true"
 
 echo "Found!"

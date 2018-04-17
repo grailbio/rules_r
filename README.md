@@ -643,8 +643,9 @@ the BUILD file automatically.
 r_repository_list(package_list, build_file_overrides, remote_repos, other_args)
 ```
 
-Repository rule that will generate a bzl file containing a macro for
-`r_repository` definitions for s.
+Repository rule that will generate a bzl file containing a macro, to be called
+as `r_repositories()`, for `r_repository` definitions for packages in
+`package_list` CSV.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -729,6 +730,6 @@ We have tested only on macOS and Ubuntu (VM and Docker).
 [exampleC]: tests/exampleC/BUILD
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
-[Makevars]: R/makevars/Makevars.darwin.tpl
+[Makevars]: makevars/Makevars.darwin.tpl
 [r_library_tar]: R/internal/library.bzl
 [docker]: R/container/README.md

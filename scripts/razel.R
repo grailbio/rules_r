@@ -236,14 +236,16 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     repo_pkgs <- read.csv(package_list_csv, header = TRUE, stringsAsFactors = FALSE,
                           col.names = c("Package", "Version", "sha256"))
   } else {
-    repo_pkgs <- as.data.frame(available.packages(repos = paste0("file://",
-                                                                 path.expand(local_repo_dir))))
+    local_repo_path <- paste0("file://", path.expand(local_repo_dir))
+    repo_pkgs <-
+      as.data.frame(available.packages(repos = local_repo_path, type = "source"))
   }
   repo_pkgs <- cbind(repo_pkgs,
                      Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version, ".tar.gz"))
 
   if (!use_only_mirror_repo) {
-    remote_pkgs <- available.packages(repos = remote_repos)[, c("Package", "Repository")]
+    remote_pkgs <-
+      available.packages(repos = remote_repos, type = "source")[, c("Package", "Repository")]
     colnames(remote_pkgs) <- c("Package", "Repository.remote")
     repo_pkgs <- merge(repo_pkgs, as.data.frame(remote_pkgs), by = "Package",
                        all.x = TRUE, all.y = FALSE)

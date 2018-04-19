@@ -238,22 +238,31 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   } else {
     local_repo_path <- paste0("file://", path.expand(local_repo_dir))
     repo_pkgs <-
-      as.data.frame(available.packages(repos = local_repo_path, type = "source"))
+      as.data.frame(available.packages(repos = local_repo_path, type = "source"),
+                    stringsAsFactors = FALSE)
   }
   repo_pkgs <- cbind(repo_pkgs,
-                     Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version, ".tar.gz"))
+                     Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version, ".tar.gz"),
+                     stringsAsFactors = FALSE)
 
-  if (!use_only_mirror_repo) {
+  if (!is.null(mirror_repo_url)) {
+    mirrored_pkgs <-
+      available.packages(repos = mirror_repo_url, type = "source")[, c("Package", "Repository")]
+    colnames(mirrored_pkgs) <- c("Package", "Repository.mirrored")
+    repo_pkgs <- merge(repo_pkgs, as.data.frame(mirrored_pkgs, stringsAsFactors = FALSE),
+                       by = "Package", all.x = TRUE, all.y = FALSE)
+  }
+
+  if (length(remote_repos) > 0) {
     remote_pkgs <-
       available.packages(repos = remote_repos, type = "source")[, c("Package", "Repository")]
     colnames(remote_pkgs) <- c("Package", "Repository.remote")
-    repo_pkgs <- merge(repo_pkgs, as.data.frame(remote_pkgs), by = "Package",
-                       all.x = TRUE, all.y = FALSE)
+    repo_pkgs <- merge(repo_pkgs, as.data.frame(remote_pkgs, stringsAsFactors = FALSE),
+                       by = "Package", all.x = TRUE, all.y = FALSE)
   }
 
-  if (sha256 && !("sha256" %in% colnames(repo_pkgs))) {
-    # Remove file://
-    pkg_files <- substr(file.path(repo_pkgs$Repository, repo_pkgs$Archive), 6, 10000)
+  if (sha256 && is.null(package_list_csv)) {
+    pkg_files <- file.path(local_repo_dir, repo_pkgs$Archive)
     pkg_shas <- sapply(pkg_files, function(pkg_file) {
                          digest::digest(file = pkg_file, algo = "sha256")
                        })
@@ -285,16 +294,16 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   for (i in seq_len(nrow(repo_pkgs))) {
     pkg <- repo_pkgs[i, ]
     pkg_repos <- c()
-    if (!is.null(mirror_repo_url)) {
-      pkg_repos <- c(paste0(mirror_repo_url, "/src/contrib"))
+    if ("Repository.mirrored" %in% colnames(pkg) && !is.na(pkg$Repository.mirrored)) {
+      pkg_repos <- c(pkg_repos, as.character(pkg$Repository.mirrored))
     }
-    if (!use_only_mirror_repo) {
+    if (!use_only_mirror_repo && "Repository.remote" %in% colnames(pkg) &&
+        !is.na(pkg$Repository.remote)) {
       pkg_repos <- c(pkg_repos, as.character(pkg$Repository.remote))
-      if ("CRAN" %in% names(remote_repos) &&
-          startsWith(as.character(pkg$Repository.remote), remote_repos["CRAN"])) {
-        # Older versions of CRAN packages get moved to Archive.
-        pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
-      }
+      pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
+    }
+    if (length(pkg_repos) == 0) {
+      stop("Package not available in any of the provided repos: ", pkg$Package)
     }
 
     pkg_build_file_format <- ifelse(is.na(pkg$build_file), build_file_format, pkg$build_file)

@@ -73,6 +73,50 @@ lock() {
 
 eval "${EXPORT_ENV_VARS_CMD:-}"
 
+# Instrument the package by modifying its loader and moving the gcno files
+# (offline instrumentation of native code) back to the output tree.
+# (This is inspired by the way covr already instruments packages.)
+instrument() {
+  ${RSCRIPT} - <<EOF
+pkg_name <- Sys.getenv("PKG_NAME")
+lib <- Sys.getenv("PKG_LIB_PATH")
+
+load_script <- file.path(lib, pkg_name, "R", pkg_name)
+lines <- readLines(file.path(lib, pkg_name, "R", pkg_name))
+lines <- append(lines,
+  c("setHook(packageEvent(pkg, \"onLoad\"),",
+    "  function(...) bazelCoverage:::trace_environment(ns, clear_counters = FALSE))",
+    "reg.finalizer(ns, function(...) {",
+    "  coverage_dir <- Sys.getenv(\"COVERAGE_DIR\")",
+    "  stopifnot(coverage_dir != \"\")",
+    "  covr:::save_trace(coverage_dir)",
+    "}, onexit = TRUE)"),
+  length(lines) - 1L)
+writeLines(text = lines, con = load_script)
+EOF
+
+  if [ -d "${PKG_SRC_DIR}/src" ]; then
+    # Move all the gcno files and create directories along the way.
+    # We do not put the gcno files in the PKG_LIB_PATH directory
+    # (that is, bazel-bin/<package path>/lib) but directly in
+    # bazel-bin/<package path> to have a rational way of pairing
+    # them with gcda files during LCOV generation.
+    (
+      ROOT="$(pwd)"
+      cd "${PKG_SRC_DIR}"
+      RSYNC_OPTIONS=-zmar
+      if "${BAZEL_R_DEBUG:-"false"}"; then
+        echo "gcno files:"
+        RSYNC_OPTIONS+=v
+      fi
+      rsync "${RSYNC_OPTIONS}" --include="*/" \
+        --include="*.gcno" \
+        --exclude="*" \
+        src/ "${ROOT}/${PKG_LIB_PATH}/../src"
+    )
+  fi
+}
+
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
@@ -129,13 +173,24 @@ fi
 
 export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
+export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
+
+if "${COVERAGE:-"false"}"; then
+  # We need to keep the sources for code coverage to work.
+  INSTALL_ARGS+=" --with-keep.source"
+fi
 
 # Easy case -- we allow timestamp and install paths to be stamped inside the package files.
 if ! ${REPRODUCIBLE_BUILD}; then
   silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --build --library="${PKG_LIB_PATH}" \
     "${PKG_SRC_DIR}"
   mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
+
+  if "${COVERAGE:-"false"}"; then
+    instrument
+  fi
 
   trap - EXIT
   cleanup
@@ -177,6 +232,10 @@ silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --built-timestamp='' --no-lock --bui
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
+
+if "${COVERAGE:-"false"}"; then
+  instrument
+fi
 
 trap - EXIT
 cleanup

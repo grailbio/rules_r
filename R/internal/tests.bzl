@@ -28,7 +28,10 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 def _test_impl(ctx):
-    library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
+    implicit_deps = []
+    if ctx.configuration.coverage_enabled:
+        implicit_deps.append(ctx.attr._bazel_coverage)
+    library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps + implicit_deps)
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
     pkg_tests_dir = _package_dir(ctx) + "/tests"
@@ -49,6 +52,7 @@ def _test_impl(ctx):
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{lib_dirs}": ":".join(lib_dirs),
             "{Rscript}": " ".join(_Rscript),
+            "{coverage}": "true" if ctx.configuration.coverage_enabled else "false",
         },
         is_executable = True,
     )
@@ -57,7 +61,16 @@ def _test_impl(ctx):
         files = library_deps["lib_dirs"] + test_files,
         transitive_files = tools,
     )
-    return [DefaultInfo(runfiles = runfiles)]
+    return struct(
+        # List the files that this rule instruments for code coverage.
+        # This Bazel built-in provider is not yet available using the new
+        # format (e.g., DefaultInfo, ...).
+        instrumented_files = struct(
+            # List the dependencies in which transitive instrumented files could be found.
+            dependency_attributes = ["pkg", "suggested_deps", "tools"],
+        ),
+        providers = [DefaultInfo(runfiles = runfiles)],
+    )
 
 r_unit_test = rule(
     attrs = {
@@ -79,6 +92,19 @@ r_unit_test = rule(
         "_test_sh_tpl": attr.label(
             allow_single_file = True,
             default = "@com_grail_rules_r//R/scripts:test.sh.tpl",
+        ),
+        # LcovMerger is explicitly needed by the LCOV file collection script
+        # built in Bazel, and the bazelCoverage package adapts the R covr
+        # package.  (Such coverage-only dependencies are also specified in
+        # this manner for the native java_library rule.)
+        "_lcov_merger": attr.label(
+            default = Label("@bazel_tools//tools/test:LcovMerger"),
+            executable = True,
+            cfg = "host",
+        ),
+        "_bazel_coverage": attr.label(
+            default = Label("@com_grail_rules_r//R/scripts/bazelCoverage"),
+            providers = [RPackage],
         ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +

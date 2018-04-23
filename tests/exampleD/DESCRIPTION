@@ -1,0 +1,6 @@
+Package: exampleD
+Title: "Example package D"
+Version: 1.0.0
+Authors@R: "First Last <first.last@example.com> [aut, cre]"
+Description: "Example package to demonstrate building an R package using Bazel."
+License: file LICENSE

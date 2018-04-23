@@ -24,6 +24,10 @@ load(
     "@com_grail_rules_r//makevars:makevars.bzl",
     _r_makevars = "r_makevars",
 )
+load(
+    "@com_grail_rules_r//R/internal:coverage.bzl",
+    "r_coverage_dependencies",
+)
 
 def r_rules_dependencies(
         makevars_darwin = "@com_grail_rules_r_makevars_darwin",

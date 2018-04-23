@@ -28,6 +28,19 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
+# The following list is taken from the global R Makeconf
+_SOURCE_EXTENSIONS = [
+    "c",
+    "cc",
+    "cpp",
+    "m",
+    "mm",
+    "M",
+    "f",
+    "f95",
+    "f90",
+]
+
 def _package_name(ctx):
     # Package name from attribute with fallback to label name.
 
@@ -52,7 +65,7 @@ def _strip_path_prefixes(iterable, p1, p2):
             res.append(s)
     return res
 
-def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
+def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir, coverage):
     # Returns a subscript to execute and additional input files.
 
     # Give absolute paths to R.
@@ -102,6 +115,26 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
         c_libs_flags += [root_path + l.path]
         c_libs_flags_short += [root_path + l.short_path]
 
+    # Notice that Clang and gcc and not compatible when dealing with instrumentation,
+    # so instrumentation of Fortran code will fail if clang is the C/C++ compiler and
+    # linker and gfortran (GNU fortran) is the Fortran compiler, which is usually
+    # the case on Mac OSX.
+    if coverage.instrumented:
+        c_cpp_flags += [
+            "--coverage",
+            # Ensure that, e.g., functions are not inlined (with optimization,
+            # the inlined functions would not be "hit").
+            "-O0",
+        ]
+        c_cpp_flags_short += ["--coverage"]
+
+    # The linker must always be aware of code coverage, even if the package
+    # is not instrumented: the cc deps could be, and in this case the
+    # coverage-related symbols have to be resolved properly.
+    if coverage.enabled:
+        c_libs_flags += ["--coverage"]
+        c_libs_flags_short += ["--coverage"]
+
     return {
         "files": hdrs + libs,
         "c_so_files": c_so_files,
@@ -130,15 +163,24 @@ def _build_impl(ctx):
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
     flock = ctx.attr._flock.files_to_run.executable
+    coverage = struct(
+        enabled = ctx.configuration.coverage_enabled,
+        instrumented = ctx.coverage_instrumented(),
+    )
 
     library_deps = _library_deps(ctx.attr.deps)
-    cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir, ctx.bin_dir.path, ctx.genfiles_dir.path)
+    cc_deps = _cc_deps(
+        ctx.attr.cc_deps,
+        pkg_src_dir,
+        ctx.bin_dir.path,
+        ctx.genfiles_dir.path,
+        coverage,
+    )
     transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
     build_tools = _executables(ctx.attr.build_tools) + transitive_tools
     all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
                        cc_deps["files"].to_list() +
-                       build_tools.to_list() +
-                       [ctx.file.makevars_user, flock])
+                       build_tools.to_list() + [ctx.file.makevars_user, flock])
 
     if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
@@ -171,6 +213,7 @@ def _build_impl(ctx):
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
         "R": " ".join(_R),
         "RSCRIPT": " ".join(_Rscript),
+        "COVERAGE": "true" if coverage.instrumented else "false",
     }
     ctx.actions.run(
         outputs = output_files,
@@ -199,18 +242,18 @@ def _build_impl(ctx):
             runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
         ),
         RPackage(
-            pkg_name = pkg_name,
-            pkg_lib_dir = pkg_lib_dir,
-            src_files = ctx.files.srcs,
-            src_archive = pkg_src_archive,
             bin_archive = pkg_bin_archive,
-            pkg_deps = ctx.attr.deps,
-            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
-            transitive_tools = transitive_tools,
             build_tools = build_tools,
-            makevars_user = ctx.file.makevars_user,
             cc_deps = cc_deps,
             external_repo = ("external-r-repo" in ctx.attr.tags),
+            makevars_user = ctx.file.makevars_user,
+            pkg_deps = ctx.attr.deps,
+            pkg_lib_dir = pkg_lib_dir,
+            pkg_name = pkg_name,
+            src_archive = pkg_src_archive,
+            src_files = ctx.files.srcs,
+            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+            transitive_tools = transitive_tools,
         ),
     ]
 
@@ -244,26 +287,43 @@ def _build_binary_pkg_impl(ctx):
         progress_message = "Extracting R binary package %s" % pkg_name,
     )
 
-    return [
-        DefaultInfo(
-            files = depset([pkg_lib_dir]),
-            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+    return struct(
+        # List the files that this rule instruments for code coverage.
+        # This Bazel built-in provider is not yet available using the new
+        # format (e.g., DefaultInfo, ...).
+        instrumented_files = struct(
+            # List the dependencies in which transitive instrumented files could be found.
+            dependency_attributes = ["deps", "cc_deps", "tools"],
+            extensions = [
+                # There are other extensions for R code, but this is the most common
+                "R",
+                # CC headers can contain inline definitions
+                "h",
+                "hpp",
+            ] + _SOURCE_EXTENSIONS,
+            source_attributes = ["srcs"],
         ),
-        RPackage(
-            pkg_name = pkg_name,
-            pkg_lib_dir = pkg_lib_dir,
-            src_files = None,
-            src_archive = None,
-            bin_archive = pkg_bin_archive,
-            pkg_deps = ctx.attr.deps,
-            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
-            transitive_tools = transitive_tools,
-            build_tools = None,
-            makevars_user = None,
-            cc_deps = None,
-            external_repo = ("external-r-repo" in ctx.attr.tags),
-        ),
-    ]
+        providers = [
+            DefaultInfo(
+                files = depset([pkg_lib_dir]),
+                runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+            ),
+            RPackage(
+                bin_archive = pkg_bin_archive,
+                build_tools = None,
+                cc_deps = None,
+                external_repo = ("external-r-repo" in ctx.attr.tags),
+                makevars_user = None,
+                pkg_deps = ctx.attr.deps,
+                pkg_lib_dir = pkg_lib_dir,
+                pkg_name = pkg_name,
+                src_archive = None,
+                src_files = None,
+                transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+                transitive_tools = transitive_tools,
+            ),
+        ],
+    )
 
 _COMMON_ATTRS = {
     "pkg_name": attr.string(

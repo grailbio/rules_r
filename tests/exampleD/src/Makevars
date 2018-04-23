@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,20 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euxo pipefail
-
-cd "$(dirname "${BASH_SOURCE[0]}")"
-
-# r_binary related tests.  Run these individually most layered target first,
-# before building everything so we don't have runfiles built for wrapped
-# targets. The alternative is to clean the workspace before each test.
-bazel run //:binary_sh_test
-bazel-bin/binary_sh_test
-bazel run //:binary_r_test
-bazel-bin/binary_r_test
-bazel run //:binary
-bazel-bin/binary
-
-bazel test --color=yes --show_progress_rate_limit=30 --keep_going --test_output=errors //...
-
-./coverage_test.sh
+OBJECTS = fn.o lib/getCharacter.o

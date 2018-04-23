@@ -37,6 +37,7 @@ fi
 
 R_LIBS="{lib_dirs}"
 R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
+RUNFILES=$PWD  # Capture before switching to TEST_TMPDIR
 export R_LIBS
 export R_LIBS_USER=dummy
 
@@ -50,6 +51,20 @@ fi
 # Copy the tests to a writable directory.
 cp -LR "${PKG_TESTS_DIR}/"* ${TEST_TMPDIR}
 pushd ${TEST_TMPDIR} >/dev/null
+
+# Set up the code coverage environment
+if "{coverage}"; then
+  export GCOV_PREFIX="${COVERAGE_DIR}/gcda"
+  # We strip gcov paths of the execroot.  We derive the execroot
+  # from the COVERAGE_DIR as it is not exposed by 'bazel test'.
+  export GCOV_PREFIX_STRIP=$({Rscript} - <<EOF
+coverage_dir <- normalizePath(Sys.getenv("COVERAGE_DIR"))
+i <- regexpr("/_coverage/", coverage_dir, fixed=TRUE)
+cat(length(unlist(gregexpr("/", substring(coverage_dir, 1, i - 1), fixed=TRUE))))
+EOF
+)
+  export R_COVR=true  # (As exported by covr)
+fi
 
 cleanup() {
   popd >/dev/null
@@ -72,6 +87,25 @@ if ls *.[Rr] > /dev/null 2>&1; then
       exit 1
     fi
   done
+fi
+
+# Collect code coverage
+if "${R_COVR:-false}"; then
+  # We derive the execroot from the COVERAGE_DIR as it is not exposed
+  # by 'bazel test'.
+  export EXEC_ROOT=$({Rscript} - <<EOF
+coverage_dir <- normalizePath(Sys.getenv("COVERAGE_DIR"))
+i <- regexpr("/_coverage/", coverage_dir)
+cat(substring(coverage_dir, 1, i))
+EOF
+)
+
+  # COVERAGE_GCOV_PATH allows to use, e.g., llvm-cov instead of
+  # GNU gcov on Linux.  It might be populated, e.g., with the cc toolchain.
+  COVERAGE_GCOV_PATH="${COVERAGE_GCOV_PATH:-$(which gcov)}" \
+  RUNFILES="${RUNFILES}" \
+  BAZEL_R_DEBUG="${BAZEL_R_DEBUG:-"false"}" \
+    {Rscript} -e "bazelCoverage::report()"
 fi
 
 cleanup

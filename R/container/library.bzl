@@ -102,6 +102,7 @@ def r_library_image(**kwargs):
         tools_install_path = kwargs["tools_install_path"],
         layer_type = layer_type,
         directory = kwargs["directory"],
+        tags = ["manual"],
     ) for (layer_type, layer) in _layers.items()]
     kwargs.pop("library")
     kwargs.pop("library_path")

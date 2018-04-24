@@ -212,6 +212,9 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #'        \code{getOption("repos")}.
 #' @param use_only_mirror_repo If true, will use only the provided mirror repo
 #'        URL.
+#' @param fail_fast If true, will fail loading the workspace if a package was
+#'        not found. Otherwise, the failure will happen on first use of the
+#'        package.
 #' @export
 generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    package_list_csv = NULL,
@@ -222,7 +225,8 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    rule_type = c("r_repository", "new_http_archive"),
                                    remote_repos = getOption("repos"),
                                    mirror_repo_url = NULL,
-                                   use_only_mirror_repo = FALSE) {
+                                   use_only_mirror_repo = FALSE,
+                                   fail_fast = FALSE) {
   stopifnot(!is.null(local_repo_dir) || !is.null(package_list_csv))
   stopifnot(!use_only_mirror_repo || !is.null(mirror_repo_url))
   rule_type <- match.arg(rule_type)
@@ -302,7 +306,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       pkg_repos <- c(pkg_repos, as.character(pkg$Repository.remote))
       pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
     }
-    if (length(pkg_repos) == 0) {
+    if (isTRUE(fail_fast) && length(pkg_repos) == 0) {
       stop("Package not available in any of the provided repos: ", pkg$Package)
     }
 
@@ -322,7 +326,9 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
              "    sha256 = None,"),
       paste0("    strip_prefix = \"", pkg$Package, "\","),
       "    urls = [",
-      paste0("        \"", pkg_repos, "/", pkg$Archive, "\","),
+      ifelse(length(pkg_repos) > 0,
+             paste0("        \"", pkg_repos, "/", pkg$Archive, "\","),
+             ""),
       "    ],",
       ")") -> bazel_repo_def
     writeLines(paste0(strrep(" ", 8), bazel_repo_def), output_con)

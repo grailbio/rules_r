@@ -70,6 +70,9 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #'        \code{getOption("repos")}.
 #' @param use_only_mirror_repo If true, will use only the provided mirror repo
 #'        URL.
+#' @param fail_fast If true, will fail loading the workspace if a package was
+#'        not found. Otherwise, the failure will happen on first use of the
+#'        package.
 #' @export
 generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    package_list_csv = NULL,
@@ -80,7 +83,8 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    rule_type = c("r_repository", "new_http_archive"),
                                    remote_repos = getOption("repos"),
                                    mirror_repo_url = NULL,
-                                   use_only_mirror_repo = FALSE) ...
+                                   use_only_mirror_repo = FALSE,
+                                   fail_fast = FALSE) ...
 ```
 
 ## repo_management.R

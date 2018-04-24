@@ -21,6 +21,10 @@ _razel = attr.label(
 )
 
 def _r_repository_impl(rctx):
+    if not rctx.attr.urls:
+        fail(("No sources found for repository '@%s'. Perhaps this package is " % rctx.name) +
+              "not available for your R version.")
+
     rctx.download_and_extract(rctx.attr.urls, sha256=rctx.attr.sha256, type=rctx.attr.type,
                               stripPrefix=rctx.attr.strip_prefix)
 

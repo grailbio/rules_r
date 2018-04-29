@@ -109,6 +109,7 @@ def _check_impl(ctx):
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{c_libs_flags}": " ".join(cc_deps["c_libs_flags_short"]),
             "{c_cpp_flags}": " ".join(cc_deps["c_cpp_flags_short"]),
+            "{c_so_files}": _sh_quote_args([f.short_path for f in cc_deps["c_so_files"]]),
             "{r_makevars_user}": makevars_user.short_path if makevars_user else "",
             "{lib_dirs}": ":".join(lib_dirs),
             "{check_args}": _sh_quote_args(ctx.attr.check_args),

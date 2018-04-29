@@ -84,7 +84,7 @@ if [[ "${CONFIG_OVERRIDE}" ]]; then
 fi
 
 if [[ "${ROCLETS}" ]]; then
-  silent "${RSCRIPT}" -e "roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))"
+  silent "${RSCRIPT}" -e "\"roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\""
 fi
 
 if "${BUILD_SRC_ARCHIVE:-"false"}"; then
@@ -96,7 +96,18 @@ if "${BUILD_SRC_ARCHIVE:-"false"}"; then
   exit
 fi
 
-export PKG_LIBS="${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+# Hack: copy the .so files inside the package source so that they are installed
+# (in bazel's sandbox as well as on user's system) along with package libs, and
+# use relative rpath.
+if [[ "${C_SO_FILES}" ]]; then
+  mkdir -p "${PKG_SRC_DIR}/src"
+  eval cp "${C_SO_FILES}" "${PKG_SRC_DIR}/src" # Use eval to remove outermost quotes.
+  #shellcheck disable=SC2016
+  # Not all toolchains support $ORIGIN variable in rpath.
+  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
+fi
+
+export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
 

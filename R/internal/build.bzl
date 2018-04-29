@@ -142,12 +142,22 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
     c_libs_flags_short = depset()
     c_cpp_flags = depset()
     c_cpp_flags_short = depset()
+    c_so_files = depset()
     for d in cc_deps:
         files += (d.cc.libs.to_list()
                   + d.cc.transitive_headers.to_list())
 
         c_libs_flags += d.cc.link_flags
+        c_libs_flags_short += d.cc.link_flags
         for l in d.cc.libs:
+            # dylib is not supported because macOS does not support $ORIGIN in rpath.
+            if l.extension == "so":
+                c_so_files += [l]
+                # We copy the file in srcs and set relative rpath for R CMD INSTALL.
+                c_libs_flags += [l.basename]
+                # We use LD_LIBRARY_PATH for R CMD check.
+                c_libs_flags_short += [root_path + l.short_path]
+                continue
             c_libs_flags += [root_path + l.path]
             c_libs_flags_short += [root_path + l.short_path]
 
@@ -170,6 +180,7 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
 
     return {
         "files": files,
+        "c_so_files": c_so_files.to_list(),
         "c_libs_flags": c_libs_flags.to_list(),
         "c_libs_flags_short": c_libs_flags_short.to_list(),
         "c_cpp_flags": c_cpp_flags.to_list(),
@@ -195,7 +206,6 @@ def _build_impl(ctx):
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
     package_files = _package_files(ctx)
-    output_files = package_files + [pkg_lib_path, pkg_bin_archive]
     flock = ctx.attr._flock.files_to_run.executable
 
     library_deps = _library_deps(ctx.attr.deps)
@@ -212,6 +222,11 @@ def _build_impl(ctx):
         orig_config = pkg_src_dir + "/configure"
         all_input_files = _remove_file(all_input_files, orig_config)
 
+    for so_file in cc_deps["c_so_files"]:
+        package_files += [ctx.actions.declare_file("lib/%s/libs/%s" % (pkg_name, so_file.basename))]
+    pkg_src_files = ctx.files.srcs + cc_deps["c_so_files"]
+    output_files = package_files + [pkg_lib_path, pkg_bin_archive]
+
     build_env = {
         "PKG_LIB_PATH": pkg_lib_path.path,
         "PKG_SRC_DIR": pkg_src_dir,
@@ -223,6 +238,7 @@ def _build_impl(ctx):
         "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
         "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
         "C_CPP_FLAGS": " ".join(cc_deps["c_cpp_flags"]),
+        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps["c_so_files"]]),
         "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
@@ -235,20 +251,22 @@ def _build_impl(ctx):
         "R": " ".join(_R),
         "RSCRIPT": " ".join(_Rscript),
     }
-    ctx.actions.run(outputs=output_files, inputs=all_input_files, executable=ctx.executable._build_sh,
+    ctx.actions.run(outputs=output_files, inputs=all_input_files,
+                    executable=ctx.executable._build_sh,
                     env=build_env,
                     mnemonic="RBuild", use_default_shell_env=False,
                     progress_message="Building R package %s" % pkg_name)
 
     # Lightweight action to build just the source archive.
-    ctx.actions.run(outputs=[pkg_src_archive], inputs=ctx.files.srcs, executable=ctx.executable._build_sh,
+    ctx.actions.run(outputs=[pkg_src_archive], inputs=pkg_src_files,
+                    executable=ctx.executable._build_sh,
                     env=build_env + {"BUILD_SRC_ARCHIVE": "true"},
                     mnemonic="RSrcBuild", use_default_shell_env=False,
                     progress_message="Building R (source) package %s" % pkg_name)
 
     # Lighweight action to check the package file list against the files in the
     # binary archive.
-    pkg_file_list_diff = ctx.actions.declare_file("pkg_file_list_diff.txt")
+    pkg_file_list_diff = ctx.actions.declare_file(ctx.attr.name + "_pkg_file_list_diff.txt")
     ctx.actions.run(outputs=[pkg_file_list_diff],
                     inputs=([pkg_bin_archive] + package_files),
                     executable=ctx.executable._file_list_diff_sh,

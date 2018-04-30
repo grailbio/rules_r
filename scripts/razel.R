@@ -309,6 +309,11 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     if (isTRUE(fail_fast) && length(pkg_repos) == 0) {
       stop("Package not available in any of the provided repos: ", pkg$Package)
     }
+    if (length(pkg_repos) > 0) {
+      pkg_urls <- paste0("        \"", pkg_repos, "/", pkg$Archive, "\",")
+    } else {
+      pkg_urls <- c()
+    }
 
     pkg_build_file_format <- ifelse(is.na(pkg$build_file), build_file_format, pkg$build_file)
     bzl_repo_name <- paste0("R_", gsub("\\.", "_", pkg$Package))
@@ -326,9 +331,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
              "    sha256 = None,"),
       paste0("    strip_prefix = \"", pkg$Package, "\","),
       "    urls = [",
-      ifelse(length(pkg_repos) > 0,
-             paste0("        \"", pkg_repos, "/", pkg$Archive, "\","),
-             ""),
+      pkg_urls,
       "    ],",
       ")") -> bazel_repo_def
     writeLines(paste0(strrep(" ", 8), bazel_repo_def), output_con)

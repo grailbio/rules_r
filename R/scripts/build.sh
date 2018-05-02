@@ -83,6 +83,12 @@ if [[ "${CONFIG_OVERRIDE}" ]]; then
   cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
 fi
 
+# Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
+# R_LIBS_USER is parameter substituted with a default in .Renviron, which
+# imposes length limits.
+export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export R_LIBS_USER=dummy
+
 if [[ "${ROCLETS}" ]]; then
   silent "${RSCRIPT}" -e "\"roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\""
 fi
@@ -110,12 +116,6 @@ fi
 export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
-
-# Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
-# R_LIBS_USER is parameter substituted with a default in .Renviron, which
-# imposes length limits.
-export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export R_LIBS_USER=dummy
 
 mkdir -p "${PKG_LIB_PATH}"
 

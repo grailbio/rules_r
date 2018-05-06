@@ -31,7 +31,12 @@ r_pkg(
             "**/*inst/doc/Makefile*/**",
         ],
     ),
-    cc_deps = ["@com_google_protobuf//:protobuf"],
+    cc_deps = [
+        # The dependencies are redundant and in this order to test topological sort of linked libraries.
+        # https://github.com/grailbio/rules_r/issues/24#issuecomment-386922366
+        "@com_google_protobuf//:protobuf_lite",
+        "@com_google_protobuf//:protobuf",
+    ],
     config_override = ":empty",
     deps = [
         "@R_RCurl",

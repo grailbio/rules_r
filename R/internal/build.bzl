@@ -137,29 +137,15 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
     # Give absolute paths to R.
     root_path = "_EXEC_ROOT_"
 
-    files = depset()
-    c_libs_flags = depset()
-    c_libs_flags_short = depset()
+    libs = depset(order = "topological")
+    link_flags = depset()
+    hdrs = depset()
     c_cpp_flags = depset()
     c_cpp_flags_short = depset()
-    c_so_files = depset()
     for d in cc_deps:
-        files += (d.cc.libs.to_list()
-                  + d.cc.transitive_headers.to_list())
-
-        c_libs_flags += d.cc.link_flags
-        c_libs_flags_short += d.cc.link_flags
-        for l in d.cc.libs:
-            # dylib is not supported because macOS does not support $ORIGIN in rpath.
-            if l.extension == "so":
-                c_so_files += [l]
-                # We copy the file in srcs and set relative rpath for R CMD INSTALL.
-                c_libs_flags += [l.basename]
-                # We use LD_LIBRARY_PATH for R CMD check.
-                c_libs_flags_short += [root_path + l.short_path]
-                continue
-            c_libs_flags += [root_path + l.path]
-            c_libs_flags_short += [root_path + l.short_path]
+        libs += d.cc.libs
+        link_flags += d.cc.link_flags
+        hdrs += d.cc.transitive_headers
 
         for i in d.cc.defines:
             c_cpp_flags += ["-D" + i]
@@ -178,11 +164,26 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
         for i in _strip_path_prefixes(d.cc.include_directories, bin_dir, gen_dir):
             c_cpp_flags_short += ["-I " + root_path + i]
 
+    c_so_files = []
+    c_libs_flags = link_flags.to_list()
+    c_libs_flags_short = link_flags.to_list()
+    for l in libs:
+        # dylib is not supported because macOS does not support $ORIGIN in rpath.
+        if l.extension == "so":
+            c_so_files += [l]
+            # We copy the file in srcs and set relative rpath for R CMD INSTALL.
+            c_libs_flags += [l.basename]
+            # We use LD_LIBRARY_PATH for R CMD check.
+            c_libs_flags_short += [root_path + l.short_path]
+            continue
+        c_libs_flags += [root_path + l.path]
+        c_libs_flags_short += [root_path + l.short_path]
+
     return {
-        "files": files,
-        "c_so_files": c_so_files.to_list(),
-        "c_libs_flags": c_libs_flags.to_list(),
-        "c_libs_flags_short": c_libs_flags_short.to_list(),
+        "files": hdrs + libs,
+        "c_so_files": c_so_files,
+        "c_libs_flags": c_libs_flags,
+        "c_libs_flags_short": c_libs_flags_short,
         "c_cpp_flags": c_cpp_flags.to_list(),
         "c_cpp_flags_short": c_cpp_flags_short.to_list(),
     }

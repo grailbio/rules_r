@@ -111,7 +111,7 @@ collect_native_coverage <- function(cfg) {
 copy_native_coverage_files <- function(rel_paths, gcno_root, cfg) {
   for (cur in rel_paths) {
     # Create output directory
-    dir.create(dirname(file.path(cfg$native_working_dir, cur)), recursive = TRUE)
+    dir.create(dirname(file.path(cfg$native_working_dir, cur)), recursive = TRUE, showWarnings = FALSE)
 
     # Copy gcno file
     src <- file.path(gcno_root, cur)
@@ -148,7 +148,7 @@ copy_native_coverage_files <- function(rel_paths, gcno_root, cfg) {
 parse_gcov <- function(rel_path, root, cc_library_gcno_files) {
   # See https://gcc.gnu.org/onlinedocs/gcc/Invoking-Gcov.html, option -p,
   # for the logic of the basename.
-  if (startsWith(rel_path, "#")) {
+  if (startsWith(basename(rel_path), "#")) {
     # The source file was included using an absolute path, we assume
     # it is a system file and exclude it from coverage.
     return (NULL)

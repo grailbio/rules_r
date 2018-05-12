@@ -18,7 +18,6 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
-    _Rscript = "Rscript",
     _env_vars = "env_vars",
     _executables = "executables",
     _library_deps = "library_deps",
@@ -28,6 +27,8 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 def _test_impl(ctx):
+    tc = ctx.toolchains["@com_grail_rules_r//R/toolchains:r_toolchain_type"]
+
     library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
@@ -46,15 +47,14 @@ def _test_impl(ctx):
         substitutions = {
             "{pkg_tests_dir}": pkg_tests_dir,
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
-            "{tools_export_cmd}": _runtime_path_export(tools),
+            "{tools_export_cmd}": _runtime_path_export(tools + tc.tools),
             "{lib_dirs}": ":".join(lib_dirs),
-            "{Rscript}": " ".join(_Rscript),
         },
         is_executable = True,
     )
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files,
-                            transitive_files = tools)
+                            transitive_files = tools).merge(tc.runfiles)
     return [DefaultInfo(runfiles=runfiles)]
 
 r_unit_test = rule(
@@ -84,9 +84,12 @@ r_unit_test = rule(
            "be one of the deps."),
     test = True,
     implementation = _test_impl,
+    toolchains = ["@com_grail_rules_r//R/toolchains:r_toolchain_type"],
 )
 
 def _check_impl(ctx):
+    tc = ctx.toolchains["@com_grail_rules_r//R/toolchains:r_toolchain_type"]
+
     src_archive = ctx.attr.pkg[RPackage].src_archive
     pkg_deps = ctx.attr.pkg[RPackage].pkg_deps
     build_tools = ctx.attr.pkg[RPackage].build_tools
@@ -106,7 +109,7 @@ def _check_impl(ctx):
         output = ctx.outputs.executable,
         substitutions = {
             "{export_env_vars}": "\n".join(_env_vars(ctx.attr.env_vars)),
-            "{tools_export_cmd}": _runtime_path_export(tools),
+            "{tools_export_cmd}": _runtime_path_export(tools + tc.tools),
             "{c_libs_flags}": " ".join(cc_deps["c_libs_flags_short"]),
             "{c_cpp_flags}": " ".join(cc_deps["c_cpp_flags_short"]),
             "{c_so_files}": _sh_quote_args([f.short_path for f in cc_deps["c_so_files"]]),
@@ -118,7 +121,7 @@ def _check_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(files=all_input_files)
+    runfiles = ctx.runfiles(files=all_input_files).merge(tc.runfiles)
     return [DefaultInfo(runfiles=runfiles)]
 
 r_pkg_test = rule(
@@ -155,4 +158,5 @@ r_pkg_test = rule(
            "the package source archive in the sandbox."),
     test = True,
     implementation = _check_impl,
+    toolchains = ["@com_grail_rules_r//R/toolchains:r_toolchain_type"],
 )

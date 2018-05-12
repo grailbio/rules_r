@@ -22,17 +22,6 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
-R = [
-    "R",
-    "--vanilla",
-    "--slave",
-]
-
-Rscript = [
-    "Rscript",
-    "--vanilla",
-]
-
 def package_dir(ctx):
     # Relative path to target directory.
 

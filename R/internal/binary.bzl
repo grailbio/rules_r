@@ -18,7 +18,6 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
-    _Rscript = "Rscript",
     _env_vars = "env_vars",
     _executables = "executables",
     _layer_library_deps = "layer_library_deps",
@@ -28,6 +27,8 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage", "RLibrary", "RBinary")
 
 def _r_binary_impl(ctx):
+    tc = ctx.toolchains["@com_grail_rules_r//R/toolchains:r_toolchain_type"]
+
     srcs = depset([ctx.file.src])
     exe = depset([ctx.outputs.executable])
     tools = depset(_executables(ctx.attr.tools))
@@ -56,9 +57,8 @@ def _r_binary_impl(ctx):
             "{src}": ctx.file.src.short_path,
             "{lib_dirs}": ":".join(lib_dirs),
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
-            "{tools_export_cmd}": _runtime_path_export(transitive_tools),
+            "{tools_export_cmd}": _runtime_path_export(transitive_tools + tc.tools),
             "{workspace_name}": ctx.workspace_name,
-            "{Rscript}": " ".join(_Rscript),
             "{Rscript_args}": _sh_quote_args(ctx.attr.rscript_args),
         },
         is_executable = True,
@@ -68,7 +68,7 @@ def _r_binary_impl(ctx):
 
     runfiles = ctx.runfiles(files=library_deps["lib_files"],
                             transitive_files = srcs + exe + transitive_tools,
-                            collect_data = True)
+                            collect_data = True).merge(tc.runfiles)
     return [
         DefaultInfo(runfiles=runfiles),
         RBinary(srcs=srcs,
@@ -125,6 +125,7 @@ r_binary = rule(
     doc = "Rule to run a binary with a configured R library.",
     executable = True,
     implementation = _r_binary_impl,
+    toolchains = ["@com_grail_rules_r//R/toolchains:r_toolchain_type"],
 )
 
 r_test = rule(
@@ -133,4 +134,5 @@ r_test = rule(
     executable = True,
     test = True,
     implementation = _r_binary_impl,
+    toolchains = ["@com_grail_rules_r//R/toolchains:r_toolchain_type"],
 )

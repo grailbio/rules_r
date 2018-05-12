@@ -58,7 +58,7 @@ cleanup() {
 
 if ls *.Rin > /dev/null 2>&1; then
   for SCRIPT in *.Rin; do
-    if ! {Rscript} "${SCRIPT}"; then
+    if ! Rscript --vanilla --slave "${SCRIPT}"; then
       cleanup
       exit 1
     fi
@@ -67,7 +67,7 @@ fi
 
 if ls *.[Rr] > /dev/null 2>&1; then
   for SCRIPT in *.[Rr]; do
-    if ! {Rscript} "${SCRIPT}"; then
+    if ! Rscript --vanilla --slave "${SCRIPT}"; then
       cleanup
       exit 1
     fi

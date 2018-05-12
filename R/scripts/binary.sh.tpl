@@ -54,7 +54,7 @@ export R_LIBS_USER=dummy
 if [[ -x "{src}" ]]; then
   "./{src}" "$@"
 else
-  {Rscript} {Rscript_args} "{src}"
+  Rscript --vanilla --slave {Rscript_args} "{src}"
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."

@@ -66,3 +66,7 @@ r_repository_list(
 load("@r_repositories_bzl//:r_repositories.bzl", "r_repositories")
 
 r_repositories()
+
+load("//:test_toolchain.bzl", "test_r_toolchain")
+
+test_r_toolchain(name = "test_r_toolchain")

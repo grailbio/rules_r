@@ -15,6 +15,9 @@
 
 set -euo pipefail
 
+# Export path to tools needed for the script.
+{tools_export_cmd}
+
 help() {
   echo 'Usage: bazel run target_label -- [-l library_path] [-s]'
   echo '  -l  library_path is the directory where R packages will be installed'
@@ -32,7 +35,7 @@ while getopts "l:sh" opt; do
   esac
 done
 
-DEFAULT_R_LIBRARY="$({Rscript} -e 'cat(.libPaths()[1])')"
+DEFAULT_R_LIBRARY="$(Rscript --vanilla --slave -e 'cat(.libPaths()[1])')"
 LIBRARY_PATH=${LIBRARY_PATH:-${DEFAULT_R_LIBRARY}}
 mkdir -p "${LIBRARY_PATH}"
 

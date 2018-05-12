@@ -18,8 +18,6 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
-    _R = "R",
-    _Rscript = "Rscript",
     _build_path_export = "build_path_export",
     _env_vars = "env_vars",
     _executables = "executables",
@@ -36,7 +34,7 @@ def _package_name(ctx):
         pkg_name = ctx.label.name
     return pkg_name
 
-def _package_files(ctx):
+def _package_files(ctx, tc):
     # Returns files that are installed as an R package.
 
     pkg_name = _package_name(ctx)
@@ -75,6 +73,10 @@ def _package_files(ctx):
         ctx.actions.declare_file("lib/{0}/html/00Index.html".format(pkg_name)),
         ctx.actions.declare_file("lib/{0}/html/R.css".format(pkg_name)),
     ]
+    if tc.features.has_features_rds:
+        pkg_files += [
+            ctx.actions.declare_file("lib/{0}/Meta/features.rds".format(pkg_name)),
+        ]
 
     if has_R_code:
         pkg_files += [
@@ -201,12 +203,14 @@ def _remove_file(files, path_to_remove):
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
+    tc = ctx.toolchains["@com_grail_rules_r//R/toolchains:r_toolchain_type"]
+
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
     pkg_lib_path = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
-    package_files = _package_files(ctx)
+    package_files = _package_files(ctx, tc)
     flock = ctx.attr._flock.files_to_run.executable
 
     library_deps = _library_deps(ctx.attr.deps)
@@ -244,22 +248,20 @@ def _build_impl(ctx):
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
-        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
+        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools + tc.tools),
         "FLOCK_PATH": flock.path,
         "REPRODUCIBLE_BUILD": "true" if "rlang-reproducible" in ctx.features else "false",
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
-        "R": " ".join(_R),
-        "RSCRIPT": " ".join(_Rscript),
     }
-    ctx.actions.run(outputs=output_files, inputs=all_input_files,
+    ctx.actions.run(outputs=output_files, inputs=depset(all_input_files) + tc.files,
                     executable=ctx.executable._build_sh,
                     env=build_env,
                     mnemonic="RBuild", use_default_shell_env=False,
                     progress_message="Building R package %s" % pkg_name)
 
     # Lightweight action to build just the source archive.
-    ctx.actions.run(outputs=[pkg_src_archive], inputs=pkg_src_files,
+    ctx.actions.run(outputs=[pkg_src_archive], inputs=depset(pkg_src_files) + tc.files,
                     executable=ctx.executable._build_sh,
                     env=build_env + {"BUILD_SRC_ARCHIVE": "true"},
                     mnemonic="RSrcBuild", use_default_shell_env=False,
@@ -385,4 +387,5 @@ r_pkg = rule(
         "src_archive": "%{name}.tar.gz",
     },
     implementation = _build_impl,
+    toolchains = ["@com_grail_rules_r//R/toolchains:r_toolchain_type"],
 )

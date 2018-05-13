@@ -152,7 +152,8 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
   }
 
   result <- system2("buildifier", build_file)
-  if (result != 0) {
+  if (result != 0 && result != 4) {
+    # 0: no formatting needed; 4: the file was formatted in-place
     warning(sprintf("buildifier could not format the file (return code %s)", result))
   }
 }

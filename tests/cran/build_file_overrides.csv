@@ -1,2 +1,3 @@
 "Package","build_file"
 "RProtoBuf","@com_grail_rules_r_tests//cran:BUILD.RProtoBuf"
+"RCurl","@com_grail_rules_r_tests//cran:BUILD.RCurl"

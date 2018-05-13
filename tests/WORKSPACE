@@ -70,3 +70,13 @@ r_repositories()
 load("//:test_toolchain.bzl", "test_r_toolchain")
 
 test_r_toolchain(name = "test_r_toolchain")
+
+http_archive(
+  name = "bazel_toolchains",
+  urls = [
+    "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/archive/e45c1eff559abfc22f6a748d2d5835fe0f544536.tar.gz",
+    "https://github.com/bazelbuild/bazel-toolchains/archive/e45c1eff559abfc22f6a748d2d5835fe0f544536.tar.gz",
+  ],
+  strip_prefix = "bazel-toolchains-e45c1eff559abfc22f6a748d2d5835fe0f544536",
+  sha256 = "21c94c714c719613f31bfba5f066ee3eb38bc148ba1fc809571c8faa5016152e",
+)

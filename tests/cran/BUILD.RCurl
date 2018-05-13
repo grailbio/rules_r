@@ -1,0 +1,56 @@
+# Copyright 2018 The Bazel Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
+
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "R_RCurl",
+    actual = "RCurl",
+)
+
+genrule(
+    name = "genrule_empty",
+    outs = ["empty"],
+    cmd = "touch $@",
+)
+
+cc_library(
+  name = "curl",
+  linkopts = ["-lcurl"],
+)
+
+r_pkg(
+    name = "RCurl",
+    srcs = glob(
+        ["**"],
+        exclude = [
+            "BUILD.bazel",
+            "inst/doc/RCurl.tex",
+        ],
+    ),
+    tags = ["external-r-repo"],
+    config_override = ":empty",
+    cc_deps = [":curl"],
+    deps = [
+        "@R_bitops",
+    ],
+)
+
+r_library(
+    name = "library",
+    pkgs = [":RCurl"],
+    tags = ["manual"],
+)

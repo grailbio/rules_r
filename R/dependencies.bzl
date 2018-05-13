@@ -33,7 +33,9 @@ def r_rules_dependencies(makevars_darwin="@com_grail_rules_r_makevars_darwin",
                          makevars_linux=None,
                          r_version="local",
                          local_r_home=None):
-    _is_at_least("0.10", native.bazel_version)
+    # The Bazel version can be empty if Bazel has been built at HEAD without stamping.
+    if native.bazel_version != "":
+        _is_at_least("0.10", native.bazel_version)
 
     # TODO: Use bazel-skylib directly instead of replicating functionality when
     # nested workspaces become a reality.  Otherwise, dependencies will need to

@@ -40,12 +40,18 @@ def _r_toolchain_impl(ctx):
         tools = tools,
         runfiles = runfiles,
         files = runfiles.files + tools,
+        makevars_user = ctx.file.makevars_user,
         features = _get_features(ctx.attr.r_version),
     )]
 
 r_toolchain = rule(
     attrs = {
         "tools": attr.label_list(),
+        "makevars_user": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+            doc = "User level Makevars file",
+        ),
         "r_version": attr.string(
             doc = "R version (e.g. 3.5.0, 3.4.0, ...)",
         ),

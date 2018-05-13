@@ -28,6 +28,7 @@ define_r_toolchain(
     name = "toolchain",
     tools = ["//bin:R", "//bin:Rscript"],
     r_version = "{r_version}",
+    makevars_user = {makevars_user},
 )
 """
 
@@ -88,7 +89,10 @@ def _local_r_toolchain_impl(rctx):
         _check_version(rctx.attr.version, actual_version)
 
     rctx.file("WORKSPACE", "workspace(name = \"{name}\")\n".format(name=rctx.name))
-    rctx.file("BUILD", _BUILD.format(r_version=actual_version))
+    rctx.file("BUILD", _BUILD.format(
+        r_version=actual_version,
+        makevars_user=("\"%s\"" % str(rctx.attr.makevars_user)) if rctx.attr.makevars_user else None,
+    ))
     rctx.file("bin/BUILD", _BUILD_BIN)
     rctx.symlink(r_bin, "bin/R.sh")
     rctx.symlink(rscript_bin, "bin/Rscript.sh")
@@ -108,6 +112,11 @@ local_r_toolchain = repository_rule(
                    "are supported, the rule tries to find a suitable version.  If no " +
                    "compatible installation is found, on either Mac OSX or Linux, the " +
                    "rule fails."),
+        ),
+        "makevars_user": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+            doc = "User level Makevars file",
         ),
     },
     implementation = _local_r_toolchain_impl,

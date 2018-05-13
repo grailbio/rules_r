@@ -18,13 +18,16 @@ load(
     _local_r_toolchain = "local_r_toolchain",
 )
 
-def default_r_toolchain(version = None, local_r_home = None):
+def default_r_toolchain(version = None, local_r_home = None, **kwargs):
     if version == "local":
-        _local_r_toolchain(name = "default_r_toolchain", r_home = local_r_home)
+        _local_r_toolchain(name = "default_r_toolchain", r_home = local_r_home, **kwargs)
     elif version.endswith("_local"):
         _local_r_toolchain(
             name = "default_r_toolchain",
             version = version[:len(version) - len("_local")],
+            **kwargs
         )
+    else:
+        fail("unsupported R version: '%s'" % version)
 
     native.register_toolchains("@default_r_toolchain//:toolchain")

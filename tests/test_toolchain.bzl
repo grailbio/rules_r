@@ -27,6 +27,7 @@ define_r_toolchain(
     name = "toolchain",
     tools = ["//bin:R", "//bin:Rscript"],
     r_version = "{r_version}",
+    makevars_user = "@com_grail_rules_r_makevars//:Makevars",
 )
 """
 

@@ -204,6 +204,9 @@ def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
     tc = ctx.toolchains["@com_grail_rules_r//R/toolchains:r_toolchain_type"]
+    makevars_user = ctx.file.makevars_user
+    if not makevars_user:
+        makevars_user = tc.makevars_user
 
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
@@ -220,7 +223,7 @@ def _build_impl(ctx):
     all_input_files = (library_deps["lib_files"] + ctx.files.srcs
                        + cc_deps["files"].to_list()
                        + build_tools.to_list()
-                       + [ctx.file.makevars_user, flock])
+                       + [makevars_user, flock])
 
     if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
@@ -238,7 +241,7 @@ def _build_impl(ctx):
         "PKG_NAME": pkg_name,
         "PKG_SRC_ARCHIVE": pkg_src_archive.path,
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
-        "R_MAKEVARS_USER": ctx.file.makevars_user.path if ctx.file.makevars_user else "",
+        "R_MAKEVARS_USER": makevars_user.path if makevars_user else "",
         "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
         "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
         "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
@@ -297,7 +300,7 @@ def _build_impl(ctx):
             transitive_pkg_deps=library_deps["transitive_pkg_deps"],
             transitive_tools=transitive_tools,
             build_tools=build_tools,
-            makevars_user=ctx.file.makevars_user,
+            makevars_user=makevars_user,
             cc_deps=cc_deps,
             external_repo=("external-r-repo" in ctx.attr.tags),
         )
@@ -340,8 +343,7 @@ r_pkg = rule(
         ),
         "makevars_user": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r_makevars//:Makevars",
-            doc = "User level Makevars file",
+            doc = "User level Makevars file (the toolchain default is used if none specified)",
         ),
         "shlib_name": attr.string(
             doc = "Shared library name, if different from package name",

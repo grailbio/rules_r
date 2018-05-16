@@ -90,7 +90,12 @@ export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS_USER=dummy
 
 if [[ "${ROCLETS}" ]]; then
-  silent "${RSCRIPT}" -e "\"roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\""
+  silent "${RSCRIPT}" \
+    -e "\"if (requireNamespace('devtools')) {\"" \
+    -e "\"  devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \
+    -e "\"} else {\"" \
+    -e "\"  roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \
+    -e "\"}\""
 fi
 
 if "${BUILD_SRC_ARCHIVE:-"false"}"; then

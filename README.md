@@ -160,6 +160,15 @@ load("@r_repositories_bzl//:r_repositories.bzl", "r_repositories")
 r_repositories()
 ```
 
+The list of all external R packages configured this way can be obtained from
+your shell with
+```
+$ bazel query 'filter(":R_", //external:*)'
+```
+
+NOTE: Periods ('.') in the package names are replaced with underscores ('_')
+because bazel does not allow periods in repository names.
+
 ## Examples
 
 Some examples are available in the tests directory of this repo.
@@ -278,7 +287,9 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>List of strings; optional</code></p>
         <p>roclets to run before installing the package. If this is non-empty,
-           then roxygen2 must be a dependency of the package.</p>
+           then roxygen2 must be a dependency of the package. If devtools is
+           also a dependency, then `devtools::document` will be used instead
+           of `roxygen2::roxygenize`.</p>
       </td>
     </tr>
     <tr>

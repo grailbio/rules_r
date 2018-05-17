@@ -22,6 +22,15 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
+def package_lib_path(description_file):
+    # Gets package path from the DESCRIPTION file
+    # (located at `<package>/lib/<package>/DESCRIPTION`).
+    return _paths.dirname(_paths.dirname(description_file.path))
+
+def package_lib_short_path(description_file):
+    # Gets package short path from the DESCRIPTION file.
+    return _paths.dirname(_paths.dirname(description_file.short_path))
+
 def package_dir(ctx):
     # Relative path to target directory.
 
@@ -73,20 +82,20 @@ def library_deps(target_deps):
                                 depset([target_dep[RPackage]]))
         transitive_tools += target_dep[RPackage].transitive_tools
 
-    # Individual R library directories.
-    lib_dirs = []
+    # DESCRIPTION files for all the R libraries.
+    description_files = []
 
     # Files in the aggregated library of all dependency packages.
     lib_files = []
 
     for pkg_dep in transitive_pkg_deps:
         lib_files += pkg_dep.lib_files
-        lib_dirs += [pkg_dep.lib_path]
+        description_files += [pkg_dep.description_file]
 
     return {
         "transitive_pkg_deps": transitive_pkg_deps,
         "transitive_tools": transitive_tools,
-        "lib_dirs": lib_dirs,
+        "description_files": description_files,
         "lib_files": lib_files,
     }
 
@@ -103,12 +112,12 @@ def layer_library_deps(ctx, library_deps, file_map=False):
 
     for pkg_dep in library_deps["transitive_pkg_deps"]:
         pkg_container_layer = "external" if pkg_dep.external_repo else "internal"
-        pkg_dir_path = ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
+        pkg_dir_path = [_paths.dirname(pkg_dep.description_file.path)]
         lib_files[pkg_container_layer] += pkg_dep.lib_files
         if not file_map:
             continue
         pkg_file_map = {
-            _paths.relativize(f.path, pkg_dep.lib_path.path): f
+            _paths.relativize(f.path, package_lib_path(pkg_dep.description_file)): f
             for f in pkg_dep.lib_files
         }
         lib_file_map[pkg_container_layer] += pkg_file_map

@@ -22,6 +22,7 @@ load(
     _executables = "executables",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
+    _package_lib_short_path = "package_lib_short_path",
     _runtime_path_export = "runtime_path_export",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage", "RLibrary", "RBinary")
@@ -48,7 +49,7 @@ def _r_binary_impl(ctx):
 
     library_deps = _library_deps(pkg_deps)
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    lib_dirs = ["_EXEC_ROOT_" + _package_lib_short_path(d) for d in library_deps["description_files"]]
     transitive_tools = tools + library_deps["transitive_tools"]
     ctx.actions.expand_template(
         template = ctx.file._binary_sh_tpl,

@@ -17,12 +17,17 @@ load(
     _sh_quote_args = "sh_quote_args",
 )
 load(
+    "@com_grail_rules_r//internal:paths.bzl",
+    _paths = "paths",
+)
+load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _env_vars = "env_vars",
     _executables = "executables",
     _library_deps = "library_deps",
     _package_dir = "package_dir",
     _runtime_path_export = "runtime_path_export",
+    _package_lib_short_path = "package_lib_short_path",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
@@ -40,7 +45,7 @@ def _test_impl(ctx):
 
     tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    lib_dirs = ["_EXEC_ROOT_" + _package_lib_short_path(d) for d in library_deps["description_files"]]
     ctx.actions.expand_template(
         template = ctx.file._test_sh_tpl,
         output = ctx.outputs.executable,
@@ -103,7 +108,7 @@ def _check_impl(ctx):
                        + tools.to_list()
                        + cc_deps["files"].to_list() + [makevars_user])
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    lib_dirs = ["_EXEC_ROOT_" + _package_lib_short_path(d) for d in library_deps["description_files"]]
     ctx.actions.expand_template(
         template = ctx.file._check_sh_tpl,
         output = ctx.outputs.executable,

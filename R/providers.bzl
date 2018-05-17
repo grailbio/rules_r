@@ -16,7 +16,7 @@ RPackage = provider(
     doc = "Build information about an R package dependency",
     fields = {
         "pkg_name": "Name of the package",
-        "lib_path": "Directory where this package is installed",
+        "description_file": "The DESCRIPTION file for this package",
         "lib_files": "All installed files in this package",
         "src_files": "All source files in this package",
         "src_archive": "Source archive of this package",

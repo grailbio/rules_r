@@ -16,6 +16,7 @@ load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
+    _package_lib_short_path = "package_lib_short_path",
 )
 load(
     "@com_grail_rules_r//internal:shell.bzl",
@@ -37,7 +38,7 @@ def _library_impl(ctx):
         output = ctx.outputs.executable,
         substitutions = {
             "{library_path}": ctx.attr.library_path,
-            "{lib_dirs}": "\n".join([d.short_path for d in library_deps["lib_dirs"]]),
+            "{lib_dirs}": "\n".join([_package_lib_short_path(d) for d in library_deps["description_files"]]),
             "{tools_export_cmd}": _runtime_path_export(tc.tools),
             },
         is_executable = True,

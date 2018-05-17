@@ -23,6 +23,7 @@ load(
     _executables = "executables",
     _library_deps = "library_deps",
     _package_dir = "package_dir",
+    _package_lib_path = "package_lib_path",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
@@ -57,8 +58,9 @@ def _package_files(ctx, tc):
         elif src_file.path.startswith(pkg_src_dir + "/inst/"):
             inst_files += [src_file]
 
-    pkg_files = [
-        ctx.actions.declare_file("lib/{0}/DESCRIPTION".format(pkg_name)),
+    description_file = ctx.actions.declare_file("lib/{0}/DESCRIPTION".format(pkg_name))
+    lib_files = [
+        description_file,
         ctx.actions.declare_file("lib/{0}/NAMESPACE".format(pkg_name)),
         ctx.actions.declare_file("lib/{0}/Meta/hsearch.rds".format(pkg_name)),
         ctx.actions.declare_file("lib/{0}/Meta/links.rds".format(pkg_name)),
@@ -74,19 +76,19 @@ def _package_files(ctx, tc):
         ctx.actions.declare_file("lib/{0}/html/R.css".format(pkg_name)),
     ]
     if tc.features.has_features_rds:
-        pkg_files += [
+        lib_files += [
             ctx.actions.declare_file("lib/{0}/Meta/features.rds".format(pkg_name)),
         ]
 
     if has_R_code:
-        pkg_files += [
+        lib_files += [
             ctx.actions.declare_file("lib/{0}/R/{0}".format(pkg_name)),
             ctx.actions.declare_file("lib/{0}/R/{0}.rdb".format(pkg_name)),
             ctx.actions.declare_file("lib/{0}/R/{0}.rdx".format(pkg_name)),
         ]
 
     if has_sysdata:
-       pkg_files += [
+       lib_files += [
            ctx.actions.declare_file("lib/{0}/R/sysdata.rdb".format(pkg_name)),
            ctx.actions.declare_file("lib/{0}/R/sysdata.rdx".format(pkg_name)),
        ]
@@ -95,27 +97,27 @@ def _package_files(ctx, tc):
         shlib_name = ctx.attr.shlib_name
         if shlib_name == "":
             shlib_name = pkg_name
-        pkg_files += [ctx.actions.declare_file("lib/{0}/libs/{1}.so"
+        lib_files += [ctx.actions.declare_file("lib/{0}/libs/{1}.so"
                                                .format(pkg_name, shlib_name))]
 
     if has_data_files and ctx.attr.lazy_data:
-        pkg_files += [
+        lib_files += [
             ctx.actions.declare_file("lib/{0}/data/Rdata.rdb".format(pkg_name)),
             ctx.actions.declare_file("lib/{0}/data/Rdata.rds".format(pkg_name)),
             ctx.actions.declare_file("lib/{0}/data/Rdata.rdx".format(pkg_name)),
         ]
 
     for inst_file in inst_files:
-        pkg_files += [ctx.actions.declare_file(
+        lib_files += [ctx.actions.declare_file(
             "lib/{0}/{1}".format(
                 pkg_name,
                 inst_file.path[len(pkg_src_dir + "/inst/"):]))]
 
     for post_install_file in ctx.attr.post_install_files:
-        pkg_files += [(ctx.actions.declare_file("lib/{0}/{1}"
+        lib_files += [(ctx.actions.declare_file("lib/{0}/{1}"
                                                 .format(pkg_name, post_install_file)))]
 
-    return pkg_files
+    return (description_file, lib_files)
 
 def _strip_path_prefixes(iterable, p1, p2):
     # Given an iterable of paths and two path prefixes, removes the prefixes and
@@ -210,10 +212,10 @@ def _build_impl(ctx):
 
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
-    pkg_lib_path = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
-    package_files = _package_files(ctx, tc)
+    (description_file, lib_files) = _package_files(ctx, tc)
+    pkg_lib_path = _package_lib_path(description_file)
     flock = ctx.attr._flock.files_to_run.executable
 
     library_deps = _library_deps(ctx.attr.deps)
@@ -231,12 +233,12 @@ def _build_impl(ctx):
         all_input_files = _remove_file(all_input_files, orig_config)
 
     for so_file in cc_deps["c_so_files"]:
-        package_files += [ctx.actions.declare_file("lib/%s/libs/%s" % (pkg_name, so_file.basename))]
+        lib_files += [ctx.actions.declare_file("lib/%s/libs/%s" % (pkg_name, so_file.basename))]
     pkg_src_files = ctx.files.srcs + cc_deps["c_so_files"]
-    output_files = package_files + [pkg_lib_path, pkg_bin_archive]
+    output_files = lib_files + [pkg_bin_archive]
 
     build_env = {
-        "PKG_LIB_PATH": pkg_lib_path.path,
+        "PKG_LIB_PATH": pkg_lib_path,
         "PKG_SRC_DIR": pkg_src_dir,
         "PKG_NAME": pkg_name,
         "PKG_SRC_ARCHIVE": pkg_src_archive.path,
@@ -247,7 +249,7 @@ def _build_impl(ctx):
         "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
         "C_CPP_FLAGS": " ".join(cc_deps["c_cpp_flags"]),
         "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps["c_so_files"]]),
-        "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "R_LIBS": ":".join(["_EXEC_ROOT_" + _package_lib_path(d) for d in library_deps["description_files"]]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
@@ -274,25 +276,25 @@ def _build_impl(ctx):
     # binary archive.
     pkg_file_list_diff = ctx.actions.declare_file(ctx.attr.name + "_pkg_file_list_diff.txt")
     ctx.actions.run(outputs=[pkg_file_list_diff],
-                    inputs=([pkg_bin_archive] + package_files),
+                    inputs=([pkg_bin_archive] + lib_files),
                     executable=ctx.executable._file_list_diff_sh,
-                    arguments=[pkg_bin_archive.path, pkg_lib_path.path, pkg_name,
-                               pkg_file_list_diff.path],
+                    arguments=[pkg_bin_archive.path, pkg_lib_path,
+                               pkg_name, pkg_file_list_diff.path],
                     mnemonic="RPkgFilesCheck",
                     progress_message="Checking file list for package %s" %pkg_name)
 
     return [
         DefaultInfo(
             files=depset(output_files),
-            runfiles=ctx.runfiles(package_files, collect_default=True),
+            runfiles=ctx.runfiles(lib_files, collect_default=True),
         ),
         OutputGroupInfo(
             pkg_file_list_diffs = [pkg_file_list_diff],
         ),
         RPackage(
             pkg_name=pkg_name,
-            lib_path=pkg_lib_path,
-            lib_files=package_files,
+            description_file=description_file,
+            lib_files=lib_files,
             src_files=ctx.files.srcs,
             src_archive=pkg_src_archive,
             bin_archive=pkg_bin_archive,

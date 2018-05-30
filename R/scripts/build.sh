@@ -151,11 +151,24 @@ rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")
 
+# Override flags to the compiler for reproducible builds.
+R_MAKEVARS_SITE="$(mktemp)"
+TMP_FILES+=("${R_MAKEVARS_SITE}")
+export R_MAKEVARS_SITE
+
+repro_flags=(
+"-Wno-builtin-macro-redefined"
+"-D__DATE__=\"redacted\""
+"-D__TIMESTAMP__=\"redacted\""
+"-D__TIME__=\"redacted\""
+"-fdebug-prefix-map=\"${EXEC_ROOT}/=\""
+)
+echo "CPPFLAGS += ${repro_flags[*]}" > "${R_MAKEVARS_SITE}"
+
 # Install the package to the common temp library.
 silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --built-timestamp='' --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
-find "${PKG_LIB_PATH}" -name '*.so' -exec sed -i.orig -e "s|${EXEC_ROOT}|_EXEC_ROOT_|g" {} \;
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
 trap - EXIT

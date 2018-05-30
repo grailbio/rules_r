@@ -138,7 +138,7 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
     root_path = "_EXEC_ROOT_"
 
     libs = depset(order = "topological")
-    link_flags = depset()
+    link_flags = []
     hdrs = depset()
     c_cpp_flags = depset()
     c_cpp_flags_short = depset()
@@ -165,8 +165,8 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
             c_cpp_flags_short += ["-I " + root_path + i]
 
     c_so_files = []
-    c_libs_flags = link_flags.to_list()
-    c_libs_flags_short = link_flags.to_list()
+    c_libs_flags = list(link_flags)
+    c_libs_flags_short = list(link_flags)
     for l in libs:
         # dylib is not supported because macOS does not support $ORIGIN in rpath.
         if l.extension == "so":

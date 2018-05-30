@@ -25,7 +25,10 @@ r_library(
 r_library_tar(
     name = "library_archive",
     extension = "tar.gz",
-    layers = ["external"],
+    layers = [
+        "external",
+        "tools",
+    ],
     library = ":library",
     library_path = "grail/r-libs",
 )

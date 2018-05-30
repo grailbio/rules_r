@@ -53,7 +53,7 @@ def _test_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(files=library_deps["lib_files"] + test_files,
+    runfiles = ctx.runfiles(files=library_deps["lib_dirs"] + test_files,
                             transitive_files = tools)
     return [DefaultInfo(runfiles=runfiles)]
 
@@ -96,7 +96,7 @@ def _check_impl(ctx):
     library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
     tools = _executables(ctx.attr.tools) + build_tools
 
-    all_input_files = ([src_archive] + library_deps["lib_files"]
+    all_input_files = ([src_archive] + library_deps["lib_dirs"]
                        + tools.to_list()
                        + cc_deps["files"].to_list() + [makevars_user])
 

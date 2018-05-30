@@ -16,10 +16,6 @@ load(
     "@com_grail_rules_r//internal:shell.bzl",
     _sh_quote = "sh_quote",
 )
-load(
-    "@com_grail_rules_r//internal:paths.bzl",
-    _paths = "paths",
-)
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 R = [
@@ -87,21 +83,16 @@ def library_deps(target_deps):
     # Individual R library directories.
     lib_dirs = []
 
-    # Files in the aggregated library of all dependency packages.
-    lib_files = []
-
     for pkg_dep in transitive_pkg_deps:
-        lib_files += pkg_dep.lib_files
-        lib_dirs += [pkg_dep.lib_path]
+        lib_dirs += [pkg_dep.pkg_lib_dir]
 
     return {
         "transitive_pkg_deps": transitive_pkg_deps,
         "transitive_tools": transitive_tools,
         "lib_dirs": lib_dirs,
-        "lib_files": lib_files,
     }
 
-def layer_library_deps(ctx, library_deps, file_map=False):
+def layer_library_deps(ctx, library_deps):
     # We partition the library runfiles on the basis of whether origin repo of
     # packages is external or internal. These are exposed as non-default output
     # groups or tarballs, and are generated on demand. Mostly used for
@@ -109,19 +100,9 @@ def layer_library_deps(ctx, library_deps, file_map=False):
 
     lib_files = {"external": [], "internal": []}
 
-    # lib_file_map is a file map of files to a remapped file within a collected library.
-    lib_file_map = {"external": {}, "internal": {}}
-
     for pkg_dep in library_deps["transitive_pkg_deps"]:
         pkg_container_layer = "external" if pkg_dep.external_repo else "internal"
-        pkg_dir_path = ["%s/%s" % (pkg_dep.lib_path.path, pkg_dep.pkg_name)]
-        lib_files[pkg_container_layer] += pkg_dep.lib_files
-        if not file_map:
-            continue
-        pkg_file_map = {
-            _paths.relativize(f.path, pkg_dep.lib_path.path): f
-            for f in pkg_dep.lib_files
-        }
-        lib_file_map[pkg_container_layer] += pkg_file_map
+        pkg_dir_path = ["%s/%s" % (pkg_dep.pkg_lib_dir.path, pkg_dep.pkg_name)]
+        lib_files[pkg_container_layer].append(pkg_dep.pkg_lib_dir)
 
-    return (lib_files, lib_file_map)
+    return lib_files

@@ -22,14 +22,26 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RLibrary")
 
-def _library_layer_impl(ctx):
+def _tools_layer_impl(ctx):
     provider = ctx.attr.library[RLibrary]
-    path_prefix = (ctx.attr.library_path if ctx.attr.layer_type != "tools"
-                   else ctx.attr.tools_install_path)
+    path_prefix = ctx.attr.tools_install_path
     file_map = {
-        (path_prefix + "/" + p): f
-        for (p, f) in provider.container_file_map[ctx.attr.layer_type].items()
+        (path_prefix + "/" + f.basename): f
+        for f in provider.container_file_map[ctx.attr.layer_type]
     }
+    return _layer.implementation(ctx, file_map=file_map)
+
+def _library_layer_impl(ctx):
+    if (ctx.attr.layer_type == "tools"):
+        return _tools_layer_impl(ctx)
+
+    provider = ctx.attr.library[RLibrary]
+    file_map = {
+        # Make unique paths that canonicalize to the same directory.
+        ctx.attr.library_path + "/" + str(i) + "/.."  : f
+        for (i, f) in enumerate(provider.container_file_map[ctx.attr.layer_type])
+    }
+
     lib_path = ctx.attr.directory + "/" + ctx.attr.library_path
     lib_path = lib_path if lib_path.startswith("/") else "/" + lib_path
     return _layer.implementation(ctx, file_map=file_map, env={"R_LIBS_USER": lib_path})

@@ -28,6 +28,3 @@ bazel run //:binary
 bazel-bin/binary
 
 bazel test --color=yes --show_progress_rate_limit=30 --keep_going --test_output=errors //...
-
-bazel build //exampleA --output_groups=pkg_file_list_diffs
-ls bazel-bin/exampleA/exampleA_pkg_file_list_diff.txt > /dev/null

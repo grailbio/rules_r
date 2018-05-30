@@ -16,7 +16,6 @@ exports_files([
     "build.sh",
     "binary.sh.tpl",
     "check.sh.tpl",
-    "file_list_diff.sh",
     "library.sh.tpl",
     "test.sh.tpl",
 ])

@@ -16,8 +16,7 @@ RPackage = provider(
     doc = "Build information about an R package dependency",
     fields = {
         "pkg_name": "Name of the package",
-        "lib_path": "Directory where this package is installed",
-        "lib_files": "All installed files in this package",
+        "pkg_lib_dir": "Directory where this package is installed",
         "src_files": "All source files in this package",
         "src_archive": "Source archive of this package",
         "bin_archive": "Binary archive of this package",
@@ -34,8 +33,8 @@ RPackage = provider(
 RLibrary = provider(
     doc = "Build information about an R library",
     fields = {
-        "pkgs": "list of directly specified packages in this library",
-        "container_file_map": "file map of original files to remapped paths within a container",
+        "pkgs": "List of directly specified packages in this library",
+        "container_file_map": "Files for each container layer type",
     },
 )
 

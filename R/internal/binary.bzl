@@ -64,9 +64,9 @@ def _r_binary_impl(ctx):
         is_executable = True,
     )
 
-    (lib_files, _) = _layer_library_deps(ctx, library_deps)
+    layered_lib_files = _layer_library_deps(ctx, library_deps)
 
-    runfiles = ctx.runfiles(files=library_deps["lib_files"],
+    runfiles = ctx.runfiles(files=library_deps["lib_dirs"],
                             transitive_files = srcs + exe + transitive_tools,
                             collect_data = True)
     return [
@@ -76,8 +76,8 @@ def _r_binary_impl(ctx):
                 pkg_deps=pkg_deps,
                 tools=tools),
         OutputGroupInfo(
-            external=lib_files["external"],
-            internal=lib_files["internal"],
+            external=layered_lib_files["external"],
+            internal=layered_lib_files["internal"],
             tools=transitive_tools,
             ),
         ]

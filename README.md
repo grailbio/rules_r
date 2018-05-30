@@ -189,8 +189,7 @@ See [container support][docker].
 
 ```python
 r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, roclets,
-      makevars_user, shlib_name, lazy_data, post_install_files, env_vars,
-      tools, build_tools)
+      makevars_user, env_vars, tools, build_tools)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -297,27 +296,6 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>File; default to @com_grail_rules_r_makevars//:Makevars</code></p>
         <p>User level Makevars file.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>shlib_name</code></td>
-      <td>
-        <p><code>String; optional</code></p>
-        <p>Shared library name, if different from package name.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>lazy_data</code></td>
-      <td>
-        <p><code>Bool; default to False</code></p>
-        <p>Set to True if the package uses the LazyData feature.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>post_install_files</code></td>
-      <td>
-        <p><code>List of strings; optional</code></p>
-        <p>Additional files generated as part of the package build and installed with the package.</p>
       </td>
     </tr>
     <tr>

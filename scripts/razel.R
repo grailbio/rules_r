@@ -101,16 +101,6 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
   stopifnot(length(build_deps) == 1)
   stopifnot(length(check_deps) == 1)
 
-  ns_file <- file.path(pkg_directory, "NAMESPACE")
-  shlib_name <- gsub("[\"\']", "",
-                     sub("useDynLib\\((.*?)[,\\)].*$", "\\1",
-                         grep("^\\s*useDynLib", readLines(ns_file, warn = FALSE), value = TRUE)))
-  shlib_attr <- ifelse(length(shlib_name) == 1 && shlib_name != name,
-                       paste0('    shlib_name="', shlib_name, '",\n'), "")
-
-  data_attr <- ifelse(tolower(pkg_description[1, "LazyData"]) %in% c("true", "yes"),
-                      "    lazy_data=True,\n", "")
-
   tags_attr <- ifelse(external, '    tags=["external-r-repo"]', '')
 
   header <- paste0('load("@com_grail_rules_r//R:defs.bzl", "r_pkg", ',
@@ -121,8 +111,8 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
   pkg_alias <- sprintf('\nalias(\n    name="%s",\n    actual="%s",\n)',
                           paste0("R_", gsub("\\.", "_", name)), name)
 
-  r_pkg <- sprintf('\nr_pkg(\n    name="%s",\n    srcs=%s,\n    deps=%s%s%s%s)',
-                   name, srcs, build_deps, shlib_attr, data_attr, tags_attr)
+  r_pkg <- sprintf('\nr_pkg(\n    name="%s",\n    srcs=%s,\n    deps=%s%s)',
+                   name, srcs, build_deps, tags_attr)
   r_library <- paste0('\nr_library(\n    name="library",\n    pkgs=[":', name,
                       '"],\n    tags=["manual"],\n)')
   r_unit_test <- sprintf(paste0('\nr_unit_test(\n    name="test",\n    pkg_name="%s",\n',
@@ -176,7 +166,7 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
       next
     }
     exdir <- file.path(tmp_dir, pkg_name)
-    files <- file.path(pkg_name, c("DESCRIPTION", "NAMESPACE"))
+    files <- file.path(pkg_name, c("DESCRIPTION"))
     files_optional <- file.path(pkg_name, c(".Rbuildignore", ".Rinstignore"))
     untar(pkg_tgz, files = files, exdir = exdir)
     suppressWarnings(untar(pkg_tgz, files = files_optional, exdir = exdir,

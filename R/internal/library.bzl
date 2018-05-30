@@ -34,17 +34,11 @@ def _library_impl(ctx):
         is_executable = True,
     )
 
-    (lib_files, lib_file_map) = _layer_library_deps(
-        ctx, library_deps, file_map=True)
+    layered_lib_files = _layer_library_deps(ctx, library_deps)
+    files_tools = library_deps["transitive_tools"].to_list()
+    container_file_map = layered_lib_files + {"tools": files_tools}
 
-    files_tools = library_deps["transitive_tools"]
-    tools_file_map = {
-        f.basename: f
-        for f in files_tools
-    }
-    container_file_map = lib_file_map + {"tools": tools_file_map}
-
-    runfiles = ctx.runfiles(files=library_deps["lib_files"])
+    runfiles = ctx.runfiles(files=library_deps["lib_dirs"])
     return [
         DefaultInfo(
             runfiles=runfiles, files=depset([ctx.outputs.executable])),
@@ -53,8 +47,8 @@ def _library_impl(ctx):
             container_file_map=container_file_map,
         ),
         OutputGroupInfo(
-            external=lib_files["external"],
-            internal=lib_files["internal"],
+            external=layered_lib_files["external"],
+            internal=layered_lib_files["internal"],
             tools=files_tools,
         ),
     ]
@@ -90,11 +84,15 @@ def _r_library_tar_impl(ctx):
     args.add("--output=" + ctx.outputs.out.path)
     args.use_param_file("--flagfile=%s")
     for layer in ctx.attr.layers:
-        path_prefix = (ctx.attr.library_path if layer != "tools"
-                       else ctx.attr.tools_install_path)
-        file_inputs += provider.container_file_map[layer].values()
-        for (p, f) in provider.container_file_map[layer].items():
-            args.add("--file=%s=%s" % (f.path, path_prefix + "/" + p))
+        file_inputs += provider.container_file_map[layer]
+        if layer == "tools":
+            path_prefix = ctx.attr.tools_install_path
+            for f in provider.container_file_map[layer]:
+                args.add("--file=%s=%s" % (f.path, path_prefix + "/" + f.basename))
+        else:
+            path_prefix = ctx.attr.library_path
+            for f in provider.container_file_map[layer]:
+                args.add("--file=%s=%s" % (f.path, path_prefix))
 
     if ctx.attr.extension:
         dotPos = ctx.attr.extension.find('.')

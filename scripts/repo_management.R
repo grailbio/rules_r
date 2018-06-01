@@ -27,7 +27,7 @@
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.3", "3.4"))  # Binaries for these R versions.
+options("RVersions" = c("3.3", "3.4", "3.5"))  # Binaries for these R versions.
 
 # Factors in unexpected places create problems.
 options("stringsAsFactors" = FALSE)
@@ -62,7 +62,8 @@ isValidBinRepo <- function(repo, r_version) {
   }
 
   bioc_version <- gsub("(.*packages/|/bioc)", "", repo)
-  return((bioc_version == "3.6" && r_version == "3.4") ||
+  return((bioc_version == "3.7" && r_version == "3.5") ||
+         (bioc_version == "3.6" && r_version == "3.4") ||
          (bioc_version == "3.5" && r_version == "3.4") ||
          (bioc_version == "3.4" && r_version == "3.3"))
 }

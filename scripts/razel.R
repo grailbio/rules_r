@@ -23,47 +23,63 @@
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
 #' @param pkg_directory
+#' @param pkg_bin_archive If set, uses the relative path provided here to
+#'        specify a binary archive of the package.
 #' @param no_test_rules If true, test rules are not generated.
 #' @param build_file_name Name of the BUILD file in the repo.
 #' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
-buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
+buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
+                     no_test_rules = TRUE,
                      build_file_name="BUILD.bazel", external=TRUE) {
-  desc_file <- file.path(pkg_directory, "DESCRIPTION")
-  if (!file.exists(desc_file)) {
-    return()
+  if (is.null(pkg_bin_archive)) {
+    desc_file <- file.path(pkg_directory, "DESCRIPTION")
+    if (!file.exists(desc_file)) {
+      return()
+    }
+  } else {
+    desc_file <- grep("^[^/]+/DESCRIPTION$", untar(pkg_bin_archive, list = TRUE), value = TRUE)
+    untar(pkg_bin_archive, files = desc_file)
+    stopifnot(file.exists(desc_file))
   }
-
-  pkg_description <- read.dcf(desc_file,
-                              fields = c("Package", "Depends", "Imports", "Suggests", "LinkingTo",
-                                         "LazyData"))
-  name <- pkg_description[1, "Package"]
 
   # Source files
-  srcs <- sprintf('glob(["**"])')
-  buildignore <- file.path(pkg_directory, ".Rbuildignore")
-  instignore <- file.path(pkg_directory, ".Rinstignore")
-  exclude_patterns <- c()
-  if (file.exists(buildignore)) {
-    exclude_patterns <- c(exclude_patterns, trimws(readLines(buildignore, warn = FALSE)))
-  }
-  if (file.exists(instignore)) {
-    exclude_patterns <- c(exclude_patterns, trimws(readLines(instignore, warn = FALSE)))
-  }
-  exclude_patterns <- exclude_patterns[exclude_patterns != ""]
-  exclude_files <- c(build_file_name)
-  if (length(exclude_patterns) > 0) {
-    all_files <- list.files(path = pkg_directory, all.files = TRUE, full.names = FALSE,
-                            recursive = TRUE, include.dirs = TRUE)
-    for (exclude_pattern in exclude_patterns) {
-      matches <- grep(exclude_pattern, all_files, ignore.case = TRUE, perl = TRUE, value=TRUE)
-      exclude_files <- c(exclude_files, matches)
+
+  pkg_srcs_attr <- function() {
+    srcs <- sprintf('glob(["**"])')
+    buildignore <- file.path(pkg_directory, ".Rbuildignore")
+    instignore <- file.path(pkg_directory, ".Rinstignore")
+    exclude_patterns <- c()
+    if (file.exists(buildignore)) {
+      exclude_patterns <- c(exclude_patterns, trimws(readLines(buildignore, warn = FALSE)))
     }
+    if (file.exists(instignore)) {
+      exclude_patterns <- c(exclude_patterns, trimws(readLines(instignore, warn = FALSE)))
+    }
+    exclude_patterns <- exclude_patterns[exclude_patterns != ""]
+    exclude_files <- c(build_file_name)
+    if (length(exclude_patterns) > 0) {
+      all_files <- list.files(path = pkg_directory, all.files = TRUE, full.names = FALSE,
+                              recursive = TRUE, include.dirs = TRUE)
+      for (exclude_pattern in exclude_patterns) {
+        matches <- grep(exclude_pattern, all_files, ignore.case = TRUE, perl = TRUE, value=TRUE)
+        exclude_files <- c(exclude_files, matches)
+      }
+    }
+    if (length(exclude_files) > 0) {
+      exclude_files_list <- paste0(strrep(' ', 12), '"', unique(exclude_files), '",\n', collapse="")
+      srcs <- sprintf('srcs = glob(\n        ["**"],\n        exclude=[\n%s        ],\n    )',
+                      exclude_files_list)
+    }
+    return(srcs)
   }
-  if (length(exclude_files) > 0) {
-    exclude_files_list <- paste0(strrep(' ', 12), '"', unique(exclude_files), '",\n', collapse="")
-    srcs <- sprintf('glob(\n        ["**"],\n        exclude=[\n%s        ],\n    )',
-                    exclude_files_list)
+
+  if (is.null(pkg_bin_archive)) {
+    pkg_rule <- "r_pkg"
+    srcs_attr <- pkg_srcs_attr()
+  } else {
+    pkg_rule <- "r_binary_pkg"
+    srcs_attr <- sprintf('src = "%s"', pkg_bin_archive)
   }
 
   # Dependency files
@@ -92,6 +108,10 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
     return(sprintf('[\n%s    ],\n', dep_targets))
   }
 
+  pkg_description <-
+      read.dcf(desc_file, fields = c("Package", "Depends", "Imports", "Suggests", "LinkingTo"))
+  name <- pkg_description[1, "Package"]
+
   depends <- process_deps(pkg_description[, "Depends"])
   imports <- process_deps(pkg_description[, "Imports"])
   links <- process_deps(pkg_description[, "LinkingTo"])
@@ -103,7 +123,8 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
 
   tags_attr <- ifelse(external, '    tags=["external-r-repo"]', '')
 
-  header <- paste0('load("@com_grail_rules_r//R:defs.bzl", "r_pkg", ',
+  header <- paste0('load("@com_grail_rules_r//R:defs.bzl",',
+                   '"r_pkg", "r_binary_pkg",',
                    '"r_library", "r_unit_test", "r_pkg_test")\n\n',
                    'package(default_visibility = ["//visibility:public"])')
 
@@ -111,18 +132,16 @@ buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
   pkg_alias <- sprintf('\nalias(\n    name="%s",\n    actual="%s",\n)',
                           paste0("R_", gsub("\\.", "_", name)), name)
 
-  r_pkg <- sprintf('\nr_pkg(\n    name="%s",\n    srcs=%s,\n    deps=%s%s)',
-                   name, srcs, build_deps, tags_attr)
+  r_pkg <- sprintf('\n%s(\n    name="%s",\n    %s,\n    deps=%s%s)',
+                   pkg_rule, name, srcs_attr, build_deps, tags_attr)
   r_library <- paste0('\nr_library(\n    name="library",\n    pkgs=[":', name,
                       '"],\n    tags=["manual"],\n)')
-  r_unit_test <- sprintf(paste0('\nr_unit_test(\n    name="test",\n    pkg_name="%s",\n',
-                                '    srcs=%s,\n',
-                                '    deps=%s)'),
-                         name, srcs, paste0("        :\"", name, "\",\n", check_deps))
-  r_pkg_test <- sprintf(paste0('\nr_pkg_test(\n    name="check",\n    pkg_name="%s",\n',
-                               '    srcs=%s,\n',
-                               '    deps=%s)'),
-                        name, srcs, check_deps)
+  r_unit_test <- sprintf(paste0('\nr_unit_test(\n    name="test",\n    pkg="%s",\n',
+                                '    suggested_deps=%s)'),
+                         name, check_deps)
+  r_pkg_test <- sprintf(paste0('\nr_pkg_test(\n    name="check",\n    pkg="%s",\n',
+                               '    suggested_deps=%s)'),
+                        name, check_deps)
 
   build_file <- file.path(pkg_directory, build_file_name)
   if (file.exists(build_file)) {
@@ -184,7 +203,10 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #' @param local_repo_dir Local copy of the repository.
 #' @param package_list_csv CSV file containing package name, version, and
 #'        possibly empty sha256, with header. If supplied, takes precedence
-#'        over local_repo_dir.
+#'        over local_repo_dir. If using a non-default \code{pkg_type}, and
+#'        using \code{sha256}, then at least one more column should be
+#'        present with the name
+#'        '{mac|win}_{r_major_version}_{r_minor_version}_sha256'.
 #' @param output_file File path for generated output.
 #' @param build_file_format Format string for the BUILD file location with
 #'        one string placeholder for package name. Can be NULL to use
@@ -192,6 +214,13 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #' @param build_file_overrides_csv CSV file containing package name and
 #'        build file path to use in the rule; no headers. If present in this
 #'        table, build_file_format will be ignored.
+#' @param pkg_type The type of archive to use from the repositories. See
+#'        \code{install.packages}. If \code{both}, then the type of archive is
+#'        chosen based on what is available in the local repo (always
+#'        preferring a later version), or in the packages csv with a non-NA
+#'        sha256. Platforms other than darwin are forced to have \code{source}
+#'        package type. If a binary archive is being used, any build file
+#'        overrides will be ignored.
 #' @param sha256 If TRUE, calculate the SHA256 digest (using
 #'        \code{\link[digest]{digest}}) and include it in the WORKSPACE rule.
 #' @param rule_type The type of rule to use. If new_http_archive, then
@@ -211,6 +240,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    output_file = "r_repositories.bzl",
                                    build_file_format = NULL,
                                    build_file_overrides_csv = NULL,
+                                   pkg_type = c("source", "both"),
                                    sha256 = TRUE,
                                    rule_type = c("r_repository", "new_http_archive"),
                                    remote_repos = getOption("repos"),
@@ -222,45 +252,89 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   rule_type <- match.arg(rule_type)
   stopifnot(!(rule_type == "new_http_archive" && is.null(build_file_format)))
 
+  pkg_type <- match.arg(pkg_type)
+  if (Sys.info()["sysname"] != "Darwin") {
+    pkg_type <- "source"
+  }
+
   if (is.null(build_file_format)) {
     build_file_format <- NA_character_
   }
 
   if (!is.null(package_list_csv)) {
-    repo_pkgs <- read.csv(package_list_csv, header = TRUE, stringsAsFactors = FALSE,
-                          col.names = c("Package", "Version", "sha256"))
+    repo_pkgs <- read.csv(package_list_csv, header = TRUE, stringsAsFactors = FALSE)
+    colnames(repo_pkgs)[1:3] <- c("Package", "Version", "sha256")
+    binary_package_available <- rep(FALSE, nrow(repo_pkgs))
+    if (pkg_type == "both") {
+      r_version <- R.Version()
+      minor_version <- gsub("\\..*", "", r_version$minor)
+      sha256_col <- paste0("mac_", r_version$major, "_", minor_version, "_sha256")
+      stopifnot(sha256_col %in% colnames(repo_pkgs))
+
+      binary_package_available <- !is.na(repo_pkgs[, sha256_col])
+      repo_pkgs[binary_package_available, "sha256"] <-
+        repo_pkgs[binary_package_available, sha256_col]
+    }
   } else {
     local_repo_path <- paste0("file://", path.expand(local_repo_dir))
-    repo_pkgs <-
-      as.data.frame(available.packages(repos = local_repo_path, type = "source"),
-                    stringsAsFactors = FALSE)
+    repo_pkgs <- as.data.frame(available.packages(repos = local_repo_path, type = "source"),
+                               stringsAsFactors = FALSE)
+    binary_package_available <- rep(FALSE, nrow(repo_pkgs))
+    if (pkg_type == "both") {
+      repo_bin_pkgs <- as.data.frame(available.packages(repos = local_repo_path, type = "binary"),
+                                stringsAsFactors = FALSE)[, c("Package", "Version", "Repository")]
+      repo_merged_pkgs <- merge(repo_pkgs, repo_bin_pkgs, by = "Package",
+                                all.x = TRUE, all.y = FALSE,
+                                suffixes = c("", ".binary"))
+
+      vecCompareVersion <- Vectorize(compareVersion)
+      binary_package_available <- !is.na(repo_merged_pkgs[, "Repository.binary"]) &
+        vecCompareVersion(repo_merged_pkgs[, "Version.binary"], repo_merged_pkgs[, "Version"]) >= 0
+    }
   }
   repo_pkgs <- cbind(repo_pkgs,
-                     Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version, ".tar.gz"),
+                     Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version,
+                                      ifelse(binary_package_available, ".tgz", ".tar.gz")),
                      stringsAsFactors = FALSE)
 
+  findPackages <- function(repos, suffix) {
+    mergeWithRemote <- function(type) {
+      remote_pkgs <- as.data.frame(
+          available.packages(repos = repos, type = type)[, c("Package", "Repository")],
+          stringsAsFactors = FALSE)
+      colnames(remote_pkgs) <- c("Package", paste0("Repository", suffix))
+      merge(repo_pkgs[ifelse(type == rep("binary", length(binary_package_available)),
+                             binary_package_available,
+                             !binary_package_available), ],
+            remote_pkgs, by = "Package", all.x = TRUE, all.y = FALSE)
+    }
+
+    if (pkg_type == "both") {
+      unordered <- rbind(mergeWithRemote("binary"), mergeWithRemote("source"),
+                         make.row.names = FALSE, stringsAsFactors = FALSE)
+      return(unordered[match(repo_pkgs[, "Package"], unordered[, "Package"]), ])
+    } else {
+      return(mergeWithRemote("source"))
+    }
+  }
+
   if (!is.null(mirror_repo_url)) {
-    mirrored_pkgs <-
-      available.packages(repos = mirror_repo_url, type = "source")[, c("Package", "Repository")]
-    colnames(mirrored_pkgs) <- c("Package", "Repository.mirrored")
-    repo_pkgs <- merge(repo_pkgs, as.data.frame(mirrored_pkgs, stringsAsFactors = FALSE),
-                       by = "Package", all.x = TRUE, all.y = FALSE)
+    repo_pkgs <- findPackages(mirror_repo_url, ".mirrored")
   }
 
   if (length(remote_repos) > 0) {
-    remote_pkgs <-
-      available.packages(repos = remote_repos, type = "source")[, c("Package", "Repository")]
-    colnames(remote_pkgs) <- c("Package", "Repository.remote")
-    repo_pkgs <- merge(repo_pkgs, as.data.frame(remote_pkgs, stringsAsFactors = FALSE),
-                       by = "Package", all.x = TRUE, all.y = FALSE)
+    repo_pkgs <- findPackages(remote_repos, ".remote")
   }
 
   if (sha256 && is.null(package_list_csv)) {
-    pkg_files <- file.path(local_repo_dir, repo_pkgs$Archive)
+    pkg_files <- file.path(ifelse(binary_package_available,
+                                  contrib.url(local_repo_dir, type="binary"),
+                                  contrib.url(local_repo_dir, type="source")),
+                           repo_pkgs$Archive)
     pkg_shas <- sapply(pkg_files, function(pkg_file) {
                          digest::digest(file = pkg_file, algo = "sha256")
                        })
-    repo_pkgs <- cbind(repo_pkgs, "sha256" = pkg_shas)
+    repo_pkgs <- cbind(repo_pkgs, "sha256" = pkg_shas, stringsAsFactors = FALSE)
   }
 
   if (!is.null(build_file_overrides_csv)) {
@@ -272,6 +346,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   } else {
     repo_pkgs <- cbind(repo_pkgs, "build_file" = NA_character_)
   }
+  repo_pkgs[binary_package_available, "build_file"] <- NA_character_
 
   dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
   file.create(output_file)
@@ -294,7 +369,9 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     if (!use_only_mirror_repo && "Repository.remote" %in% colnames(pkg) &&
         !is.na(pkg$Repository.remote)) {
       pkg_repos <- c(pkg_repos, as.character(pkg$Repository.remote))
-      pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
+      if (!binary_package_available[i]) {
+        pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
+      }
     }
     if (isTRUE(fail_fast) && length(pkg_repos) == 0) {
       stop("Package not available in any of the provided repos: ", pkg$Package)
@@ -311,15 +388,22 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       sprintf("if not native.existing_rule(\"%s\"):", bzl_repo_name)) -> preamble
     writeLines(paste0(strrep(" ", 4), preamble), output_con)
 
+    if (rule_type == "r_repository" && binary_package_available[i]) {
+      pkg_type_attr <- sprintf('    pkg_type = "binary",')
+    } else {
+      pkg_type_attr <- character()
+    }
+
     c(sprintf("%s(", rule_type),
-      paste0("    name = \"", bzl_repo_name, "\","),
+      sprintf('    name = "%s",', bzl_repo_name),
       ifelse(!is.na(pkg_build_file_format),
-             paste0("    build_file = \"", sprintf(pkg_build_file_format, pkg$Package), "\","),
+             sprintf('    build_file = "%s",', sprintf(pkg_build_file_format, pkg$Package)),
              "    build_file = None,"),
+      pkg_type_attr,
       ifelse(sha256 && nchar(pkg$sha256) > 0,
-             paste0("    sha256 = \"", pkg$sha256, "\","),
+             sprintf('    sha256 = "%s",', pkg$sha256),
              "    sha256 = None,"),
-      paste0("    strip_prefix = \"", pkg$Package, "\","),
+      sprintf('    strip_prefix = "%s",', pkg$Package),
       "    urls = [",
       pkg_urls,
       "    ],",

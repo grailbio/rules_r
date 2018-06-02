@@ -20,26 +20,40 @@ _razel = attr.label(
     doc = "R source file containing razel functions.",
 )
 
+def _dict_to_r_vec(d):
+    # Convert a skylark dict to a named character vector for R.
+    return ", ".join([k + "='" + v + "'" for k, v in d.items()])
+
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
         fail(("No sources found for repository '@%s'. Perhaps this package is " % rctx.name) +
               "not available for your R version.")
+    
+    archive_basename = rctx.attr.urls[0].rsplit("/", maxsplit=1)[1]
 
-    rctx.download_and_extract(rctx.attr.urls, sha256=rctx.attr.sha256, type=rctx.attr.type,
-                              stripPrefix=rctx.attr.strip_prefix)
+    if rctx.attr.pkg_type == "source":
+      rctx.download_and_extract(rctx.attr.urls, sha256=rctx.attr.sha256, type=rctx.attr.type,
+                                stripPrefix=rctx.attr.strip_prefix)
+    else:
+      rctx.download(rctx.attr.urls, output=archive_basename, sha256=rctx.attr.sha256)
 
     if rctx.attr.build_file:
         rctx.symlink(rctx.attr.build_file, "BUILD.bazel")
         return
 
+    args = {}
+    if rctx.attr.pkg_type == "binary":
+        args["pkg_bin_archive"] = archive_basename
+
     razel = sh_quote(rctx.path(rctx.attr._razel))
     exec_result = rctx.execute(["/usr/bin/env", "Rscript",
                                 "-e", "source(%s)" % razel,
-                                "-e", "buildify()"])
+                                "-e", "buildify(%s)" % _dict_to_r_vec(args)])
     if exec_result.return_code:
         fail("Failed to generate BUILD file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))
     if exec_result.stderr:
         print(exec_result.stderr)
+
     return
 
 # R repository rule that will generate a BUILD file for the package.
@@ -53,14 +67,18 @@ r_repository = repository_rule(
             allow_single_file = True,
             doc = "Optional BUILD file for this repo. If not provided, one will be generated.",
         ),
+        "pkg_type": attr.string(
+            default = "source",
+            doc = "Type of package archive (source or binary).",
+            values = [
+                "source",
+                "binary",
+            ],
+        ),
         "_razel": _razel,
     },
     implementation = _r_repository_impl,
 )
-
-def _dict_to_r_vec(d):
-    # Convert a skylark dict to an named character vector for R.
-    return ", ".join([k + "='" + v + "'" for k, v in d.items()])
 
 def _r_repository_list_impl(rctx):
     rctx.file("BUILD", content="", executable=False)

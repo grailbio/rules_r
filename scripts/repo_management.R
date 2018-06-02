@@ -27,7 +27,7 @@
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.3", "3.4", "3.5"))  # Binaries for these R versions.
+options("RVersions" = c("3.4", "3.5"))  # Binaries for these R versions.
 
 # Factors in unexpected places create problems.
 options("stringsAsFactors" = FALSE)
@@ -39,15 +39,13 @@ srcContribDir <- function() {
 
 # Returns macOS binary archive locations of repos based on R version.
 macContribDir <- function(r_version) {
-  if (r_version %in% c("3.1", "3.2", "3.3")) {
-    return(paste0("/bin/macosx/mavericks/contrib/", r_version))
-  } else {
-    return(paste0("/bin/macosx/el-capitan/contrib/", r_version))
-  }
+  stopifnot(r_version %in% getOption("RVersions"))
+  return(paste0("/bin/macosx/el-capitan/contrib/", r_version))
 }
 
 # Returns windows binary archive locations of repos based on R version.
 winContribDir <- function(r_version) {
+  stopifnot(r_version %in% getOption("RVersions"))
   return(paste0("/bin/windows/contrib/", r_version))
 }
 
@@ -64,8 +62,7 @@ isValidBinRepo <- function(repo, r_version) {
   bioc_version <- gsub("(.*packages/|/bioc)", "", repo)
   return((bioc_version == "3.7" && r_version == "3.5") ||
          (bioc_version == "3.6" && r_version == "3.4") ||
-         (bioc_version == "3.5" && r_version == "3.4") ||
-         (bioc_version == "3.4" && r_version == "3.3"))
+         (bioc_version == "3.5" && r_version == "3.4"))
 }
 
 # Download the latest available specified packages.
@@ -96,8 +93,8 @@ downloadLatestPackages <- function(pkgs, repo_dir, repos) {
 }
 
 # Download source archive for packages at specified versions.
-# archived_packages is a data frame with character columns Package and Version.
-downloadArchivedPackages <- function(archived_packages, repo_dir, repos) {
+# archived_packages is a data frame with character columns Package, Version and Repository.
+downloadArchivedPackages <- function(archived_packages, repo_dir) {
   contrib_dir <- file.path(repo_dir, file.path("src", "contrib"))
 
   failed_packages <- character()
@@ -105,10 +102,10 @@ downloadArchivedPackages <- function(archived_packages, repo_dir, repos) {
     pkg_name <- as.character(archived_packages$Package[index])
     pkg_version <- as.character(archived_packages$Version[index])
     pkg_file <- paste0(pkg_name, "_", pkg_version, ".tar.gz")
-    cran_archive_url <- paste0("https://cran.r-project.org/src/contrib/Archive/",
-                               pkg_name, "/", pkg_file)
+    archive_url <- paste0(archived_packages$Repository[index], "/Archive/",
+                          pkg_name, "/", pkg_file)
     suppressWarnings(tryCatch(
-      download.file(cran_archive_url, file.path(contrib_dir, pkg_file)),
+      download.file(archive_url, file.path(contrib_dir, pkg_file)),
       error = function(e) {
         failed_packages <<- c(pkg_name, failed_packages)
       }))
@@ -118,15 +115,39 @@ downloadArchivedPackages <- function(archived_packages, repo_dir, repos) {
   }
 }
 
-# Gets package SHAs for source archive packages from the repo directory.
+# Gets package SHAs for archive packages from the repo directory.
 packageSHAs <- function(pkgs, repo_dir=".") {
+  pkgs <- as.data.frame(pkgs)
   if (nrow(pkgs) == 0) {
     return(cbind(pkgs, "sha256"=character()))
   }
-  pkg_files <-
-    file.path(repo_dir, "src", "contrib", paste0(pkgs$Package, "_", pkgs$Version, ".tar.gz"))
-  pkg_shas <- sapply(pkg_files, function(filepath) digest::digest(file=filepath, algo="sha256"))
-  return(cbind(pkgs, "sha256"=pkg_shas))
+
+  helper <- function(contribDir, colname, extension) {
+    pkg_files <-
+      file.path(contribDir, paste0(pkgs$Package, "_", pkgs$Version, extension))
+    pkg_shas <- sapply(pkg_files, function(filepath) {
+        if (file.exists(filepath)) {
+          digest::digest(file=filepath, algo="sha256")
+        } else {
+          NA_character_
+        }
+    })
+    colname <- gsub("\\.", "_", colname)
+    pkgs[, colname] <<- pkg_shas
+  }
+
+  helper(file.path(repo_dir, "src", "contrib"), "sha256", ".tar.gz")
+  for (r_version in getOption("RVersions")) {
+    if (getOption("BinariesMac")) {
+      mac_contrib_dir <- paste0(repo_dir, macContribDir(r_version))
+      helper(mac_contrib_dir, paste0("mac_", r_version, "_sha256"), ".tgz")
+    }
+    if (getOption("BinariesWin")) {
+      win_contrib_dir <- paste0(repo_dir, winContribDir(r_version))
+      helper(win_contrib_dir, paste0("win_", r_version, "_sha256"), ".zip")
+    }
+  }
+  return(pkgs)
 }
 
 #' Already downloaded source archive packages in the repo.
@@ -192,7 +213,8 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
   implicit_package_deps <- setdiff(implicit_package_deps, repo_packages$Package)
 
   repos <- getOption("repos")
-  packages_available <- as.data.frame(available.packages(repos = repos)[, c("Package", "Version")])
+  packages_available <-
+    as.data.frame(available.packages(repos = repos)[, c("Package", "Version", "Repository")])
 
   packages_to_download <- data.frame(Package = c(pkgs, implicit_package_deps),
                                      Version = c(versions,
@@ -215,7 +237,7 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
   downloadLatestPackages(latest_packages, repo_dir, repos)
 
   archived_packages <- packages_merged[!latest_packages_mask, ]
-  downloadArchivedPackages(archived_packages, repo_dir, repos)
+  downloadArchivedPackages(archived_packages, repo_dir)
 
   updateRepoIndex(repo_dir)
 

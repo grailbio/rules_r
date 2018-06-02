@@ -29,11 +29,14 @@ dependencies.
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
 #' @param pkg_directory
+#' @param pkg_bin_archive If set, uses the relative path provided here to
+#'        specify a binary archive of the package.
 #' @param no_test_rules If true, test rules are not generated.
 #' @param build_file_name Name of the BUILD file in the repo.
 #' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
-buildify <- function(pkg_directory = ".", no_test_rules = TRUE,
+buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
+                     no_test_rules = TRUE,
                      build_file_name="BUILD.bazel", external=TRUE) ...
 
 
@@ -52,7 +55,10 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #' @param local_repo_dir Local copy of the repository.
 #' @param package_list_csv CSV file containing package name, version, and
 #'        possibly empty sha256, with header. If supplied, takes precedence
-#'        over local_repo_dir.
+#'        over local_repo_dir. If using a non-default \code{pkg_type}, and
+#'        using \code{sha256}, then at least one more column should be
+#'        present with the name
+#'        '{mac|win}_{r_major_version}_{r_minor_version}_sha256'.
 #' @param output_file File path for generated output.
 #' @param build_file_format Format string for the BUILD file location with
 #'        one string placeholder for package name. Can be NULL to use
@@ -60,6 +66,13 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #' @param build_file_overrides_csv CSV file containing package name and
 #'        build file path to use in the rule; no headers. If present in this
 #'        table, build_file_format will be ignored.
+#' @param pkg_type The type of archive to use from the repositories. See
+#'        \code{install.packages}. If \code{both}, then the type of archive is
+#'        chosen based on what is available in the local repo (always
+#'        preferring a later version), or in the packages csv with a non-NA
+#'        sha256. Platforms other than darwin are forced to have \code{source}
+#'        package type. If a binary archive is being used, any build file
+#'        overrides will be ignored.
 #' @param sha256 If TRUE, calculate the SHA256 digest (using
 #'        \code{\link[digest]{digest}}) and include it in the WORKSPACE rule.
 #' @param rule_type The type of rule to use. If new_http_archive, then
@@ -79,6 +92,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    output_file = "r_repositories.bzl",
                                    build_file_format = NULL,
                                    build_file_overrides_csv = NULL,
+                                   pkg_type = c("source", "both"),
                                    sha256 = TRUE,
                                    rule_type = c("r_repository", "new_http_archive"),
                                    remote_repos = getOption("repos"),

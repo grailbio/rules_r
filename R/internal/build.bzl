@@ -204,19 +204,84 @@ def _build_impl(ctx):
         )
     ]
 
+def _build_binary_pkg_impl(ctx):
+    pkg_name = _package_name(ctx)
+    pkg_lib_dir = ctx.actions.declare_directory("lib")
+    pkg_bin_archive = ctx.file.src
+    library_deps = _library_deps(ctx.attr.deps)
+    transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
+
+    build_env = {
+        "PKG_LIB_PATH": pkg_lib_dir.path,
+        "PKG_NAME": pkg_name,
+        "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
+        "INSTALL_BIN_ARCHIVE": "true",
+        "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
+        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
+        "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
+        "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
+        "R": " ".join(_R),
+        "RSCRIPT": " ".join(_Rscript),
+    }
+    ctx.actions.run(outputs=[pkg_lib_dir], inputs=[pkg_bin_archive],
+                    executable=ctx.executable._build_sh,
+                    env=build_env,
+                    mnemonic="RBuildBinary", use_default_shell_env=False,
+                    progress_message="Extracting R binary package %s" % pkg_name)
+
+    return [
+        DefaultInfo(
+            files=depset([pkg_lib_dir]),
+            runfiles=ctx.runfiles([pkg_lib_dir], collect_default=True),
+        ),
+        RPackage(
+            pkg_name=pkg_name,
+            pkg_lib_dir=pkg_lib_dir,
+            src_files=None,
+            src_archive=None,
+            bin_archive=pkg_bin_archive,
+            pkg_deps=ctx.attr.deps,
+            transitive_pkg_deps=library_deps["transitive_pkg_deps"],
+            transitive_tools=transitive_tools,
+            build_tools=None,
+            makevars_user=None,
+            cc_deps=None,
+            external_repo=("external-r-repo" in ctx.attr.tags),
+        )
+    ]
+
+_COMMON_ATTRS = {
+    "pkg_name": attr.string(
+        doc = "Name of the package if different from the target name",
+    ),
+    "deps": attr.label_list(
+        providers = [RPackage],
+        doc = "R package dependencies of type r_pkg",
+    ),
+    "tools": attr.label_list(
+        doc = "Executables that code in this package will try to find in the system",
+    ),
+    "install_args": attr.string_list(
+        doc = "Additional arguments to supply to R CMD INSTALL",
+    ),
+    "env_vars": attr.string_dict(
+        doc = "Extra environment variables to define for building the package",
+    ),
+    "_build_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build.sh",
+        executable = True,
+        cfg = "host",
+    ),
+}
+
 r_pkg = rule(
-    attrs = {
+    attrs = _COMMON_ATTRS + {
         "srcs": attr.label_list(
             allow_files = True,
             mandatory = True,
             doc = "Source files to be included for building the package",
-        ),
-        "pkg_name": attr.string(
-            doc = "Name of the package if different from the target name",
-        ),
-        "deps": attr.label_list(
-            providers = [RPackage],
-            doc = "R package dependencies of type r_pkg",
         ),
         "cc_deps": attr.label_list(
             doc = "cc_library dependencies for this package",
@@ -227,9 +292,6 @@ r_pkg = rule(
                 "--no-manual",
             ],
             doc = "Additional arguments to supply to R CMD build",
-        ),
-        "install_args": attr.string_list(
-            doc = "Additional arguments to supply to R CMD INSTALL",
         ),
         "config_override": attr.label(
             allow_single_file = True,
@@ -244,20 +306,8 @@ r_pkg = rule(
             default = "@com_grail_rules_r_makevars//:Makevars",
             doc = "User level Makevars file",
         ),
-        "env_vars": attr.string_dict(
-            doc = "Extra environment variables to define for building the package",
-        ),
-        "tools": attr.label_list(
-            doc = "Executables that code in this package will try to find in the system",
-        ),
         "build_tools": attr.label_list(
             doc = "Executables that package build and load will try to find in the system",
-        ),
-        "_build_sh": attr.label(
-            allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:build.sh",
-            executable = True,
-            cfg = "host",
         ),
         "_flock": attr.label(
             default = "@com_grail_rules_r//R/scripts:flock",
@@ -265,11 +315,24 @@ r_pkg = rule(
             cfg = "host",
         ),
     },
-    doc = ("Rule to install the package and its transitive dependencies" +
+    doc = ("Rule to install the package and its transitive dependencies " +
            "in the Bazel sandbox."),
     outputs = {
         "bin_archive": "%{name}.bin.tar.gz",
         "src_archive": "%{name}.tar.gz",
     },
     implementation = _build_impl,
+)
+
+r_binary_pkg = rule(
+    attrs = _COMMON_ATTRS + {
+        "src": attr.label(
+            allow_single_file = True,
+            mandatory = True,
+            doc = "Binary archive of the package",
+        ),
+    },
+    doc = ("Rule to install the package and its transitive dependencies in " +
+           "the Bazel sandbox from a binary archive."),
+    implementation = _build_binary_pkg_impl,
 )

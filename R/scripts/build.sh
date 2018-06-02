@@ -71,16 +71,10 @@ lock() {
   fi
 }
 
-eval "${EXPORT_ENV_VARS_CMD}"
+eval "${EXPORT_ENV_VARS_CMD:-}"
 
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
-fi
-
-eval "${BUILD_TOOLS_EXPORT_CMD}"
-
-if [[ "${CONFIG_OVERRIDE}" ]]; then
-  cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
 fi
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
@@ -88,6 +82,21 @@ fi
 # imposes length limits.
 export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS_USER=dummy
+
+mkdir -p "${PKG_LIB_PATH}"
+
+if ${INSTALL_BIN_ARCHIVE:-"false"}; then
+  silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --library="${PKG_LIB_PATH}" "${PKG_BIN_ARCHIVE}"
+  trap - EXIT
+  cleanup
+  exit
+fi
+
+eval "${BUILD_TOOLS_EXPORT_CMD:-}"
+
+if [[ "${CONFIG_OVERRIDE:-}" ]]; then
+  cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
+fi
 
 if [[ "${ROCLETS}" ]]; then
   silent "${RSCRIPT}" \
@@ -121,8 +130,6 @@ fi
 export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
-
-mkdir -p "${PKG_LIB_PATH}"
 
 # Easy case -- we allow timestamp and install paths to be stamped inside the package files.
 if ! ${REPRODUCIBLE_BUILD}; then

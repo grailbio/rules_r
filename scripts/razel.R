@@ -269,11 +269,13 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       r_version <- R.Version()
       minor_version <- gsub("\\..*", "", r_version$minor)
       sha256_col <- paste0("mac_", r_version$major, "_", minor_version, "_sha256")
-      stopifnot(sha256_col %in% colnames(repo_pkgs))
-
-      binary_package_available <- !is.na(repo_pkgs[, sha256_col])
-      repo_pkgs[binary_package_available, "sha256"] <-
-        repo_pkgs[binary_package_available, sha256_col]
+      if (sha256_col %in% colnames(repo_pkgs)) {
+        binary_package_available <- !is.na(repo_pkgs[, sha256_col])
+        repo_pkgs[binary_package_available, "sha256"] <-
+          repo_pkgs[binary_package_available, sha256_col]
+      } else {
+        pkg_type <- "source"
+      }
     }
   } else {
     local_repo_path <- paste0("file://", path.expand(local_repo_dir))

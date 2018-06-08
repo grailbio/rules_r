@@ -50,6 +50,6 @@ fi
 
 PWD=$(pwd -P)
 for LIB_DIR in "${BAZEL_LIB_DIRS[@]+"${BAZEL_LIB_DIRS[@]}"}"; do
-  chmod -R -L u+w "${PWD}/${LIB_DIR}"
   "${CMD[@]}" "${PWD}/${LIB_DIR}"/* "${LIBRARY_PATH}"
+  chmod -R u+w "${PWD}/${LIB_DIR}"
 done

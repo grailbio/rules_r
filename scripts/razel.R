@@ -264,15 +264,15 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   if (!is.null(package_list_csv)) {
     repo_pkgs <- read.csv(package_list_csv, header = TRUE, stringsAsFactors = FALSE)
     colnames(repo_pkgs)[1:3] <- c("Package", "Version", "sha256")
-    binary_package_available <- rep(FALSE, nrow(repo_pkgs))
+    repo_pkgs[, "binary_package_available"] <- FALSE
     if (pkg_type == "both") {
       r_version <- R.Version()
       minor_version <- gsub("\\..*", "", r_version$minor)
       sha256_col <- paste0("mac_", r_version$major, "_", minor_version, "_sha256")
       if (sha256_col %in% colnames(repo_pkgs)) {
-        binary_package_available <- !is.na(repo_pkgs[, sha256_col])
-        repo_pkgs[binary_package_available, "sha256"] <-
-          repo_pkgs[binary_package_available, sha256_col]
+        repo_pkgs[, "binary_package_available"] <- !is.na(repo_pkgs[, sha256_col])
+        repo_pkgs[repo_pkgs[, "binary_package_available"], "sha256"] <-
+          repo_pkgs[repo_pkgs[, "binary_package_available"], sha256_col]
       } else {
         pkg_type <- "source"
       }
@@ -281,7 +281,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     local_repo_path <- paste0("file://", path.expand(local_repo_dir))
     repo_pkgs <- as.data.frame(available.packages(repos = local_repo_path, type = "source"),
                                stringsAsFactors = FALSE)
-    binary_package_available <- rep(FALSE, nrow(repo_pkgs))
+    repo_pkgs[, "binary_package_available"] <- FALSE
     if (pkg_type == "both") {
       repo_bin_pkgs <- as.data.frame(available.packages(repos = local_repo_path, type = "binary"),
                                 stringsAsFactors = FALSE)[, c("Package", "Version", "Repository")]
@@ -290,13 +290,14 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                 suffixes = c("", ".binary"))
 
       vecCompareVersion <- Vectorize(compareVersion)
-      binary_package_available <- !is.na(repo_merged_pkgs[, "Repository.binary"]) &
+      repo_pkgs[, "binary_package_available"] <- !is.na(repo_merged_pkgs[, "Repository.binary"]) &
         vecCompareVersion(repo_merged_pkgs[, "Version.binary"], repo_merged_pkgs[, "Version"]) >= 0
     }
   }
   repo_pkgs <- cbind(repo_pkgs,
                      Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version,
-                                      ifelse(binary_package_available, ".tgz", ".tar.gz")),
+                                      ifelse(repo_pkgs[, "binary_package_available"],
+                                             ".tgz", ".tar.gz")),
                      stringsAsFactors = FALSE)
 
   findPackages <- function(repos, suffix) {
@@ -305,16 +306,20 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
           available.packages(repos = repos, type = type)[, c("Package", "Repository")],
           stringsAsFactors = FALSE)
       colnames(remote_pkgs) <- c("Package", paste0("Repository", suffix))
-      merge(repo_pkgs[ifelse(type == rep("binary", length(binary_package_available)),
-                             binary_package_available,
-                             !binary_package_available), ],
-            remote_pkgs, by = "Package", all.x = TRUE, all.y = FALSE)
+      if (type == "binary") {
+        pkg_idx <- which(repo_pkgs[, "binary_package_available"])
+      } else {
+        pkg_idx <- which(!repo_pkgs[, "binary_package_available"])
+      }
+      merge(repo_pkgs[pkg_idx, ], remote_pkgs, by = "Package", all.x = TRUE, all.y = FALSE)
     }
 
     if (pkg_type == "both") {
-      unordered <- rbind(mergeWithRemote("binary"), mergeWithRemote("source"),
-                         make.row.names = FALSE, stringsAsFactors = FALSE)
-      return(unordered[match(repo_pkgs[, "Package"], unordered[, "Package"]), ])
+      unordered_df <- rbind(mergeWithRemote("binary"), mergeWithRemote("source"),
+                            make.row.names = FALSE, stringsAsFactors = FALSE)
+      ordered_df <- unordered_df[match(repo_pkgs[, "Package"], unordered_df[, "Package"]), ]
+      stopifnot(identical(ordered_df[, "Package"], repo_pkgs[, "Package"]))
+      return(ordered_df)
     } else {
       return(mergeWithRemote("source"))
     }
@@ -329,7 +334,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   }
 
   if (sha256 && is.null(package_list_csv)) {
-    pkg_files <- file.path(ifelse(binary_package_available,
+    pkg_files <- file.path(ifelse(repo_pkgs[, "binary_package_available"],
                                   contrib.url(local_repo_dir, type="binary"),
                                   contrib.url(local_repo_dir, type="source")),
                            repo_pkgs$Archive)
@@ -348,7 +353,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   } else {
     repo_pkgs <- cbind(repo_pkgs, "build_file" = NA_character_)
   }
-  repo_pkgs[binary_package_available, "build_file"] <- NA_character_
+  repo_pkgs[repo_pkgs[, "binary_package_available"], "build_file"] <- NA_character_
 
   dir.create(dirname(output_file), recursive = TRUE, showWarnings = FALSE)
   file.create(output_file)
@@ -371,7 +376,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     if (!use_only_mirror_repo && "Repository.remote" %in% colnames(pkg) &&
         !is.na(pkg$Repository.remote)) {
       pkg_repos <- c(pkg_repos, as.character(pkg$Repository.remote))
-      if (!binary_package_available[i]) {
+      if (!pkg$binary_package_available) {
         pkg_repos <- c(pkg_repos, paste0(pkg$Repository.remote, "/Archive/", pkg$Package))
       }
     }
@@ -390,7 +395,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       sprintf("if not native.existing_rule(\"%s\"):", bzl_repo_name)) -> preamble
     writeLines(paste0(strrep(" ", 4), preamble), output_con)
 
-    if (rule_type == "r_repository" && binary_package_available[i]) {
+    if (rule_type == "r_repository" && pkg$binary_package_available) {
       pkg_type_attr <- sprintf('    pkg_type = "binary",')
     } else {
       pkg_type_attr <- character()

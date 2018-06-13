@@ -51,5 +51,6 @@ fi
 PWD=$(pwd -P)
 for LIB_DIR in "${BAZEL_LIB_DIRS[@]+"${BAZEL_LIB_DIRS[@]}"}"; do
   "${CMD[@]}" "${PWD}/${LIB_DIR}"/* "${LIBRARY_PATH}"
-  chmod -R u+w "${PWD}/${LIB_DIR}"
+  # bazel 0.14 onwards omits write permissions from files; reinstate those in our copy.
+  chmod -R u+w "${LIBRARY_PATH}"
 done

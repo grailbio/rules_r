@@ -27,15 +27,19 @@ def _dict_to_r_vec(d):
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
         fail(("No sources found for repository '@%s'. Perhaps this package is " % rctx.name) +
-              "not available for your R version.")
-    
-    archive_basename = rctx.attr.urls[0].rsplit("/", maxsplit=1)[1]
+             "not available for your R version.")
+
+    archive_basename = rctx.attr.urls[0].rsplit("/", maxsplit = 1)[1]
 
     if rctx.attr.pkg_type == "source":
-      rctx.download_and_extract(rctx.attr.urls, sha256=rctx.attr.sha256, type=rctx.attr.type,
-                                stripPrefix=rctx.attr.strip_prefix)
+        rctx.download_and_extract(
+            rctx.attr.urls,
+            sha256 = rctx.attr.sha256,
+            type = rctx.attr.type,
+            stripPrefix = rctx.attr.strip_prefix,
+        )
     else:
-      rctx.download(rctx.attr.urls, output=archive_basename, sha256=rctx.attr.sha256)
+        rctx.download(rctx.attr.urls, output = archive_basename, sha256 = rctx.attr.sha256)
 
     if rctx.attr.build_file:
         rctx.symlink(rctx.attr.build_file, "BUILD.bazel")
@@ -46,9 +50,14 @@ def _r_repository_impl(rctx):
         args["pkg_bin_archive"] = archive_basename
 
     razel = sh_quote(rctx.path(rctx.attr._razel))
-    exec_result = rctx.execute(["/usr/bin/env", "Rscript",
-                                "-e", "source(%s)" % razel,
-                                "-e", "buildify(%s)" % _dict_to_r_vec(args)])
+    exec_result = rctx.execute([
+        "/usr/bin/env",
+        "Rscript",
+        "-e",
+        "source(%s)" % razel,
+        "-e",
+        "buildify(%s)" % _dict_to_r_vec(args),
+    ])
     if exec_result.return_code:
         fail("Failed to generate BUILD file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))
     if exec_result.stderr:
@@ -81,13 +90,13 @@ r_repository = repository_rule(
 )
 
 def _r_repository_list_impl(rctx):
-    rctx.file("BUILD", content="", executable=False)
+    rctx.file("BUILD", content = "", executable = False)
 
     if not rctx.which("Rscript"):
-        rctx.file("r_repositories.bzl", content="""
+        rctx.file("r_repositories.bzl", content = """
 def r_repositories():
     return
-""", executable=False)
+""", executable = False)
         return
 
     razel = sh_quote(rctx.path(rctx.attr._razel))
@@ -95,19 +104,24 @@ def r_repositories():
 
     args = {
         "package_list_csv": str(rctx.path(rctx.attr.package_list)),
-        }
+    }
     if rctx.attr.build_file_overrides:
         args += {
             "build_file_overrides_csv": str(rctx.path(rctx.attr.build_file_overrides)),
-            }
+        }
     args += rctx.attr.other_args
 
     function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(args)
-    cmd = ["/usr/bin/env", "Rscript",
-           "-e", "source(%s)" % razel,
-           "-e", "options(repos=%s)" % repos,
-           "-e", function_call,
-           ]
+    cmd = [
+        "/usr/bin/env",
+        "Rscript",
+        "-e",
+        "source(%s)" % razel,
+        "-e",
+        "options(repos=%s)" % repos,
+        "-e",
+        function_call,
+    ]
     exec_result = rctx.execute(cmd)
     if exec_result.return_code:
         fail("Failed to generate bzl file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))

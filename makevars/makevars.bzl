@@ -18,12 +18,12 @@ def _r_makevars_impl(rctx):
     if rctx.attr.makevars_darwin:
         rctx.symlink(rctx.attr.makevars_darwin, "Makevars.darwin")
     else:
-        rctx.file("Makevars.darwin", executable=False)
+        rctx.file("Makevars.darwin", executable = False)
 
     if rctx.attr.makevars_linux:
         rctx.symlink(rctx.attr.makevars_linux, "Makevars.linux")
     else:
-        rctx.file("Makevars.linux", executable=False)
+        rctx.file("Makevars.linux", executable = False)
 
     if detect_os(rctx) == "darwin":
         rctx.symlink("Makevars.darwin", "Makevars")
@@ -31,7 +31,7 @@ def _r_makevars_impl(rctx):
         rctx.symlink("Makevars.linux", "Makevars")
 
     files = '["' + '", "'.join(["Makevars"]) + '"]'
-    rctx.file("BUILD", content=('exports_files(%s)' % files))
+    rctx.file("BUILD", content = ("exports_files(%s)" % files))
     return
 
 r_makevars = repository_rule(

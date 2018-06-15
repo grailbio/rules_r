@@ -29,7 +29,7 @@ def _tools_layer_impl(ctx):
         (path_prefix + "/" + f.basename): f
         for f in provider.container_file_map[ctx.attr.layer_type]
     }
-    return _layer.implementation(ctx, file_map=file_map)
+    return _layer.implementation(ctx, file_map = file_map)
 
 def _library_layer_impl(ctx):
     if (ctx.attr.layer_type == "tools"):
@@ -38,13 +38,13 @@ def _library_layer_impl(ctx):
     provider = ctx.attr.library[RLibrary]
     file_map = {
         # Make unique paths that canonicalize to the same directory.
-        ctx.attr.library_path + "/" + str(i) + "/.."  : f
+        ctx.attr.library_path + "/" + str(i) + "/..": f
         for (i, f) in enumerate(provider.container_file_map[ctx.attr.layer_type])
     }
 
     lib_path = ctx.attr.directory + "/" + ctx.attr.library_path
     lib_path = lib_path if lib_path.startswith("/") else "/" + lib_path
-    return _layer.implementation(ctx, file_map=file_map, env={"R_LIBS_USER": lib_path})
+    return _layer.implementation(ctx, file_map = file_map, env = {"R_LIBS_USER": lib_path})
 
 # Rule with a LayerInfo provider; targets of this type can be supplied to
 # container_image targets.
@@ -103,7 +103,7 @@ def r_library_image(**kwargs):
         "internal": name + "_internal",
         "tools": name + "_tools",
     }
-  
+
     kwargs.setdefault("directory", "")
     kwargs.setdefault("library_path", "")
     kwargs.setdefault("tools_install_path", "usr/local/bin")

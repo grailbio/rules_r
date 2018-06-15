@@ -92,8 +92,10 @@ def _cc_deps(cc_deps, pkg_src_dir, bin_dir, gen_dir):
         # dylib is not supported because macOS does not support $ORIGIN in rpath.
         if l.extension == "so":
             c_so_files += [l]
+
             # We copy the file in srcs and set relative rpath for R CMD INSTALL.
             c_libs_flags += [l.basename]
+
             # We use LD_LIBRARY_PATH for R CMD check.
             c_libs_flags_short += [root_path + l.short_path]
             continue
@@ -133,10 +135,10 @@ def _build_impl(ctx):
     cc_deps = _cc_deps(ctx.attr.cc_deps, pkg_src_dir, ctx.bin_dir.path, ctx.genfiles_dir.path)
     transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
     build_tools = _executables(ctx.attr.build_tools) + transitive_tools
-    all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs
-                       + cc_deps["files"].to_list()
-                       + build_tools.to_list()
-                       + [ctx.file.makevars_user, flock])
+    all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
+                       cc_deps["files"].to_list() +
+                       build_tools.to_list() +
+                       [ctx.file.makevars_user, flock])
 
     if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
@@ -170,38 +172,46 @@ def _build_impl(ctx):
         "R": " ".join(_R),
         "RSCRIPT": " ".join(_Rscript),
     }
-    ctx.actions.run(outputs=output_files, inputs=all_input_files,
-                    executable=ctx.executable._build_sh,
-                    env=build_env,
-                    mnemonic="RBuild", use_default_shell_env=False,
-                    progress_message="Building R package %s" % pkg_name)
+    ctx.actions.run(
+        outputs = output_files,
+        inputs = all_input_files,
+        executable = ctx.executable._build_sh,
+        env = build_env,
+        mnemonic = "RBuild",
+        use_default_shell_env = False,
+        progress_message = "Building R package %s" % pkg_name,
+    )
 
     # Lightweight action to build just the source archive.
-    ctx.actions.run(outputs=[pkg_src_archive], inputs=pkg_src_files,
-                    executable=ctx.executable._build_sh,
-                    env=build_env + {"BUILD_SRC_ARCHIVE": "true"},
-                    mnemonic="RSrcBuild", use_default_shell_env=False,
-                    progress_message="Building R (source) package %s" % pkg_name)
+    ctx.actions.run(
+        outputs = [pkg_src_archive],
+        inputs = pkg_src_files,
+        executable = ctx.executable._build_sh,
+        env = build_env + {"BUILD_SRC_ARCHIVE": "true"},
+        mnemonic = "RSrcBuild",
+        use_default_shell_env = False,
+        progress_message = "Building R (source) package %s" % pkg_name,
+    )
 
     return [
         DefaultInfo(
-            files=depset(output_files),
-            runfiles=ctx.runfiles([pkg_lib_dir], collect_default=True),
+            files = depset(output_files),
+            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
         ),
         RPackage(
-            pkg_name=pkg_name,
-            pkg_lib_dir=pkg_lib_dir,
-            src_files=ctx.files.srcs,
-            src_archive=pkg_src_archive,
-            bin_archive=pkg_bin_archive,
-            pkg_deps=ctx.attr.deps,
-            transitive_pkg_deps=library_deps["transitive_pkg_deps"],
-            transitive_tools=transitive_tools,
-            build_tools=build_tools,
-            makevars_user=ctx.file.makevars_user,
-            cc_deps=cc_deps,
-            external_repo=("external-r-repo" in ctx.attr.tags),
-        )
+            pkg_name = pkg_name,
+            pkg_lib_dir = pkg_lib_dir,
+            src_files = ctx.files.srcs,
+            src_archive = pkg_src_archive,
+            bin_archive = pkg_bin_archive,
+            pkg_deps = ctx.attr.deps,
+            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+            transitive_tools = transitive_tools,
+            build_tools = build_tools,
+            makevars_user = ctx.file.makevars_user,
+            cc_deps = cc_deps,
+            external_repo = ("external-r-repo" in ctx.attr.tags),
+        ),
     ]
 
 def _build_binary_pkg_impl(ctx):
@@ -224,31 +234,35 @@ def _build_binary_pkg_impl(ctx):
         "R": " ".join(_R),
         "RSCRIPT": " ".join(_Rscript),
     }
-    ctx.actions.run(outputs=[pkg_lib_dir], inputs=[pkg_bin_archive],
-                    executable=ctx.executable._build_sh,
-                    env=build_env,
-                    mnemonic="RBuildBinary", use_default_shell_env=False,
-                    progress_message="Extracting R binary package %s" % pkg_name)
+    ctx.actions.run(
+        outputs = [pkg_lib_dir],
+        inputs = [pkg_bin_archive],
+        executable = ctx.executable._build_sh,
+        env = build_env,
+        mnemonic = "RBuildBinary",
+        use_default_shell_env = False,
+        progress_message = "Extracting R binary package %s" % pkg_name,
+    )
 
     return [
         DefaultInfo(
-            files=depset([pkg_lib_dir]),
-            runfiles=ctx.runfiles([pkg_lib_dir], collect_default=True),
+            files = depset([pkg_lib_dir]),
+            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
         ),
         RPackage(
-            pkg_name=pkg_name,
-            pkg_lib_dir=pkg_lib_dir,
-            src_files=None,
-            src_archive=None,
-            bin_archive=pkg_bin_archive,
-            pkg_deps=ctx.attr.deps,
-            transitive_pkg_deps=library_deps["transitive_pkg_deps"],
-            transitive_tools=transitive_tools,
-            build_tools=None,
-            makevars_user=None,
-            cc_deps=None,
-            external_repo=("external-r-repo" in ctx.attr.tags),
-        )
+            pkg_name = pkg_name,
+            pkg_lib_dir = pkg_lib_dir,
+            src_files = None,
+            src_archive = None,
+            bin_archive = pkg_bin_archive,
+            pkg_deps = ctx.attr.deps,
+            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+            transitive_tools = transitive_tools,
+            build_tools = None,
+            makevars_user = None,
+            cc_deps = None,
+            external_repo = ("external-r-repo" in ctx.attr.tags),
+        ),
     ]
 
 _COMMON_ATTRS = {

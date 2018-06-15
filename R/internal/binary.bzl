@@ -25,7 +25,7 @@ load(
     _library_deps = "library_deps",
     _runtime_path_export = "runtime_path_export",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RPackage", "RLibrary", "RBinary")
+load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
 def _r_binary_impl(ctx):
     srcs = depset([ctx.file.src])
@@ -66,21 +66,25 @@ def _r_binary_impl(ctx):
 
     layered_lib_files = _layer_library_deps(ctx, library_deps)
 
-    runfiles = ctx.runfiles(files=library_deps["lib_dirs"],
-                            transitive_files = srcs + exe + transitive_tools,
-                            collect_data = True)
+    runfiles = ctx.runfiles(
+        files = library_deps["lib_dirs"],
+        transitive_files = srcs + exe + transitive_tools,
+        collect_data = True,
+    )
     return [
-        DefaultInfo(runfiles=runfiles),
-        RBinary(srcs=srcs,
-                exe=exe,
-                pkg_deps=pkg_deps,
-                tools=tools),
+        DefaultInfo(runfiles = runfiles),
+        RBinary(
+            srcs = srcs,
+            exe = exe,
+            pkg_deps = pkg_deps,
+            tools = tools,
+        ),
         OutputGroupInfo(
-            external=layered_lib_files["external"],
-            internal=layered_lib_files["internal"],
-            tools=transitive_tools,
-            ),
-        ]
+            external = layered_lib_files["external"],
+            internal = layered_lib_files["internal"],
+            tools = transitive_tools,
+        ),
+    ]
 
 _R_BINARY_ATTRS = {
     "src": attr.label(

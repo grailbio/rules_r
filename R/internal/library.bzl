@@ -18,7 +18,7 @@ load(
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RPackage", "RLibrary")
+load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 def _library_impl(ctx):
     library_deps = _library_deps(ctx.attr.pkgs)
@@ -30,7 +30,7 @@ def _library_impl(ctx):
             "{library_path}": ctx.attr.library_path,
             "{lib_dirs}": "\n".join([d.short_path for d in library_deps["lib_dirs"]]),
             "{Rscript}": " ".join(_Rscript),
-            },
+        },
         is_executable = True,
     )
 
@@ -38,18 +38,20 @@ def _library_impl(ctx):
     files_tools = library_deps["transitive_tools"].to_list()
     container_file_map = layered_lib_files + {"tools": files_tools}
 
-    runfiles = ctx.runfiles(files=library_deps["lib_dirs"])
+    runfiles = ctx.runfiles(files = library_deps["lib_dirs"])
     return [
         DefaultInfo(
-            runfiles=runfiles, files=depset([ctx.outputs.executable])),
+            runfiles = runfiles,
+            files = depset([ctx.outputs.executable]),
+        ),
         RLibrary(
-            pkgs=ctx.attr.pkgs,
-            container_file_map=container_file_map,
+            pkgs = ctx.attr.pkgs,
+            container_file_map = container_file_map,
         ),
         OutputGroupInfo(
-            external=layered_lib_files["external"],
-            internal=layered_lib_files["internal"],
-            tools=files_tools,
+            external = layered_lib_files["external"],
+            internal = layered_lib_files["internal"],
+            tools = files_tools,
         ),
     ]
 
@@ -95,7 +97,7 @@ def _r_library_tar_impl(ctx):
                 args.add("--file=%s=%s" % (f.path, path_prefix))
 
     if ctx.attr.extension:
-        dotPos = ctx.attr.extension.find('.')
+        dotPos = ctx.attr.extension.find(".")
         if dotPos > 0:
             dotPos += 1
             args.add("--compression=%s" % ctx.attr.extension[dotPos:])
@@ -108,7 +110,7 @@ def _r_library_tar_impl(ctx):
         mnemonic = "RLibraryTar",
     )
 
-    return [DefaultInfo(data_runfiles=ctx.runfiles([ctx.outputs.out]))]
+    return [DefaultInfo(data_runfiles = ctx.runfiles([ctx.outputs.out]))]
 
 r_library_tar = rule(
     attrs = {

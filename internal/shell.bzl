@@ -17,7 +17,7 @@ def sh_quote(s):
 
     return "'" + str(s).replace("'", "'\\''") + "'"
 
-def sh_quote_args(iterable, sep=" "):
+def sh_quote_args(iterable, sep = " "):
     """Quotes the individual elements and joins them together as a space separated list."""
 
     return sep.join([sh_quote(i) for i in iterable])

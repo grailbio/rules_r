@@ -16,21 +16,21 @@ load("@com_grail_rules_r//internal:shell.bzl", "sh_quote", "sh_quote_args")
 
 def _process_file_impl(rctx):
     process_script = "exec {processor} {processor_args} < {src} > {out}".format(
-        processor=sh_quote(rctx.path(rctx.attr.processor)),
-        processor_args=sh_quote_args(rctx.attr.processor_args),
+        processor = sh_quote(rctx.path(rctx.attr.processor)),
+        processor_args = sh_quote_args(rctx.attr.processor_args),
         src = sh_quote(rctx.path(rctx.attr.src)),
         out = sh_quote(rctx.name),
     )
 
-    rctx.file("process.sh", content=process_script)
+    rctx.file("process.sh", content = process_script)
 
-    exec_result = rctx.execute(["./process.sh"], environment=rctx.attr.env)
+    exec_result = rctx.execute(["./process.sh"], environment = rctx.attr.env)
     if exec_result.return_code:
         fail("Failed to process file: %s\n%s" % (exec_result.stdout, exec_result.stderr))
     if exec_result.stderr:
         print(exec_result.stderr)
 
-    rctx.file("BUILD", content=('exports_files(["%s"])' % rctx.name))
+    rctx.file("BUILD", content = ('exports_files(["%s"])' % rctx.name))
     return
 
 # Repository rule that will process an input file and return the processed file

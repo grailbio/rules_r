@@ -33,8 +33,8 @@ def _binary_layer_impl(ctx):
     return _container.image.implementation(
         ctx,
         # We use all absolute paths.
-        directory="/",
-        file_map={
+        directory = "/",
+        file_map = {
             _layer_file_path(ctx, f): f
             for f in ctx.attr.binary[OutputGroupInfo][ctx.attr.layer_type]
         },
@@ -63,9 +63,9 @@ def _r_binary_image_by_deps(**kwargs):
     layers = kwargs.pop("layers")
     for index, dep in enumerate(layers):
         this_name = "%s.%d" % (name, index)
-        _dep_layer(name=this_name, base=kwargs["base"], dep=dep, tags=["manual"])
+        _dep_layer(name = this_name, base = kwargs["base"], dep = dep, tags = ["manual"])
         kwargs["base"] = this_name
-    
+
     kwargs["lang_layers"] = layers
     _app_layer(**kwargs)
 
@@ -80,8 +80,13 @@ def _r_binary_image_by_repo_type(**kwargs):
     base = kwargs["base"]
     for index, (layer_type, layer) in enumerate(layers.items()):
         this_name = "%s.%d" % (name, index)
-        _r_binary_layer(name=this_name, base=base, binary=kwargs["binary"],
-                        layer_type=layer_type, tags=["manual"])
+        _r_binary_layer(
+            name = this_name,
+            base = base,
+            binary = kwargs["binary"],
+            layer_type = layer_type,
+            tags = ["manual"],
+        )
         base = this_name
     kwargs["base"] = base
 
@@ -105,9 +110,11 @@ def r_binary_image(**kwargs):
     # Can't really reset, so set it to empty string and change entrypoint to echo.
     # https://github.com/bazelbuild/rules_docker/issues/379
     kwargs.setdefault("cmd", [""])
-    kwargs.setdefault("entrypoint",
-                      ["echo", ("Please reset both the entrypoint and cmd when running. " +
-                                "Your binary is at")])
+    kwargs.setdefault(
+        "entrypoint",
+        ["echo", ("Please reset both the entrypoint and cmd when running. " +
+                  "Your binary is at")],
+    )
 
     if "layers" in kwargs:
         _r_binary_image_by_deps(**kwargs)

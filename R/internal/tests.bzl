@@ -53,9 +53,11 @@ def _test_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(files=library_deps["lib_dirs"] + test_files,
-                            transitive_files = tools)
-    return [DefaultInfo(runfiles=runfiles)]
+    runfiles = ctx.runfiles(
+        files = library_deps["lib_dirs"] + test_files,
+        transitive_files = tools,
+    )
+    return [DefaultInfo(runfiles = runfiles)]
 
 r_unit_test = rule(
     attrs = {
@@ -96,9 +98,9 @@ def _check_impl(ctx):
     library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
     tools = _executables(ctx.attr.tools) + build_tools
 
-    all_input_files = ([src_archive] + library_deps["lib_dirs"]
-                       + tools.to_list()
-                       + cc_deps["files"].to_list() + [makevars_user])
+    all_input_files = ([src_archive] + library_deps["lib_dirs"] +
+                       tools.to_list() +
+                       cc_deps["files"].to_list() + [makevars_user])
 
     lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
     ctx.actions.expand_template(
@@ -118,8 +120,8 @@ def _check_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(files=all_input_files)
-    return [DefaultInfo(runfiles=runfiles)]
+    runfiles = ctx.runfiles(files = all_input_files)
+    return [DefaultInfo(runfiles = runfiles)]
 
 r_pkg_test = rule(
     attrs = {

@@ -14,4 +14,5 @@
 
 exports_files([
     "razel.R",
+    "repo_management.R",
 ])

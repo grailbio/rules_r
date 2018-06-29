@@ -253,7 +253,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   stopifnot(!(rule_type == "new_http_archive" && is.null(build_file_format)))
 
   pkg_type <- match.arg(pkg_type)
-  if (Sys.info()["sysname"] != "Darwin") {
+  if (getOption("pkgType") == "source") {
     pkg_type <- "source"
   }
 

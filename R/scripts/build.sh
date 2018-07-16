@@ -100,7 +100,7 @@ fi
 
 if [[ "${ROCLETS}" ]]; then
   silent "${RSCRIPT}" \
-    -e "\"if (requireNamespace('devtools')) {\"" \
+    -e "\"if (suppressWarnings(requireNamespace('devtools'))) {\"" \
     -e "\"  devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \
     -e "\"} else {\"" \
     -e "\"  roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \

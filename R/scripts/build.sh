@@ -153,7 +153,7 @@ mkdir -p "${TMP_LIB}"
 mkdir -p "${TMP_SRC}"
 lock "${LOCK_DIR}" "${PKG_NAME}"
 
-TMP_SRC_PKG="${TMP_SRC}/${PKG_NAME}"
+TMP_SRC_PKG="${TMP_SRC}/$(basename "${PKG_SRC_DIR}")"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")

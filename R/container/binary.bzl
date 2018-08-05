@@ -106,15 +106,9 @@ def r_binary_image(**kwargs):
     if "lang_layers" in kwargs:
         fail("lang_layers is not allowed for r_binary_image")
 
-    # TODO: Reset CMD from any base images because app_layer will use ENTRYPOINT.
-    # Can't really reset, so set it to empty string and change entrypoint to echo.
-    # https://github.com/bazelbuild/rules_docker/issues/379
-    kwargs.setdefault("cmd", [""])
-    kwargs.setdefault(
-        "entrypoint",
-        ["echo", ("Please reset both the entrypoint and cmd when running. " +
-                  "Your binary is at")],
-    )
+    # Reset cmd in the base R image.
+    if not kwargs.get("cmd"):
+        kwargs.setdefault("null_cmd", True)
 
     if "layers" in kwargs:
         _r_binary_image_by_deps(**kwargs)

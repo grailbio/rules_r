@@ -30,11 +30,13 @@ http_archive(
     urls = ["https://github.com/google/protobuf/archive/v3.4.0.tar.gz"],
 )
 
-# Check against the master branch to pick up latest developments.
 http_archive(
     name = "io_bazel_rules_docker",
-    strip_prefix = "rules_docker-master",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/master.tar.gz"],
+    sha256 = "44a830571e44c5f3c81cba058573a4359dd78df57f069e253902db048f059f4f",
+    strip_prefix = "rules_docker-17805d11cf07c4390b24a09f3476fb264b5f20ad",
+    urls = [
+        "https://github.com/bazelbuild/rules_docker/archive/17805d11cf07c4390b24a09f3476fb264b5f20ad.tar.gz",
+    ],
 )
 
 load(

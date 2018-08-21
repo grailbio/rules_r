@@ -24,10 +24,7 @@ load(
     "@com_grail_rules_r//makevars:makevars.bzl",
     _r_makevars = "r_makevars",
 )
-load(
-    "@com_grail_rules_r//R/internal:coverage.bzl",
-    "r_coverage_dependencies",
-)
+load("@com_grail_rules_r//R/internal:coverage_deps.bzl", "r_coverage_dependencies")
 
 def r_rules_dependencies(
         makevars_darwin = "@com_grail_rules_r_makevars_darwin",
@@ -41,9 +38,9 @@ def r_rules_dependencies(
     _maybe(
         _process_file,
         name = "com_grail_rules_r_makevars_darwin",
+        src = "@com_grail_rules_r//makevars:Makevars.darwin.tpl",
         processor = "@com_grail_rules_r//makevars:Makevars.darwin.sh",
         processor_args = ["-b"],
-        src = "@com_grail_rules_r//makevars:Makevars.darwin.tpl",
     )
 
     _maybe(

@@ -14,4 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-const char *getCharacter() { return "D"; }
+#include <R.h>
+#include <Rinternals.h>
+
+#include "fn.h"
+
+const char *getCharacter();
+
+SEXP exampleC(SEXP a) {
+  SEXP res = PROTECT(allocVector(STRSXP, 2));
+
+  SET_STRING_ELT(res, 0, mkChar(getCharacter()));
+  SET_STRING_ELT(res, 1, mkChar(exampleC_inline()));
+
+  UNPROTECT(1);
+  return res;
+}

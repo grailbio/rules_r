@@ -13,5 +13,5 @@
 # limitations under the License.
 
 exampleC <- function() {
-  c(exampleB::exampleB(), "C")
+  c(exampleB::exampleB(), "C", .Call("exampleC", PACKAGE = "exampleC"))
 }

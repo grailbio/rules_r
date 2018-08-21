@@ -14,4 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-const char *ccDep() { return "D_ccdep"; }
+#pragma once
+
+#include <R.h>
+#include <Rinternals.h>
+
+const char *exampleC_inline() { return "C_native_inline"; }

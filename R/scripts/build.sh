@@ -71,55 +71,16 @@ lock() {
   fi
 }
 
-eval "${EXPORT_ENV_VARS_CMD:-}"
-
-# Instrument the package by modifying its loader and moving the gcno files
-# (offline instrumentation of native code) back to the output tree.
-# (This is inspired by the way covr already instruments packages.)
-instrument() {
-  ${RSCRIPT} - <<EOF
-pkg_name <- Sys.getenv("PKG_NAME")
-lib <- Sys.getenv("PKG_LIB_PATH")
-
-load_script <- file.path(lib, pkg_name, "R", pkg_name)
-lines <- readLines(file.path(lib, pkg_name, "R", pkg_name))
-lines <- append(lines,
-  c("setHook(packageEvent(pkg, \"onLoad\"),",
-    "  function(...) bazelCoverage:::trace_environment(ns, clear_counters = FALSE))",
-    "reg.finalizer(ns, function(...) {",
-    "  coverage_dir <- Sys.getenv(\"COVERAGE_DIR\")",
-    "  stopifnot(coverage_dir != \"\")",
-    "  covr:::save_trace(coverage_dir)",
-    "}, onexit = TRUE)"),
-  length(lines) - 1L)
-writeLines(text = lines, con = load_script)
-EOF
-
-  if [ -d "${PKG_SRC_DIR}/src" ]; then
-    # Move all the gcno files and create directories along the way.
-    # We do not put the gcno files in the PKG_LIB_PATH directory
-    # (that is, bazel-bin/<package path>/lib) but directly in
-    # bazel-bin/<package path> to have a rational way of pairing
-    # them with gcda files during LCOV generation.
-    (
-      ROOT="$(pwd)"
-      cd "${PKG_SRC_DIR}"
-      RSYNC_OPTIONS=-zmar
-      if "${BAZEL_R_DEBUG:-"false"}"; then
-        echo "gcno files:"
-        RSYNC_OPTIONS+=v
-      fi
-      rsync "${RSYNC_OPTIONS}" --include="*/" \
-        --include="*.gcno" \
-        --exclude="*" \
-        src/ "${ROOT}/${PKG_LIB_PATH}/../src"
-    )
-  fi
+add_instrumentation_hook() {
+  local pkg_src="$1"
+  silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}" "${pkg_src}"
 }
 
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
+
+eval "${EXPORT_ENV_VARS_CMD:-}"
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which
@@ -177,19 +138,14 @@ export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
 export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
 
-if "${COVERAGE:-"false"}"; then
-  # We need to keep the sources for code coverage to work.
-  INSTALL_ARGS+=" --with-keep.source"
-fi
-
 # Easy case -- we allow timestamp and install paths to be stamped inside the package files.
 if ! ${REPRODUCIBLE_BUILD}; then
   silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --build --library="${PKG_LIB_PATH}" \
     "${PKG_SRC_DIR}"
   mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
-  if "${COVERAGE:-"false"}"; then
-    instrument
+  if "${INSTRUMENTED}"; then
+    add_instrumentation_hook "${PKG_SRC_DIR}"
   fi
 
   trap - EXIT
@@ -208,7 +164,8 @@ mkdir -p "${TMP_LIB}"
 mkdir -p "${TMP_SRC}"
 lock "${LOCK_DIR}" "${PKG_NAME}"
 
-TMP_SRC_PKG="${TMP_SRC}/$(basename "${PKG_SRC_DIR}")"
+TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
+mkdir -p "${TMP_SRC_PKG}"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")
@@ -233,8 +190,8 @@ rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way fo
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
-if "${COVERAGE:-"false"}"; then
-  instrument
+if "${INSTRUMENTED}"; then
+  add_instrumentation_hook "${TMP_SRC_PKG}"
 fi
 
 trap - EXIT

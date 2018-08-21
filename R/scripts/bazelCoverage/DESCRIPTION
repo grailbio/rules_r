@@ -1,8 +1,0 @@
-Package: bazelCoverage
-Title: "Code coverage helper"
-Version: 1.0.0
-Description: "Code coverage helper."
-Author: The Bazel Authors <first.last@example.com> [aut, cre]
-License: file LICENSE
-Depends: covr
-RoxygenNote: 6.0.1

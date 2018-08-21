@@ -28,10 +28,18 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 def _test_impl(ctx):
-    implicit_deps = []
-    if ctx.configuration.coverage_enabled:
-        implicit_deps.append(ctx.attr._bazel_coverage)
-    library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps + implicit_deps)
+    pkg_deps = list(ctx.attr.suggested_deps)
+
+    collect_coverage = ctx.configuration.coverage_enabled
+    coverage_files = []
+    gcov_prefix_strip = ""
+    if collect_coverage:
+        pkg_deps.extend(ctx.attr._coverage_deps)
+        coverage_files.append(ctx.file._collect_coverage_R)
+
+    pkg_deps.append(ctx.attr.pkg)
+
+    library_deps = _library_deps(pkg_deps)
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
     pkg_tests_dir = _package_dir(ctx) + "/tests"
@@ -52,24 +60,24 @@ def _test_impl(ctx):
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{lib_dirs}": ":".join(lib_dirs),
             "{Rscript}": " ".join(_Rscript),
-            "{coverage}": "true" if ctx.configuration.coverage_enabled else "false",
+            "{collect_coverage}": "true" if collect_coverage else "false",
+            "{collect_coverage.R}": ctx.file._collect_coverage_R.short_path,
+            "{rlang-reproducible}": "1" if "rlang-reproducible" in ctx.features else "0",
         },
         is_executable = True,
     )
 
     runfiles = ctx.runfiles(
-        files = library_deps["lib_dirs"] + test_files,
+        files = library_deps["lib_dirs"] + library_deps["gcno_dirs"] + test_files + coverage_files,
         transitive_files = tools,
     )
     return struct(
-        # List the files that this rule instruments for code coverage.
-        # This Bazel built-in provider is not yet available using the new
-        # format (e.g., DefaultInfo, ...).
         instrumented_files = struct(
-            # List the dependencies in which transitive instrumented files could be found.
-            dependency_attributes = ["pkg", "suggested_deps", "tools"],
+            dependency_attributes = ["pkg"],
         ),
-        providers = [DefaultInfo(runfiles = runfiles)],
+        providers = [
+            DefaultInfo(runfiles = runfiles),
+        ],
     )
 
 r_unit_test = rule(
@@ -93,18 +101,17 @@ r_unit_test = rule(
             allow_single_file = True,
             default = "@com_grail_rules_r//R/scripts:test.sh.tpl",
         ),
-        # LcovMerger is explicitly needed by the LCOV file collection script
-        # built in Bazel, and the bazelCoverage package adapts the R covr
-        # package.  (Such coverage-only dependencies are also specified in
-        # this manner for the native java_library rule.)
-        "_lcov_merger": attr.label(
-            default = Label("@bazel_tools//tools/test:LcovMerger"),
-            executable = True,
-            cfg = "host",
-        ),
-        "_bazel_coverage": attr.label(
-            default = Label("@com_grail_rules_r//R/scripts/bazelCoverage"),
+        "_coverage_deps": attr.label_list(
+            default = [
+                "@R_covr",
+                "@R_xml2",  # For cobertura xml output.
+            ],
             providers = [RPackage],
+            doc = "Dependencies for test coverage calculation",
+        ),
+        "_collect_coverage_R": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:collect_coverage.R",
         ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +

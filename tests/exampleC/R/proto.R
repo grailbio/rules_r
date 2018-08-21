@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-library(exampleD)
-
-cat("Test has been invoked\n")
-
-d <- exampleD()
-stopifnot(all.equal(d, c("D", "D_ccdep", "D_inline")))
+proto <- function() {
+  msg <- RProtoBuf::new(tutorial.Person, id = 0,
+             name = "James Bond",
+             id = 7)
+  msg
+}

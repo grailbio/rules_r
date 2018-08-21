@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exampleD <- function() {
-  .Call("exampleD", PACKAGE = "exampleD")
-}
+# This test, complimenting the testthat run, checks if multiple test scripts
+# are all run, and if coverage is computed accurately from multiple test runs
+# in an additive manner.
+
+# Code from //exampleA and //exampleB will have 2 hits (once here and once from
+# testthat) if instrumentation filters are set to include //exampleA and
+# //exampleB, and should be absent otherwise.
+stopifnot(identical(c("A", "B"), exampleB::exampleB()))
+
+# Coverage from these proto.R will have 2 hits.
+stopifnot(exampleC::proto()$id == 7)

@@ -20,13 +20,21 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 # r_binary related tests.  Run these individually most layered target first,
 # before building everything so we don't have runfiles built for wrapped
 # targets. The alternative is to clean the workspace before each test.
-bazel run //:binary_sh_test
-bazel-bin/binary_sh_test
-bazel run //:binary_r_test
-bazel-bin/binary_r_test
-bazel run //:binary
-bazel-bin/binary
+bazel clean
+bazel run //binary:binary_sh_test
+bazel-bin/binary/binary_sh_test
+bazel run //binary:binary_r_test
+bazel-bin/binary/binary_r_test
+bazel run //binary
+bazel-bin/binary/binary
 
-bazel test --color=yes --show_progress_rate_limit=30 --keep_going --test_output=errors //...
+export BAZEL_TEST_OPTS=(
+"--color=yes"
+"--show_progress_rate_limit=30"
+"--keep_going"
+"--test_output=errors"
+)
 
-./coverage_test.sh
+bazel test "${BAZEL_TEST_OPTS[@]}" //...
+
+coverage/coverage_test.sh

@@ -19,10 +19,10 @@ set -eou pipefail
 if [[ "${TEST_SRCDIR:-}" ]]; then
   # Ensure we are in the correct workspace for this test.
   echo "Moving to the right bazel workspace:"
-  pushd "${TEST_SRCDIR}/com_grail_rules_r_tests"
+  pushd "${TEST_SRCDIR}/com_grail_rules_r_tests/container"
   echo ""
 else
-  cd "$(dirname "${BASH_SOURCE[0]}")/bazel-bin"
+  cd "$(dirname "${BASH_SOURCE[0]}")/bazel-bin/container"
 fi
 
 check() {

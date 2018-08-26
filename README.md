@@ -621,6 +621,13 @@ the BUILD file automatically.
         <p>Optional BUILD file for this repo. If not provided, one will be generated.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>razel_args</code></td>
+      <td>
+        <p><code>Dictionary; optional</code></p>
+        <p>Other arguments to supply to buildify function in razel.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 

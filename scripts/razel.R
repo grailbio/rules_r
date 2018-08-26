@@ -25,13 +25,15 @@
 #' @param pkg_directory
 #' @param pkg_bin_archive If set, uses the relative path provided here to
 #'        specify a binary archive of the package.
+#' @param repo_name_prefix Prefix to package name when constructing the bazel
+#'        repository name.
 #' @param no_test_rules If true, test rules are not generated.
 #' @param build_file_name Name of the BUILD file in the repo.
 #' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
 buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
-                     no_test_rules = TRUE,
-                     build_file_name="BUILD.bazel", external=TRUE) {
+                     repo_name_prefix = "R_", no_test_rules = TRUE,
+                     build_file_name = "BUILD.bazel", external = TRUE) {
   if (is.null(pkg_bin_archive)) {
     desc_file <- file.path(pkg_directory, "DESCRIPTION")
     if (!file.exists(desc_file)) {
@@ -103,7 +105,8 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
     if (length(deps) == 0) {
       return('[],\n')
     }
-    dep_targets <- paste0(sprintf("        \"@R_%s\",\n", gsub("\\.", "_", deps)),
+    dep_targets <- paste0(sprintf("        \"@%s\",\n",
+                                  paste0(repo_name_prefix, gsub("\\.", "_", deps))),
                           collapse="")
     return(sprintf('[\n%s    ],\n', dep_targets))
   }
@@ -130,7 +133,7 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
 
   # Convenience alias for external repos to map repo name to pkg target.
   pkg_alias <- sprintf('\nalias(\n    name="%s",\n    actual="%s",\n)',
-                          paste0("R_", gsub("\\.", "_", name)), name)
+                          paste0(repo_name_prefix, gsub("\\.", "_", name)), name)
 
   r_pkg <- sprintf('\n%s(\n    name="%s",\n    %s,\n    deps=%s%s)',
                    pkg_rule, name, srcs_attr, build_deps, tags_attr)
@@ -171,8 +174,11 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
 #' @param local_repo_dir Local copy of the repository.
 #' @param build_file_format Format string for the BUILD file location with
 #'        one string placeholder for package name.
+#' @param repo_name_prefix Prefix to package name when constructing the bazel
+#'        repository name.
 #' @param overwrite Recreate the build file if it exists already.
-buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwrite = FALSE) {
+buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s",
+                         repo_name_prefix = "R_", overwrite = FALSE) {
   pkg_tgzs <- list.files(file.path(local_repo_dir, "src", "contrib"), full.names = TRUE)
   tmp_dir <- tempdir()
   for (pkg_tgz in pkg_tgzs) {
@@ -225,6 +231,8 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s", overwri
 #'        \code{\link[digest]{digest}}) and include it in the WORKSPACE rule.
 #' @param rule_type The type of rule to use. If new_http_archive, then
 #'        build_file_format must be provided.
+#' @param repo_name_prefix Prefix to package name when constructing the bazel
+#'        repository name.
 #' @param remote_repos Repo URLs to use.
 #' @param mirror_repo_url If not NA, will place this as the first entry in the
 #'        WORKSPACE rule URLs, before the repos returned by
@@ -243,6 +251,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    pkg_type = c("source", "both"),
                                    sha256 = TRUE,
                                    rule_type = c("r_repository", "new_http_archive"),
+                                   repo_name_prefix = "R_",
                                    remote_repos = getOption("repos"),
                                    mirror_repo_url = NULL,
                                    use_only_mirror_repo = FALSE,
@@ -390,7 +399,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     }
 
     pkg_build_file_format <- ifelse(is.na(pkg$build_file), build_file_format, pkg$build_file)
-    bzl_repo_name <- paste0("R_", gsub("\\.", "_", pkg$Package))
+    bzl_repo_name <- paste0(repo_name_prefix, gsub("\\.", "_", pkg$Package))
     c("",
       sprintf("if not native.existing_rule(\"%s\"):", bzl_repo_name)) -> preamble
     writeLines(paste0(strrep(" ", 4), preamble), output_con)

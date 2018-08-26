@@ -68,3 +68,7 @@ r_repository_list(
 load("@r_repositories_bzl//:r_repositories.bzl", "r_repositories")
 
 r_repositories()
+
+load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
+
+r_coverage_dependencies()

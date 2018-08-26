@@ -20,4 +20,4 @@ set -euxo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Just to see if this mode builds.
-bazel build --features=rlang-reproducible :library_image
+bazel build --features=rlang-reproducible //container:library_image

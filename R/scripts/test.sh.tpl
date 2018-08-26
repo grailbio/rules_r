@@ -36,9 +36,11 @@ fi
 {tools_export_cmd}
 
 R_LIBS="{lib_dirs}"
-R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
+R_LIBS="${R_LIBS//_EXEC_ROOT_/${PWD}/}"
+RUNFILES_DIR="${PWD}"  # Capture before switching to TEST_TMPDIR
 export R_LIBS
 export R_LIBS_USER=dummy
+export RUNFILES_DIR  # For coverage collection
 
 if [[ ${TEST_TMPDIR:-} ]]; then
   readonly IS_TEST_SANDBOX=1
@@ -51,8 +53,24 @@ fi
 cp -LR "${PKG_TESTS_DIR}/"* ${TEST_TMPDIR}
 pushd ${TEST_TMPDIR} >/dev/null
 
+# Set up the code coverage environment
+if "{collect_coverage}"; then
+  export R_COVR=true  # As exported by covr
+  gcov_prefix_strip() {
+    # For non-reproducible case, adjust for resolution of symlinked files by 2 directories.
+    # TODO: Find a better way of determining components to strip.
+    {Rscript} - <<EOF
+path <- ifelse({rlang-reproducible}, normalizePath('/tmp/bazel/R/src'), dirname(dirname(getwd())))
+n <- length(strsplit(path, '/')[[1]]) - 1
+if (startsWith(Sys.getenv('TEST_TARGET'), '@')) n <- n + 2
+cat(n)
+EOF
+  }
+  export GCOV_PREFIX_STRIP="$(gcov_prefix_strip)"
+fi
+
 cleanup() {
-  popd >/dev/null
+  popd > /dev/null 2>&1 || true
   (( IS_TEST_SANDBOX )) || rm -rf "${TEST_TMPDIR}"
 }
 
@@ -72,6 +90,11 @@ if ls *.[Rr] > /dev/null 2>&1; then
       exit 1
     fi
   done
+fi
+
+popd > /dev/null
+if "{collect_coverage}"; then
+  {Rscript} "${RUNFILES_DIR}/{collect_coverage.R}"
 fi
 
 cleanup

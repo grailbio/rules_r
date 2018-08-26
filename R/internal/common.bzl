@@ -76,20 +76,23 @@ def library_deps(target_deps):
     transitive_pkg_deps = depset()
     transitive_tools = depset()
     for target_dep in target_deps:
-        transitive_pkg_deps += (target_dep[RPackage].transitive_pkg_deps +
-                                depset([target_dep[RPackage]]))
+        transitive_pkg_deps += (target_dep[RPackage].transitive_pkg_deps + depset([target_dep[RPackage]]))
         transitive_tools += target_dep[RPackage].transitive_tools
 
     # Individual R library directories.
     lib_dirs = []
+    gcno_dirs = []
 
     for pkg_dep in transitive_pkg_deps:
-        lib_dirs += [pkg_dep.pkg_lib_dir]
+        lib_dirs.append(pkg_dep.pkg_lib_dir)
+        if pkg_dep.pkg_gcno_dir:
+            gcno_dirs.append(pkg_dep.pkg_gcno_dir)
 
     return {
         "transitive_pkg_deps": transitive_pkg_deps,
         "transitive_tools": transitive_tools,
         "lib_dirs": lib_dirs,
+        "gcno_dirs": gcno_dirs,
     }
 
 def layer_library_deps(ctx, library_deps):

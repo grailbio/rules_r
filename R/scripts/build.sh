@@ -71,11 +71,16 @@ lock() {
   fi
 }
 
-eval "${EXPORT_ENV_VARS_CMD:-}"
+add_instrumentation_hook() {
+  local pkg_src="$1"
+  silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}" "${pkg_src}"
+}
 
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
+
+eval "${EXPORT_ENV_VARS_CMD:-}"
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which
@@ -129,6 +134,8 @@ fi
 
 export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
+export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
 export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
 
 # Easy case -- we allow timestamp and install paths to be stamped inside the package files.
@@ -136,6 +143,10 @@ if ! ${REPRODUCIBLE_BUILD}; then
   silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --build --library="${PKG_LIB_PATH}" \
     "${PKG_SRC_DIR}"
   mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
+
+  if "${INSTRUMENTED}"; then
+    add_instrumentation_hook "${PKG_SRC_DIR}"
+  fi
 
   trap - EXIT
   cleanup
@@ -153,7 +164,8 @@ mkdir -p "${TMP_LIB}"
 mkdir -p "${TMP_SRC}"
 lock "${LOCK_DIR}" "${PKG_NAME}"
 
-TMP_SRC_PKG="${TMP_SRC}/$(basename "${PKG_SRC_DIR}")"
+TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
+mkdir -p "${TMP_SRC_PKG}"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")
@@ -177,6 +189,10 @@ silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --built-timestamp='' --no-lock --bui
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
+
+if "${INSTRUMENTED}"; then
+  add_instrumentation_hook "${TMP_SRC_PKG}"
+fi
 
 trap - EXIT
 cleanup

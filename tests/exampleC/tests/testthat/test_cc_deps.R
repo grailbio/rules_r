@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-test_that("Works!", {
-  expect_true(requireNamespace("RProtoBuf"))
+test_that("cc_deps", {
+  expect_equal(7, proto()$id)
 })

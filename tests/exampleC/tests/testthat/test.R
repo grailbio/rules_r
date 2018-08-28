@@ -13,5 +13,5 @@
 # limitations under the License.
 
 test_that("Works!", {
-  expect_identical(c("A", "B", "C"), exampleC())
+  expect_identical(c("A", "B", "C", "C_native", "C_native_inline"), exampleC())
 })

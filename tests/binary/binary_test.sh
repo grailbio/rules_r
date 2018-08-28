@@ -30,7 +30,7 @@ if ! [[ "${RUNFILES_DIR:-}" ]]; then
 fi
 
 # shortpath to binary from runfiles dir.
-BINARY="../com_grail_rules_r_tests/binary"
+BINARY="../com_grail_rules_r_tests/binary/binary"
 
 if ! "${BINARY}"; then
   echo "Binary should have passed."

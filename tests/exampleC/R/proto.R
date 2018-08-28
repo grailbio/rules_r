@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exampleC <- function() {
-  c(exampleB::exampleB(), "C", .Call("exampleC", PACKAGE = "exampleC"))
+proto <- function() {
+  msg <- RProtoBuf::new(tutorial.Person, id = 0,
+             name = "James Bond",
+             id = 7)
+  msg
 }

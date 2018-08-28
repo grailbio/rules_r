@@ -20,9 +20,18 @@ _razel = attr.label(
     doc = "R source file containing razel functions.",
 )
 
+def _py_type_to_r_type(v):
+    # Hack: We equate "TRUE" as True, because dict attributes can not have heterogenous values.
+    if v == True or v == "TRUE":
+        return "TRUE"
+    elif v == False or v == "FALSE":
+        return "FALSE"
+    else:
+        return "'" + v + "'"
+
 def _dict_to_r_vec(d):
     # Convert a skylark dict to a named character vector for R.
-    return ", ".join([k + "='" + v + "'" for k, v in d.items()])
+    return ", ".join([k + "=" + _py_type_to_r_type(v) for k, v in d.items()])
 
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
@@ -45,7 +54,7 @@ def _r_repository_impl(rctx):
         rctx.symlink(rctx.attr.build_file, "BUILD.bazel")
         return
 
-    args = {}
+    args = dict(rctx.attr.razel_args)
     if rctx.attr.pkg_type == "binary":
         args["pkg_bin_archive"] = archive_basename
 
@@ -83,6 +92,9 @@ r_repository = repository_rule(
                 "source",
                 "binary",
             ],
+        ),
+        "razel_args": attr.string_dict(
+            doc = "Other arguments to supply to buildify function in razel.",
         ),
         "_razel": _razel,
     },

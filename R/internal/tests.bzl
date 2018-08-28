@@ -28,7 +28,18 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 def _test_impl(ctx):
-    library_deps = _library_deps([ctx.attr.pkg] + ctx.attr.suggested_deps)
+    pkg_deps = list(ctx.attr.suggested_deps)
+
+    collect_coverage = ctx.configuration.coverage_enabled
+    coverage_files = []
+    gcov_prefix_strip = ""
+    if collect_coverage:
+        pkg_deps.extend(ctx.attr._coverage_deps)
+        coverage_files.append(ctx.file._collect_coverage_R)
+
+    pkg_deps.append(ctx.attr.pkg)
+
+    library_deps = _library_deps(pkg_deps)
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
     pkg_tests_dir = _package_dir(ctx) + "/tests"
@@ -49,15 +60,25 @@ def _test_impl(ctx):
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{lib_dirs}": ":".join(lib_dirs),
             "{Rscript}": " ".join(_Rscript),
+            "{collect_coverage}": "true" if collect_coverage else "false",
+            "{collect_coverage.R}": ctx.file._collect_coverage_R.short_path,
+            "{rlang-reproducible}": "1" if "rlang-reproducible" in ctx.features else "0",
         },
         is_executable = True,
     )
 
     runfiles = ctx.runfiles(
-        files = library_deps["lib_dirs"] + test_files,
+        files = library_deps["lib_dirs"] + library_deps["gcno_dirs"] + test_files + coverage_files,
         transitive_files = tools,
     )
-    return [DefaultInfo(runfiles = runfiles)]
+    return struct(
+        instrumented_files = struct(
+            dependency_attributes = ["pkg"],
+        ),
+        providers = [
+            DefaultInfo(runfiles = runfiles),
+        ],
+    )
 
 r_unit_test = rule(
     attrs = {
@@ -79,6 +100,18 @@ r_unit_test = rule(
         "_test_sh_tpl": attr.label(
             allow_single_file = True,
             default = "@com_grail_rules_r//R/scripts:test.sh.tpl",
+        ),
+        "_coverage_deps": attr.label_list(
+            default = [
+                "@R_covr",
+                "@R_xml2",  # For cobertura xml output.
+            ],
+            providers = [RPackage],
+            doc = "Dependencies for test coverage calculation",
+        ),
+        "_collect_coverage_R": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:collect_coverage.R",
         ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +

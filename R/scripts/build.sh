@@ -85,31 +85,23 @@ eval "${EXPORT_ENV_VARS_CMD:-}"
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which
 # imposes length limits.
-export R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export R_LIBS="${R_LIBS_ROCLETS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS_USER=dummy
+
+if [[ "${ROCLETS}" ]]; then
+  silent "${RSCRIPT}" - <<EOF
+if (suppressWarnings(requireNamespace('devtools'))) {
+  devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))
+} else {
+  roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))
+}
+EOF
+fi
 
 mkdir -p "${PKG_LIB_PATH}"
 
-if ${INSTALL_BIN_ARCHIVE:-"false"}; then
-  silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --library="${PKG_LIB_PATH}" "${PKG_BIN_ARCHIVE}"
-  trap - EXIT
-  cleanup
-  exit
-fi
-
-eval "${BUILD_TOOLS_EXPORT_CMD:-}"
-
 if [[ "${CONFIG_OVERRIDE:-}" ]]; then
   cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
-fi
-
-if [[ "${ROCLETS}" ]]; then
-  silent "${RSCRIPT}" \
-    -e "\"if (suppressWarnings(requireNamespace('devtools'))) {\"" \
-    -e "\"  devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \
-    -e "\"} else {\"" \
-    -e "\"  roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))\"" \
-    -e "\"}\""
 fi
 
 if "${BUILD_SRC_ARCHIVE:-"false"}"; then
@@ -120,6 +112,10 @@ if "${BUILD_SRC_ARCHIVE:-"false"}"; then
   cleanup
   exit
 fi
+
+eval "${BUILD_TOOLS_EXPORT_CMD:-}"
+
+export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 
 # Hack: copy the .so files inside the package source so that they are installed
 # (in bazel's sandbox as well as on user's system) along with package libs, and

@@ -286,9 +286,17 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>List of strings; optional</code></p>
         <p>roclets to run before installing the package. If this is non-empty,
-           then roxygen2 must be a dependency of the package. If devtools is
-           also a dependency, then `devtools::document` will be used instead
-           of `roxygen2::roxygenize`.</p>
+           then you must specify roclets_deps as the R package you want to
+           use for running roclets. The runtime code will check if devtools
+           is available and use `devtools::document`, failing which, it will
+           check if roxygen2 is available and use `roxygen2::roxygenize`.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>roclets_deps</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>roxygen2 or devtools dependency for running roclets.</p>
       </td>
     </tr>
     <tr>

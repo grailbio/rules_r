@@ -14,6 +14,7 @@
 
 exports_files([
     "build.sh",
+    "build_binary.sh",
     "binary.sh.tpl",
     "check.sh.tpl",
     "collect_coverage.R",

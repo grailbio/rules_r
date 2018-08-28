@@ -200,6 +200,11 @@ def _build_impl(ctx):
                        cc_deps["files"].to_list() +
                        build_tools.to_list() + [ctx.file.makevars_user, flock] + instrument_files)
 
+    roclets_lib_dirs = []
+    if ctx.attr.roclets:
+        roclets_lib_dirs = _library_deps(ctx.attr.roclets_deps)["lib_dirs"]
+        all_input_files.extend(roclets_lib_dirs)
+
     if ctx.file.config_override:
         all_input_files += [ctx.file.config_override]
         orig_config = pkg_src_dir + "/configure"
@@ -234,7 +239,8 @@ def _build_impl(ctx):
         "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
         "C_CPP_FLAGS": " ".join(cc_deps["c_cpp_flags"]),
         "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps["c_so_files"]]),
-        "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
@@ -259,9 +265,10 @@ def _build_impl(ctx):
     )
 
     # Lightweight action to build just the source archive.
+
     ctx.actions.run(
         outputs = [pkg_src_archive],
-        inputs = pkg_src_files,
+        inputs = pkg_src_files + roclets_lib_dirs,
         executable = ctx.executable._build_sh,
         env = build_env + {"BUILD_SRC_ARCHIVE": "true"},
         mnemonic = "RSrcBuild",
@@ -271,7 +278,7 @@ def _build_impl(ctx):
 
     return struct(
         instrumented_files = struct(
-            # List the dependencies in which transitive instrumented files could be found.
+            # List the dependencies in which transitive instrumented files can be found.
             # NOTE: cc_deps and tools could be instrumented in a way that
             # is incompatible with covr, so we should not include them here.
             dependency_attributes = ["deps"],
@@ -312,8 +319,7 @@ def _build_binary_pkg_impl(ctx):
         "PKG_LIB_PATH": pkg_lib_dir.path,
         "PKG_NAME": pkg_name,
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
-        "INSTALL_BIN_ARCHIVE": "true",
-        "R_LIBS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
@@ -324,7 +330,7 @@ def _build_binary_pkg_impl(ctx):
     ctx.actions.run(
         outputs = [pkg_lib_dir],
         inputs = [pkg_bin_archive],
-        executable = ctx.executable._build_sh,
+        executable = ctx.executable._build_binary_sh,
         env = build_env,
         mnemonic = "RBuildBinary",
         use_default_shell_env = False,
@@ -370,12 +376,6 @@ _COMMON_ATTRS = {
     "env_vars": attr.string_dict(
         doc = "Extra environment variables to define for building the package",
     ),
-    "_build_sh": attr.label(
-        allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build.sh",
-        executable = True,
-        cfg = "host",
-    ),
 }
 
 r_pkg = rule(
@@ -400,8 +400,14 @@ r_pkg = rule(
             doc = "Replace the package configure script with this file",
         ),
         "roclets": attr.string_list(
-            doc = ("roclets to run before installing the package. If this is " +
-                   "non-empty, then roxygen2 must be a dependency of the package."),
+            doc = ("roclets to run before installing the package. If this is non-empty, " +
+                   "then you must specify roclets_deps as the R package you want to " +
+                   "use for running roclets. The runtime code will check if devtools " +
+                   "is available and use `devtools::document`, failing which, it will " +
+                   "check if roxygen2 is available and use `roxygen2::roxygenize`"),
+        ),
+        "roclets_deps": attr.label_list(
+            doc = "roxygen2 or devtools dependency for running roclets",
         ),
         "makevars_user": attr.label(
             allow_single_file = True,
@@ -410,6 +416,12 @@ r_pkg = rule(
         ),
         "build_tools": attr.label_list(
             doc = "Executables that package build and load will try to find in the system",
+        ),
+        "_build_sh": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:build.sh",
+            executable = True,
+            cfg = "host",
         ),
         "_flock": attr.label(
             default = "@com_grail_rules_r//R/scripts:flock",
@@ -436,6 +448,12 @@ r_binary_pkg = rule(
             allow_single_file = True,
             mandatory = True,
             doc = "Binary archive of the package",
+        ),
+        "_build_binary_sh": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:build_binary.sh",
+            executable = True,
+            cfg = "host",
         ),
     },
     doc = ("Rule to install the package and its transitive dependencies in " +

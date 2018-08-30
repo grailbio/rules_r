@@ -104,7 +104,22 @@ fix_gcov_file <- function(gcov_file, compiler_dir) {
 }
 vfix_gcov_file <- Vectorize(fix_gcov_file, "gcov_file", USE.NAMES = FALSE)
 
-run_gcov <- function(quiet = !bazel_r_verbose) {
+system_check <- function(cmd, args) {
+  options(warn=1)
+  res <- suppressWarnings(system2(cmd, args, stderr = TRUE))
+  options(warn=2)
+  if (length(attributes(res)) > 0) {
+    writeLines(res, stderr())
+    stop(paste(cmd, paste0(args, collapse=' '), "\nReceived status:",
+               attr(res, "status")))
+  }
+  if (bazel_r_verbose) {
+    writeLines(res)
+  }
+  invisible(NULL)
+}
+
+run_gcov <- function() {
   gcov_path <- Sys.which("gcov")
   gcov_outputs <- sapply(file.path(pkg_paths, "src"), function(compiler_dir) {
     path <- file.path(coverage_dir, compiler_dir)
@@ -118,9 +133,7 @@ run_gcov <- function(quiet = !bazel_r_verbose) {
     # Switch to the compiler directory to run gcov so all embedded relative paths makes sense.
     orig_dir <- getwd()
     setwd(path)
-    covr:::system_check(gcov_path,
-                        args = c(gcov_inputs, "-p"),
-                        quiet = quiet, echo = !quiet)
+    system_check(gcov_path, args = c(gcov_inputs, "-p"))
     setwd(orig_dir)
 
     # Collect gcov files and fix the paths they represent.

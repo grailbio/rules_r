@@ -76,11 +76,11 @@ add_instrumentation_hook() {
   silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}" "${pkg_src}"
 }
 
+eval "${EXPORT_ENV_VARS_CMD:-}"
+
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
-
-eval "${EXPORT_ENV_VARS_CMD:-}"
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which

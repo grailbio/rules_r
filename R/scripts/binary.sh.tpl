@@ -15,17 +15,32 @@
 
 set -euo pipefail
 
-START_DIR=$(pwd)
-
 fatal() {
   >&2 echo "$@"
   exit 1
 }
 
-# TODO: Revise after https://github.com/bazelbuild/bazel/issues/4054
+# Export environment variables, if any.
+{export_env_vars}
+
+if "${BAZEL_R_DEBUG:-"false"}"; then
+  set -x
+fi
+
+START_DIR=$(pwd)
+
+# Moving to the runfiles directory is necessary because source files
+# will not be present in exec root.
+# rlocation function from runfiles.bash is only good for giving paths from the
+# manifest, so we need our own logic to make sure we are in a runfiles
+# directory if we are not already there.
 cd_runfiles() {
-  # Moving to the runfiles directory is necessary because source files
-  # will not be present in exec root.
+  # Do nothing if it looks like we are already in a runfiles directory of a workspace.
+  if [[ "${PWD}" == *".runfiles/$(basename "${PWD}")" ]]; then
+    return
+  fi
+
+  # Assume the runfiles directory is next to us.
   RUNFILES_DIR="${RUNFILES_DIR:-"${TEST_SRCDIR:-"${BASH_SOURCE[0]}.runfiles"}"}"
   cd "${RUNFILES_DIR}" || \
     fatal "Runfiles directory could not be located."
@@ -36,13 +51,6 @@ cd_runfiles() {
 cd_runfiles
 PWD=$(pwd -P)
 
-# Export environment variables, if any.
-{export_env_vars}
-
-if "${BAZEL_R_DEBUG:-"false"}"; then
-  set -x
-fi
-
 # Export path to tool needed for the test.
 {tools_export_cmd}
 
@@ -51,10 +59,12 @@ R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
 export R_LIBS
 export R_LIBS_USER=dummy
 
-if [[ -x "{src}" ]]; then
-  "./{src}" "$@"
+src_path="../{workspace_name}/{src}"
+
+if [[ -x "${src_path}" ]]; then
+  "${src_path}" "$@"
 else
-  {Rscript} {Rscript_args} "{src}"
+  {Rscript} {Rscript_args} "${src_path}" "$@"
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."

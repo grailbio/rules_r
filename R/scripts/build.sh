@@ -90,7 +90,9 @@ export R_LIBS_USER=dummy
 
 if [[ "${ROCLETS}" ]]; then
   silent "${RSCRIPT}" - <<EOF
-if (suppressWarnings(requireNamespace('devtools'))) {
+bazel_libs <- .libPaths()
+bazel_libs <- bazel_libs[! bazel_libs %in% c(.Library, .Library.site)]
+if ("devtools" %in% installed.packages(bazel_libs)[, "Package"]) {
   devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))
 } else {
   roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))

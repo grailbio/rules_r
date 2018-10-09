@@ -19,6 +19,9 @@ EXEC_ROOT=$(pwd -P)
 
 TMP_FILES=() # Temporary files to be cleaned up before exiting the script.
 
+# Export PATH from bazel for subprocesses.
+export PATH
+
 cleanup() {
   rm -rf "${TMP_FILES[@]+"${TMP_FILES[@]}"}"
 }

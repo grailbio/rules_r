@@ -85,6 +85,29 @@ if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
 
+eval "${BUILD_TOOLS_EXPORT_CMD:-}"
+
+if [[ "${CONFIG_OVERRIDE:-}" ]]; then
+  cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
+fi
+
+# Hack: copy the .so files inside the package source so that they are installed
+# (in bazel's sandbox as well as on user's system) along with package libs, and
+# use relative rpath.
+if [[ "${C_SO_FILES}" ]]; then
+  mkdir -p "${PKG_SRC_DIR}/src"
+  eval cp "${C_SO_FILES}" "${PKG_SRC_DIR}/src" # Use eval to remove outermost quotes.
+  #shellcheck disable=SC2016
+  # Not all toolchains support $ORIGIN variable in rpath.
+  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
+fi
+
+export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
+export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
+export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
+
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which
 # imposes length limits.
@@ -105,10 +128,6 @@ fi
 
 mkdir -p "${PKG_LIB_PATH}"
 
-if [[ "${CONFIG_OVERRIDE:-}" ]]; then
-  cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
-fi
-
 if "${BUILD_SRC_ARCHIVE:-"false"}"; then
   silent "${R}" CMD build "${BUILD_ARGS}" "${PKG_SRC_DIR}"
   mv "${PKG_NAME}"*.tar.gz "${PKG_SRC_ARCHIVE}"
@@ -118,26 +137,7 @@ if "${BUILD_SRC_ARCHIVE:-"false"}"; then
   exit
 fi
 
-eval "${BUILD_TOOLS_EXPORT_CMD:-}"
-
 export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-
-# Hack: copy the .so files inside the package source so that they are installed
-# (in bazel's sandbox as well as on user's system) along with package libs, and
-# use relative rpath.
-if [[ "${C_SO_FILES}" ]]; then
-  mkdir -p "${PKG_SRC_DIR}/src"
-  eval cp "${C_SO_FILES}" "${PKG_SRC_DIR}/src" # Use eval to remove outermost quotes.
-  #shellcheck disable=SC2016
-  # Not all toolchains support $ORIGIN variable in rpath.
-  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
-fi
-
-export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
-export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
-export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
 
 # Easy case -- we allow timestamp and install paths to be stamped inside the package files.
 if ! ${REPRODUCIBLE_BUILD}; then

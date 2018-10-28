@@ -15,12 +15,8 @@
 # Collect code coverage
 
 # NOTE:
-# bazel currently always tries to run lcov with gcov to generate lcov trace
-# files, which is not applicable here. The only reason collect_coverage.sh from
-# bazel succeeds is because it can not find gcov defined in the toolchain for
-# the rule and skips the step. This is brittle and will break when bazel
-# changes collect_coverage.sh or if we start specifying cc_deps as a dependency
-# attribute in instrumented_files. More proper support for coverage in skylark
+# This might break in the future if we start specifying cc_deps as a dependency
+# attribute in instrumented_files. More proper support for coverage in starlark
 # rules is in the roadmap --
 # https://bazel.build/roadmaps/coverage.html#improve-adding-coverage-support-for-skylark-rules-p2
 

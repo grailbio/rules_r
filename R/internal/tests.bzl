@@ -113,6 +113,10 @@ r_unit_test = rule(
             allow_single_file = True,
             default = "@com_grail_rules_r//R/scripts:collect_coverage.R",
         ),
+        "_lcov_merger": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:lcov_merger.sh",
+        ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +
            "scripts of the specified package. The package itself must " +

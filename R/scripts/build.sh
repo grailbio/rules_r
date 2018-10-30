@@ -158,7 +158,7 @@ fi
 # timestamp, and by installing the packages to the same destination, from the
 # same source path, to get reproducibility in embedded paths.
 LOCK_DIR="/tmp/bazel/R/locks"
-TMP_LIB="/tmp/bazel/R/lib"
+TMP_LIB="/tmp/bazel/R/lib_${PKG_NAME}"
 TMP_SRC="/tmp/bazel/R/src"
 mkdir -p "${LOCK_DIR}"
 mkdir -p "${TMP_LIB}"

@@ -91,6 +91,16 @@ if [[ "${CONFIG_OVERRIDE:-}" ]]; then
   cp "${CONFIG_OVERRIDE}" "${PKG_SRC_DIR}/configure"
 fi
 
+copy_inst_files() {
+  local IFS=","
+  for copy_pair in ${INST_FILES_MAP}; do
+    IFS=":" read -r dst src <<< "${copy_pair}"
+    mkdir -p "$(dirname "${dst}")"
+    cp -f "${src}" "${dst}"
+  done
+}
+copy_inst_files
+
 # Hack: copy the .so files inside the package source so that they are installed
 # (in bazel's sandbox as well as on user's system) along with package libs, and
 # use relative rpath.

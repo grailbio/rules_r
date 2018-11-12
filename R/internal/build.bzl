@@ -177,6 +177,28 @@ def _remove_file(files, path_to_remove):
 
     return new_depset
 
+def _inst_files(inst_files_dict):
+    # Lists all files needed to be copied into the inst directory.
+
+    return depset(transitive = [t.files for (t, _) in inst_files_dict.items()])
+
+def _inst_files_copy_map(ctx):
+    # Returns a dictionary of destination paths to source paths for copying.
+
+    pkg_src_dir = _package_dir(ctx)
+    bin_dir = ctx.bin_dir.path
+    gen_dir = ctx.genfiles_dir.path
+
+    copy_map = dict()
+    for (t, d) in ctx.attr.inst_files.items():
+        file_paths = [f.path for f in t.files.to_list()]
+        stripped_paths = _strip_path_prefixes(file_paths, bin_dir, gen_dir)
+        copy_map.update({
+            "%s/inst/%s/%s" % (pkg_src_dir, d, stripped_path): path
+            for stripped_path, path in zip(stripped_paths, file_paths)
+        })
+    return copy_map
+
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
@@ -193,11 +215,13 @@ def _build_impl(ctx):
 
     library_deps = _library_deps(pkg_deps)
     cc_deps = _cc_deps(ctx, instrumented)
+    inst_files = _inst_files(ctx.attr.inst_files)
+    inst_files_map = _inst_files_copy_map(ctx)
     transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
     build_tools = _executables(ctx.attr.build_tools) + transitive_tools
     instrument_files = [ctx.file._instrument_R] if instrumented else []
     all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
-                       cc_deps["files"].to_list() +
+                       cc_deps["files"].to_list() + inst_files.to_list() +
                        build_tools.to_list() + [ctx.file.makevars_user, flock] + instrument_files)
 
     roclets_lib_dirs = []
@@ -226,7 +250,6 @@ def _build_impl(ctx):
         # We also need to collect the instrumented .gcno files from the package.
         pkg_gcno_dir = ctx.actions.declare_directory("src")
         output_files.append(pkg_gcno_dir)
-
     build_env = {
         "PKG_LIB_PATH": pkg_lib_dir.path,
         "PKG_SRC_DIR": pkg_src_dir,
@@ -244,6 +267,7 @@ def _build_impl(ctx):
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
+        "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
         "FLOCK_PATH": flock.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
@@ -413,6 +437,14 @@ r_pkg = rule(
             allow_single_file = True,
             default = "@com_grail_rules_r_makevars//:Makevars",
             doc = "User level Makevars file",
+        ),
+        "inst_files": attr.label_keyed_string_dict(
+            allow_files = True,
+            cfg = "target",
+            doc = "Files to be bundled with the package through the inst directory. " +
+                  "The values of the dictionary will specify the package relative " +
+                  "destination path. For example, '' will bundle the files to the top level " +
+                  "directory, and 'mydir' will bundle all files into a directory mydir.",
         ),
         "build_tools": attr.label_list(
             doc = "Executables that package build and load will try to find in the system",

@@ -189,7 +189,7 @@ See [container support][docker].
 
 ```python
 r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, roclets,
-      makevars_user, env_vars, tools, build_tools)
+      roclets_deps, makevars_user, env_vars, inst_files, tools, build_tools)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -311,6 +311,16 @@ sandbox, so it can be depended upon by other package builds.
       <td>
         <p><code>Dictionary; optional</code></p>
         <p>Extra environment variables to define for building the package.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>inst_files</code></td>
+      <td>
+        <p><code>Label keyed Dictionary; optional</code></p>
+        <p>Files to be bundled with the package through the inst directory.
+           The values of the dictionary will specify the package relative
+           destination path. For example, '' will bundle the files to the top level
+           directory, and 'mydir' will bundle all files into a directory mydir.</p>
       </td>
     </tr>
     <tr>

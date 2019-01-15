@@ -181,6 +181,9 @@ rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")
 
+# Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.
+TZ=UTC find "${TMP_SRC_PKG}" -type f -exec touch -t 197001010000 {} \+
+
 # Override flags to the compiler for reproducible builds.
 R_MAKEVARS_SITE="$(mktemp)"
 TMP_FILES+=("${R_MAKEVARS_SITE}")

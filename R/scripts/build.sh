@@ -15,6 +15,18 @@
 
 set -euo pipefail
 
+# Check version
+# TODO: Remove this check when the system state is unconditionally checked.
+if [[ "${REQUIRED_VERSION:-}" ]]; then
+  r_version="$(${R} \
+    -e 'v <- getRversion()' \
+    -e 'cat(v$major, v$minor, sep=".")')"
+  if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
+    >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
+    exit 1
+  fi
+fi
+
 EXEC_ROOT=$(pwd -P)
 
 TMP_FILES=() # Temporary files to be cleaned up before exiting the script.

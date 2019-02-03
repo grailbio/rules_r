@@ -18,7 +18,6 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
-    _Rscript = "Rscript",
     _env_vars = "env_vars",
     _executables = "executables",
     _library_deps = "library_deps",
@@ -28,11 +27,12 @@ load(
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
 def _test_impl(ctx):
+    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+
     pkg_deps = list(ctx.attr.suggested_deps)
 
     collect_coverage = ctx.configuration.coverage_enabled
     coverage_files = []
-    gcov_prefix_strip = ""
     if collect_coverage:
         pkg_deps.extend(ctx.attr._coverage_deps)
         coverage_files.append(ctx.file._collect_coverage_R)
@@ -59,7 +59,7 @@ def _test_impl(ctx):
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{lib_dirs}": ":".join(lib_dirs),
-            "{Rscript}": " ".join(_Rscript),
+            "{Rscript}": " ".join(info.rscript),
             "{collect_coverage}": "true" if collect_coverage else "false",
             "{collect_coverage.R}": ctx.file._collect_coverage_R.short_path,
             "{rlang-reproducible}": "1" if "rlang-reproducible" in ctx.features else "0",
@@ -68,7 +68,8 @@ def _test_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = library_deps["lib_dirs"] + library_deps["gcno_dirs"] + test_files + coverage_files,
+        files = (library_deps["lib_dirs"] + library_deps["gcno_dirs"] + test_files +
+                 coverage_files + [info.state]),
         transitive_files = tools,
     )
     return struct(
@@ -122,10 +123,13 @@ r_unit_test = rule(
            "scripts of the specified package. The package itself must " +
            "be one of the deps."),
     test = True,
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _test_impl,
 )
 
 def _check_impl(ctx):
+    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+
     src_archive = ctx.attr.pkg[RPackage].src_archive
     pkg_deps = ctx.attr.pkg[RPackage].pkg_deps
     build_tools = ctx.attr.pkg[RPackage].build_tools
@@ -137,7 +141,7 @@ def _check_impl(ctx):
 
     all_input_files = ([src_archive] + library_deps["lib_dirs"] +
                        tools.to_list() +
-                       cc_deps["files"].to_list() + [makevars_user])
+                       cc_deps["files"].to_list() + [makevars_user] + [info.state])
 
     lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
     ctx.actions.expand_template(
@@ -153,6 +157,7 @@ def _check_impl(ctx):
             "{lib_dirs}": ":".join(lib_dirs),
             "{check_args}": _sh_quote_args(ctx.attr.check_args),
             "{pkg_src_archive}": src_archive.short_path,
+            "{R}": " ".join(info.r),
         },
         is_executable = True,
     )
@@ -193,5 +198,6 @@ r_pkg_test = rule(
            "a source archive of this package, and run R CMD check on " +
            "the package source archive in the sandbox."),
     test = True,
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _check_impl,
 )

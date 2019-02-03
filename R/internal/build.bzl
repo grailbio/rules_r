@@ -18,8 +18,6 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
-    _R = "R",
-    _Rscript = "Rscript",
     _build_path_export = "build_path_export",
     _env_vars = "env_vars",
     _executables = "executables",
@@ -204,7 +202,7 @@ def _external_repo(ctx):
     return "external-r-repo" in ctx.attr.tags
 
 def _build_impl(ctx):
-    # Implementation for the r_pkg rule.
+    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
@@ -225,8 +223,10 @@ def _build_impl(ctx):
     cc_deps = _cc_deps(ctx, instrumented)
     inst_files = _inst_files(ctx.attr.inst_files)
     inst_files_map = _inst_files_copy_map(ctx)
-    transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
-    build_tools = _executables(ctx.attr.build_tools) + transitive_tools
+    transitive_tools = depset(
+        transitive = [_executables(ctx.attr.tools + info.tools), library_deps["transitive_tools"]],
+    )
+    build_tools = _executables(ctx.attr.build_tools + info.tools) + transitive_tools
     instrument_files = [ctx.file._instrument_R] if instrumented else []
     all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
                        cc_deps["files"].to_list() + inst_files.to_list() +
@@ -283,12 +283,13 @@ def _build_impl(ctx):
         "INSTRUMENTED": "true" if instrumented else "false",
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
-        "R": " ".join(_R),
-        "RSCRIPT": " ".join(_Rscript),
+        "R": " ".join(info.r),
+        "RSCRIPT": " ".join(info.rscript),
+        "REQUIRED_VERSION": info.version,
     }
     ctx.actions.run(
         outputs = output_files,
-        inputs = all_input_files,
+        inputs = all_input_files + [info.state],
         executable = ctx.executable._build_sh,
         env = build_env,
         mnemonic = "RBuild",
@@ -300,7 +301,7 @@ def _build_impl(ctx):
 
     ctx.actions.run(
         outputs = [pkg_src_archive],
-        inputs = pkg_src_files + roclets_lib_dirs,
+        inputs = pkg_src_files + roclets_lib_dirs + [info.state],
         executable = ctx.executable._build_sh,
         env = build_env + {"BUILD_SRC_ARCHIVE": "true"},
         mnemonic = "RSrcBuild",
@@ -341,6 +342,8 @@ def _build_impl(ctx):
     )
 
 def _build_binary_pkg_impl(ctx):
+    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+
     pkg_name = _package_name(ctx)
     pkg_lib_dir = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.file.src
@@ -356,12 +359,12 @@ def _build_binary_pkg_impl(ctx):
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
-        "R": " ".join(_R),
-        "RSCRIPT": " ".join(_Rscript),
+        "R": " ".join(info.r),
+        "RSCRIPT": " ".join(info.rscript),
     }
     ctx.actions.run(
         outputs = [pkg_lib_dir],
-        inputs = [pkg_bin_archive],
+        inputs = [pkg_bin_archive, info.state],
         executable = ctx.executable._build_binary_sh,
         env = build_env,
         mnemonic = "RBuildBinary",
@@ -400,6 +403,7 @@ _COMMON_ATTRS = {
         doc = "R package dependencies of type r_pkg",
     ),
     "tools": attr.label_list(
+        allow_files = True,
         doc = "Executables that code in this package will try to find in the system",
     ),
     "install_args": attr.string_list(
@@ -455,6 +459,7 @@ r_pkg = rule(
                   "directory, and 'mydir' will bundle all files into a directory mydir.",
         ),
         "build_tools": attr.label_list(
+            allow_files = True,
             doc = "Executables that package build and load will try to find in the system",
         ),
         "_build_sh": attr.label(
@@ -479,6 +484,7 @@ r_pkg = rule(
         "bin_archive": "%{name}.bin.tar.gz",
         "src_archive": "%{name}.tar.gz",
     },
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _build_impl,
 )
 
@@ -498,5 +504,6 @@ r_binary_pkg = rule(
     },
     doc = ("Rule to install the package and its transitive dependencies in " +
            "the Bazel sandbox from a binary archive."),
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _build_binary_pkg_impl,
 )

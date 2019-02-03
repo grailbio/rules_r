@@ -51,4 +51,4 @@ R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS
 export R_LIBS_USER=dummy
 
-exec R CMD check {check_args} {pkg_src_archive}
+exec {R} CMD check {check_args} {pkg_src_archive}

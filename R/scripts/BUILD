@@ -13,14 +13,15 @@
 # limitations under the License.
 
 exports_files([
+    "binary.sh.tpl",
     "build.sh",
     "build_binary.sh",
-    "binary.sh.tpl",
     "check.sh.tpl",
     "collect_coverage.R",
     "instrument.R",
     "lcov_merger.sh",
     "library.sh.tpl",
+    "system_state.sh",
     "test.sh.tpl",
 ])
 

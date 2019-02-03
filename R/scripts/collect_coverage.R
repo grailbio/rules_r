@@ -109,14 +109,10 @@ try_gcov <- function(gcov_path, args) {
     writeLines(res, stderr())
     return(FALSE)
   }
-  # gcov can return a 0 status code when the file formats don't match.
+  # gcov from LLVM can return a 0 status code when the file formats don't match.
   if (any(grepl("Invalid .gcno File", res))) {
     writeLines(res, stderr())
     return(FALSE)
-  }
-  if (any(grepl("Invalid .gcno File", res))) {
-    writeLines(res, stderr())
-    stop("gcov refuses to process our gcno file; check your version of gcov.")
   }
   if (bazel_r_verbose) {
     writeLines(res)

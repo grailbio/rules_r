@@ -24,6 +24,10 @@ load(
     "@com_grail_rules_r//makevars:makevars.bzl",
     _r_makevars = "r_makevars",
 )
+load(
+    "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
+    _local_r_toolchain = "local_r_toolchain",
+)
 load("@com_grail_rules_r//R/internal:coverage_deps.bzl", "r_coverage_dependencies")
 
 def r_rules_dependencies(
@@ -48,6 +52,17 @@ def r_rules_dependencies(
         name = "com_grail_rules_r_makevars",
         makevars_darwin = makevars_darwin,
         makevars_linux = makevars_linux,
+    )
+
+def r_register_toolchains(makevars_user = "@com_grail_rules_r_makevars//:Makevars", **kwargs):
+    _maybe(
+        _local_r_toolchain,
+        name = "com_grail_rules_r_toolchains",
+        **kwargs
+    )
+
+    native.register_toolchains(
+        "@com_grail_rules_r_toolchains//:toolchain",
     )
 
 def _maybe(repo_rule, name, **kwargs):

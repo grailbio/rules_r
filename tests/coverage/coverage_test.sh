@@ -51,22 +51,14 @@ expect_equal() {
   printf "\n==== PASSED %s =====\n\n" "${expected}"
 }
 
-# For default instrumentation, i.e. dependencies in the same package.
-bazel coverage "${BAZEL_TEST_OPTS[@]}" //...
+# For instrumentation of dependencies in the same package.
+bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter=exampleC //exampleC:test
 expect_equal "default_instrumented${suffix}.xml" "${coverage_file}"
 
 # For instrumentation of packages without tests, and of indirect test dependencies.
-bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter=-'@R_' //...
+bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter=// //...
 expect_equal "workspace_instrumented${suffix}.xml" "${coverage_file}"
 
-# Instrumenting external deps is broken right now for some packages like RProtoBuf and testthat.
-set +e
+# Set instrumentation filter to everything.
+# Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
 bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter='.' --test_output=summary //...
-rc=$?
-if (( rc != 0 )) && (( rc != 3 )) && (( rc != 4 )); then
-  echo "Building the workspace with everything instrumented failed!"
-  exit 1
-else
-  echo "Test failures are acceptable for this test."
-fi
-set -e

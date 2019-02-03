@@ -109,6 +109,10 @@ system_check <- function(cmd, args) {
     stop(paste(cmd, paste0(args, collapse=' '), "\nReceived status:",
                attr(res, "status")))
   }
+  if (any(grepl("Invalid .gcno File", res))) {
+    writeLines(res, stderr())
+    stop("gcov refuses to process our gcno file; check your version of gcov.")
+  }
   if (bazel_r_verbose) {
     writeLines(res)
   }

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_unit_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -38,6 +38,7 @@ r_pkg(
         "@com_google_protobuf//:protobuf",
     ],
     config_override = ":empty",
+    tags = ["external-r-repo"],
     deps = [
         "@R_RCurl",
         "@R_Rcpp",

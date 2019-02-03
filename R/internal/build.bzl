@@ -199,6 +199,10 @@ def _inst_files_copy_map(ctx):
         })
     return copy_map
 
+def _external_repo(ctx):
+    # Returns True if this package is tagged as an external R package.
+    return "external-r-repo" in ctx.attr.tags
+
 def _build_impl(ctx):
     # Implementation for the r_pkg rule.
 
@@ -209,7 +213,11 @@ def _build_impl(ctx):
     pkg_src_archive = ctx.outputs.src_archive
     flock = ctx.attr._flock.files_to_run.executable
 
-    instrumented = ctx.coverage_instrumented()
+    # Instrumenting external R packages can be troublesome; e.g. RProtoBuf and testthat.
+    external_repo = _external_repo(ctx)
+    instrumented = (ctx.coverage_instrumented() and
+                    not external_repo and
+                    not "no-instrument" in ctx.aattr.tags)
 
     pkg_deps = list(ctx.attr.deps)
 
@@ -318,7 +326,7 @@ def _build_impl(ctx):
                 bin_archive = pkg_bin_archive,
                 build_tools = build_tools,
                 cc_deps = cc_deps,
-                external_repo = ("external-r-repo" in ctx.attr.tags),
+                external_repo = external_repo,
                 makevars_user = ctx.file.makevars_user,
                 pkg_deps = pkg_deps,
                 pkg_gcno_dir = pkg_gcno_dir,
@@ -370,7 +378,7 @@ def _build_binary_pkg_impl(ctx):
             bin_archive = pkg_bin_archive,
             build_tools = None,
             cc_deps = None,
-            external_repo = ("external-r-repo" in ctx.attr.tags),
+            external_repo = _external_repo(ctx),
             makevars_user = None,
             pkg_deps = ctx.attr.deps,
             pkg_gcno_dir = None,

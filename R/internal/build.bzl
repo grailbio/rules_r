@@ -217,7 +217,7 @@ def _build_impl(ctx):
     external_repo = _external_repo(ctx)
     instrumented = (ctx.coverage_instrumented() and
                     not external_repo and
-                    not "no-instrument" in ctx.aattr.tags)
+                    not "no-instrument" in ctx.attr.tags)
 
     pkg_deps = list(ctx.attr.deps)
 

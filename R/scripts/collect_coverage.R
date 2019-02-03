@@ -100,14 +100,19 @@ fix_gcov_file <- function(gcov_file, compiler_dir) {
 }
 vfix_gcov_file <- Vectorize(fix_gcov_file, "gcov_file", USE.NAMES = FALSE)
 
-system_check <- function(cmd, args) {
+# Try the given gcov command, returning TRUE or FALSE indicating success.
+try_gcov <- function(gcov_path, args) {
   options(warn=1)
-  res <- suppressWarnings(system2(cmd, args, stderr = TRUE))
+  res <- suppressWarnings(system2(gcov_path, args, stderr = TRUE))
   options(warn=2)
   if (length(attributes(res)) > 0) {
     writeLines(res, stderr())
-    stop(paste(cmd, paste0(args, collapse=' '), "\nReceived status:",
-               attr(res, "status")))
+    return(FALSE)
+  }
+  # gcov can return a 0 status code when the file formats don't match.
+  if (any(grepl("Invalid .gcno File", res))) {
+    writeLines(res, stderr())
+    return(FALSE)
   }
   if (any(grepl("Invalid .gcno File", res))) {
     writeLines(res, stderr())
@@ -116,11 +121,12 @@ system_check <- function(cmd, args) {
   if (bazel_r_verbose) {
     writeLines(res)
   }
-  invisible(NULL)
+  return(TRUE)
 }
 
 run_gcov <- function() {
   gcov_path <- Sys.which("gcov")
+  llvm_cov_path <- Sys.which("llvm-cov")
   gcov_outputs <- sapply(file.path(pkg_paths, "src"), function(compiler_dir) {
     path <- file.path(coverage_dir, compiler_dir)
 
@@ -133,7 +139,14 @@ run_gcov <- function() {
     # Switch to the compiler directory to run gcov so all embedded relative paths makes sense.
     orig_dir <- getwd()
     setwd(path)
-    system_check(gcov_path, args = c(gcov_inputs, "-p"))
+    res <- try_gcov(gcov_path, args = c(gcov_inputs, "-p"))
+    if (!isTRUE(res) && nchar(llvm_cov_path) > 0) {
+      message("gcov failed to process .gcno files; trying llvm-cov")
+      res <- try_gcov(llvm_cov_path, args = c("gcov", gcov_inputs, "-p"))
+    }
+    if (!isTRUE(res)) {
+      stop("unable to process .gcno files")
+    }
     setwd(orig_dir)
 
     # Collect gcov files and fix the paths they represent.

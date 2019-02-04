@@ -54,7 +54,7 @@ def r_rules_dependencies(
         makevars_linux = makevars_linux,
     )
 
-def r_register_toolchains(makevars_user = "@com_grail_rules_r_makevars//:Makevars", **kwargs):
+def r_register_toolchains(**kwargs):
     _maybe(
         _local_r_toolchain,
         name = "com_grail_rules_r_toolchains",

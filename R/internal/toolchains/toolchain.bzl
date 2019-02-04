@@ -33,6 +33,9 @@ load("@com_grail_rules_r//R/internal:common.bzl", "executables")
 def _r_toolchain_impl(ctx):
     args = ctx.attr.args
 
+    if not ctx.attr.r or not ctx.attr.rscript:
+        fail("R or Rscript not specified")
+
     Rscript_args = ["--no-init-file"] + args
     R_args = ["--slave", "--no-restore"] + Rscript_args
 

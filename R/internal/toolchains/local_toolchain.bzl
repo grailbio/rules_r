@@ -76,10 +76,11 @@ def _local_r_toolchain_impl(rctx):
         r = rctx.which("R")
         rscript = rctx.which("Rscript")
 
-    if not rctx.path(r).exists:
-        fail("R not found")
-    if not rctx.path(rscript).exists:
-        fail("Rscript not found")
+    if rctx.attr.strict:
+        if not r or not rctx.path(r).exists:
+            fail("R not found")
+        if not rscript or not rctx.path(rscript).exists:
+            fail("Rscript not found")
 
     rctx.file("WORKSPACE", """workspace(name = %s)""" % rctx.name)
     rctx.file("BUILD.bazel", _BUILD.format(
@@ -97,6 +98,10 @@ local_r_toolchain = repository_rule(
             doc = ("A path to `R_HOME` (as returned from `R RHOME`). If not specified, " +
                    "the rule looks for R and Rscript in `PATH`. The environment variable " +
                    "`%s` takes precendence over this value." % _home_env_var),
+        ),
+        "strict": attr.bool(
+            default = True,
+            doc = "Fail if R is not found on the host system.",
         ),
         "version": attr.string(
             doc = "version attribute for r_toolchain",

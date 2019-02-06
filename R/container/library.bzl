@@ -69,6 +69,7 @@ _r_library_layer = rule(
     },
     executable = False,
     outputs = _layer.outputs,
+    toolchains = ["@io_bazel_rules_docker//toolchains/docker:toolchain_type"],
     implementation = _library_layer_impl,
 )
 
@@ -109,12 +110,12 @@ def r_library_image(**kwargs):
     kwargs.setdefault("tools_install_path", "usr/local/bin")
     [_r_library_layer(
         name = layer,
+        directory = kwargs["directory"],
+        layer_type = layer_type,
         library = kwargs["library"],
         library_path = kwargs["library_path"],
-        tools_install_path = kwargs["tools_install_path"],
-        layer_type = layer_type,
-        directory = kwargs["directory"],
         tags = ["manual"],
+        tools_install_path = kwargs["tools_install_path"],
     ) for (layer_type, layer) in _layers.items()]
     kwargs.pop("library")
     kwargs.pop("library_path")

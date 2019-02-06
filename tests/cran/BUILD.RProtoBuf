@@ -38,6 +38,9 @@ r_pkg(
         "@com_google_protobuf//:protobuf",
     ],
     config_override = ":empty",
+    env_vars = {
+        "USE_CXX11": "1",
+    },
     tags = ["external-r-repo"],
     deps = [
         "@R_RCurl",

@@ -20,9 +20,12 @@ load(
     _container = "container",
 )
 load(
+    "@io_bazel_rules_docker//container:layer.bzl",
+    _layer = "layer",
+)
+load(
     "@io_bazel_rules_docker//lang:image.bzl",
     _app_layer = "app_layer",
-    _dep_layer = "dep_layer",
     _layer_file_path = "layer_file_path",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RBinary")
@@ -30,7 +33,7 @@ load("@com_grail_rules_r//R:providers.bzl", "RBinary")
 # Similar to dep_layer_impl, but with output group files.
 # We expect to capture any empty files in the app layer.
 def _binary_layer_impl(ctx):
-    return _container.image.implementation(
+    return _layer.implementation(
         ctx,
         # We use all absolute paths.
         directory = "/",
@@ -41,7 +44,7 @@ def _binary_layer_impl(ctx):
     )
 
 _r_binary_layer = rule(
-    attrs = _container.image.attrs + {
+    attrs = _layer.attrs + {
         "binary": attr.label(
             providers = [RBinary],
             doc = "The r_binary target that this layer will capture.",
@@ -53,8 +56,9 @@ _r_binary_layer = rule(
         "data_path": attr.string(default = "."),
         "directory": attr.string(default = "/app"),
     },
-    executable = True,
-    outputs = _container.image.outputs,
+    executable = False,
+    outputs = _layer.outputs,
+    toolchains = ["@io_bazel_rules_docker//toolchains/docker:toolchain_type"],
     implementation = _binary_layer_impl,
 )
 
@@ -63,10 +67,9 @@ def _r_binary_image_by_deps(**kwargs):
     layers = kwargs.pop("layers")
     for index, dep in enumerate(layers):
         this_name = "%s.%d" % (name, index)
-        _dep_layer(name = this_name, base = kwargs["base"], dep = dep, tags = ["manual"])
+        _app_layer(name = this_name, base = kwargs["base"], dep = dep, tags = ["manual"])
         kwargs["base"] = this_name
 
-    kwargs["lang_layers"] = layers
     _app_layer(**kwargs)
 
 def _r_binary_image_by_repo_type(**kwargs):
@@ -77,20 +80,16 @@ def _r_binary_image_by_repo_type(**kwargs):
         "tools": name + "_tools_filegroup",
     }
 
-    base = kwargs["base"]
-    for index, (layer_type, layer) in enumerate(layers.items()):
-        this_name = "%s.%d" % (name, index)
+    for (layer_type, layer) in layers.items():
+        this_name = layer
         _r_binary_layer(
             name = this_name,
-            base = base,
             binary = kwargs["binary"],
             layer_type = layer_type,
             tags = ["manual"],
         )
-        base = this_name
-    kwargs["base"] = base
 
-    kwargs["lang_layers"] = layers.values()
+    kwargs["layers"] = layers.values()
     _app_layer(**kwargs)
 
 def r_binary_image(**kwargs):
@@ -102,9 +101,6 @@ def r_binary_image(**kwargs):
             similar to r_library_image.
         **kwargs: same as container_image.
     """
-
-    if "lang_layers" in kwargs:
-        fail("lang_layers is not allowed for r_binary_image")
 
     # Reset cmd in the base R image.
     if not kwargs.get("cmd"):

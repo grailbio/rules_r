@@ -150,35 +150,11 @@ fi
 
 mkdir -p "${PKG_LIB_PATH}"
 
-if "${BUILD_SRC_ARCHIVE:-"false"}"; then
-  silent "${R}" CMD build "${BUILD_ARGS}" "${PKG_SRC_DIR}"
-  mv "${PKG_NAME}"*.tar.gz "${PKG_SRC_ARCHIVE}"
-
-  trap - EXIT
-  cleanup
-  exit
-fi
-
 export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 
-# Easy case -- we allow timestamp and install paths to be stamped inside the package files.
-if ! ${REPRODUCIBLE_BUILD}; then
-  silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --build --library="${PKG_LIB_PATH}" \
-    "${PKG_SRC_DIR}"
-  mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
-
-  if "${INSTRUMENTED}"; then
-    add_instrumentation_hook "${PKG_SRC_DIR}"
-  fi
-
-  trap - EXIT
-  cleanup
-  exit
-fi
-
-# Not so easy case -- we make builds reproducible by asking R to use a constant
-# timestamp, and by installing the packages to the same destination, from the
-# same source path, to get reproducibility in embedded paths.
+# We make builds reproducible by asking R to use a constant timestamp, and by
+# installing the packages to the same destination, from the same source path,
+# to get reproducibility in embedded paths.
 LOCK_DIR="/tmp/bazel/R/locks"
 TMP_LIB="/tmp/bazel/R/lib_${PKG_NAME}"
 TMP_SRC="/tmp/bazel/R/src"
@@ -210,8 +186,18 @@ repro_flags=(
 )
 echo "CPPFLAGS += ${repro_flags[*]}" > "${R_MAKEVARS_SITE}"
 
+# Check if we just need to build the source archive.
+if "${BUILD_SRC_ARCHIVE:-"false"}"; then
+  silent "${R}" CMD build --built-timestamp='' "${BUILD_ARGS}" "${PKG_SRC_DIR}"
+  mv "${PKG_NAME}"*.tar.gz "${PKG_SRC_ARCHIVE}"
+
+  trap - EXIT
+  cleanup
+  exit
+fi
+
 # Install the package to the common temp library.
-silent "${R}" CMD INSTALL "${INSTALL_ARGS}" --built-timestamp='' --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"
+silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.

@@ -181,17 +181,16 @@ local({
 
 local({
   test_workspace_pattern <- paste0("^external/", test_workspace, "/")
+  execroot_pattern <- paste0("^.*", file.path("execroot", Sys.getenv("TEST_WORKSPACE"), ""))
+  tmp_src_path <- normalizePath("/tmp/bazel/R/src", mustWork = FALSE)
   fix_filename <- function(f) {
-    # For rlang-reproducible
-    tmp_src_path <- normalizePath("/tmp/bazel/R/src", mustWork = FALSE)
     if (startsWith(f, tmp_src_path)) {
       f <- sub(paste0(tmp_src_path, "/"), "", f)
       f <- sub(test_workspace_pattern, "", f)
       return(f)
     }
-
-    # Non-reproducible build paths.
-    f <- sub(paste0("^.*", file.path("execroot", Sys.getenv("TEST_WORKSPACE"), "")), "", f)
+    # C++ file paths will be their absolute paths anyway.
+    f <- sub(execroot_pattern, "", f)
     f <- sub("^bazel-out/[^/]+/bin/", "", f)
     f <- sub(test_workspace_pattern, "", f)
     return(f)

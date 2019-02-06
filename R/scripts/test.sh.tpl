@@ -57,16 +57,16 @@ pushd ${TEST_TMPDIR} >/dev/null
 if "{collect_coverage}"; then
   export R_COVR=true  # As exported by covr
   gcov_prefix_strip() {
-    # For non-reproducible case, adjust for resolution of symlinked files by 2 directories.
     # TODO: Find a better way of determining components to strip.
     {Rscript} - <<EOF
-path <- ifelse({rlang-reproducible}, normalizePath('/tmp/bazel/R/src'), dirname(dirname(getwd())))
+path <- normalizePath('/tmp/bazel/R/src')
 n <- length(strsplit(path, '/')[[1]]) - 1
 if (startsWith(Sys.getenv('TEST_TARGET'), '@')) n <- n + 2
 cat(n)
 EOF
   }
-  export GCOV_PREFIX_STRIP="$(gcov_prefix_strip)"
+  GCOV_PREFIX_STRIP="$(gcov_prefix_strip)"
+  export GCOV_PREFIX_STRIP
 fi
 
 cleanup() {

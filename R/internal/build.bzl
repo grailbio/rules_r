@@ -243,7 +243,6 @@ def _build_impl(ctx):
         all_input_files = _remove_file(all_input_files, orig_config)
 
     install_args = list(ctx.attr.install_args)
-    pkg_src_files = ctx.files.srcs + cc_deps["c_so_files"]
     output_files = [pkg_lib_dir, pkg_bin_archive]
     pkg_gcno_dir = None
 
@@ -251,8 +250,7 @@ def _build_impl(ctx):
         # We need to keep the sources for code coverage to work.
         # NOTE: With these options, each installed object in package namespaces gets a
         # srcref attribute that has the source filenames as when installing the package.
-        # For non-reproducible builds, these will be sandbox paths, and for reproducible
-        # builds, these will be /tmp paths.
+        # For reproducible builds, these will be /tmp paths.
         install_args.extend(["--with-keep.source"])
 
         # We also need to collect the instrumented .gcno files from the package.
@@ -279,7 +277,6 @@ def _build_impl(ctx):
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
         "FLOCK_PATH": flock.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
-        "REPRODUCIBLE_BUILD": "true" if "rlang-reproducible" in ctx.features else "false",
         "INSTRUMENTED": "true" if instrumented else "false",
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
@@ -301,7 +298,7 @@ def _build_impl(ctx):
 
     ctx.actions.run(
         outputs = [pkg_src_archive],
-        inputs = pkg_src_files + roclets_lib_dirs + [info.state],
+        inputs = all_input_files + [info.state],
         executable = ctx.executable._build_sh,
         env = build_env + {"BUILD_SRC_ARCHIVE": "true"},
         mnemonic = "RSrcBuild",

@@ -62,7 +62,6 @@ def _test_impl(ctx):
             "{Rscript}": " ".join(info.rscript),
             "{collect_coverage}": "true" if collect_coverage else "false",
             "{collect_coverage.R}": ctx.file._collect_coverage_R.short_path,
-            "{rlang-reproducible}": "1" if "rlang-reproducible" in ctx.features else "0",
         },
         is_executable = True,
     )

@@ -25,6 +25,10 @@ RInfo = provider(
         "makevars_site",
         # Additional tools to make available in PATH.
         "tools",
+        # Additional files available to the build actions.
+        "files",
+        # Environment variables for build actions.
+        "env_vars",
         # File for system state information.
         "state",
     ],
@@ -65,6 +69,8 @@ def _r_toolchain_impl(ctx):
 
     toolchain_info = platform_common.ToolchainInfo(
         RInfo = RInfo(
+            env_vars = ctx.attr.env_vars,
+            files = ctx.files.files,
             makevars_site = ctx.file.makevars_site,
             r = R,
             rscript = Rscript,
@@ -101,9 +107,16 @@ r_toolchain = rule(
             allow_single_file = True,
             doc = "Site-wide Makevars file",
         ),
+        "env_vars": attr.string_dict(
+            doc = "Environment variable for BUILD actions",
+        ),
         "tools": attr.label_list(
             allow_files = True,
             doc = "Additional tools to make available in PATH",
+        ),
+        "files": attr.label_list(
+            allow_files = True,
+            doc = "Additional files available to the BUILD actions",
         ),
         "_system_state_computer": attr.label(
             allow_single_file = True,

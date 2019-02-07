@@ -225,13 +225,13 @@ def _build_impl(ctx):
     inst_files = _inst_files(ctx.attr.inst_files)
     inst_files_map = _inst_files_copy_map(ctx)
     transitive_tools = depset(
-        transitive = [_executables(ctx.attr.tools + info.tools), library_deps["transitive_tools"]],
+        transitive = [_executables(ctx.attr.tools), library_deps["transitive_tools"]],
     )
     build_tools = _executables(ctx.attr.build_tools + info.tools) + transitive_tools
     instrument_files = [ctx.file._instrument_R] if instrumented else []
     all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
                        cc_deps["files"].to_list() + inst_files.to_list() +
-                       build_tools.to_list() +
+                       build_tools.to_list() + info.files +
                        _makevars_files(info.makevars_site, ctx.file.makevars) +
                        instrument_files + flock.files.to_list())
 
@@ -276,7 +276,7 @@ def _build_impl(ctx):
         "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(install_args),
-        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
+        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
         "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
         "FLOCK_PATH": flock.files_to_run.executable.path,

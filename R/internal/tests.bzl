@@ -140,7 +140,7 @@ def _check_impl(ctx):
     tools = _executables(ctx.attr.tools) + build_tools
 
     all_input_files = ([src_archive] + library_deps["lib_dirs"] +
-                       tools.to_list() +
+                       tools.to_list() + info.files +
                        cc_deps["files"].to_list() +
                        _makevars_files(info.makevars_site, makevars) + [info.state])
 
@@ -149,7 +149,7 @@ def _check_impl(ctx):
         template = ctx.file._check_sh_tpl,
         output = ctx.outputs.executable,
         substitutions = {
-            "{export_env_vars}": "\n".join(_env_vars(ctx.attr.env_vars)),
+            "{export_env_vars}": "\n".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{c_libs_flags}": " ".join(cc_deps["c_libs_flags_short"]),
             "{c_cpp_flags}": " ".join(cc_deps["c_cpp_flags_short"]),

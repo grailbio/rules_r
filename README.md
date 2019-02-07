@@ -42,7 +42,7 @@ and tested as part of one build system in multi-language monorepos.
 
 The following assumes that you are familiar with how to use Bazel in general.
 
-In order to use the rules, you must have bazel 0.10.0 or later and add the
+In order to use the rules, you must have bazel 0.18.1 or later and add the
 following to your WORKSPACE file:
 
 ```python
@@ -53,9 +53,11 @@ http_archive(
     urls = ["https://github.com/grailbio/rules_r/archive/master.tar.gz"],
 )
 
-load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+load("@com_grail_rules_r//R:dependencies.bzl", "r_register_toolchains", "r_rules_dependencies")
 
 r_rules_dependencies()
+
+r_register_toolchains()
 ```
 
 You can load the rules in your BUILD file like so:
@@ -81,9 +83,8 @@ or above), and can be located using the `PATH` environment variable.
 
 For each package, you can also specify a different Makevars file that can be
 used to have finer control over native code compilation. For macOS, the
-[Makevars][Makevars] file used as default helps find `gfortran`. To change the
-defaults for your repository, you can provide arguments `makevars_darwin`
-and/or `makevars_linux` to `r_rules_dependencies`.
+[Makevars][Makevars] file used as default helps find `gfortran`. The site-wide
+Makevars files are configured by default in the toolchains.
 
 For _macOS_, this setup will help you cover the requirements for a large number
 of packages:
@@ -189,7 +190,7 @@ See [container support][docker].
 
 ```python
 r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, roclets,
-      roclets_deps, makevars_user, env_vars, inst_files, tools, build_tools)
+      roclets_deps, makevars, env_vars, inst_files, tools, build_tools)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -300,10 +301,10 @@ sandbox, so it can be depended upon by other package builds.
       </td>
     </tr>
     <tr>
-      <td><code>makevars_user</code></td>
+      <td><code>makevars</code></td>
       <td>
-        <p><code>File; default to @com_grail_rules_r_makevars//:Makevars</code></p>
-        <p>User level Makevars file.</p>
+        <p><code>File; optional</code></p>
+        <p>Additional Makevars file supplied as R_MAKEVARS_USER.</p>
       </td>
     </tr>
     <tr>

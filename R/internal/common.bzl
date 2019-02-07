@@ -98,3 +98,11 @@ def layer_library_deps(ctx, library_deps):
         lib_files[pkg_container_layer].append(pkg_dep.pkg_lib_dir)
 
     return lib_files
+
+def makevars_files(makevars_site, makevars_user):
+    files = []
+    if makevars_site:
+        files.append(makevars_site)
+    if makevars_user:
+        files.append(makevars_user)
+    return files

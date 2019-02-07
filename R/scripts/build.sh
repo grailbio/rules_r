@@ -128,7 +128,17 @@ export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
 export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
-export R_MAKEVARS_USER="${EXEC_ROOT}/${R_MAKEVARS_USER}"
+
+if [[ "${R_MAKEVARS_SITE:-}" ]]; then
+  tmp_mkvars="$(mktemp)"
+  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_SITE}" > "${tmp_mkvars}"
+  export R_MAKEVARS_SITE="${tmp_mkvars}"
+fi
+if [[ "${R_MAKEVARS_USER:-}" ]]; then
+  tmp_mkvars="$(mktemp)"
+  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
+  export R_MAKEVARS_USER="${tmp_mkvars}"
+fi
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which

@@ -21,6 +21,8 @@ RInfo = provider(
         "rscript",
         # Version to assert in build actions.
         "version",
+        # Site-wide Makevars file.
+        "makevars_site",
         # Additional tools to make available in PATH.
         "tools",
         # File for system state information.
@@ -63,6 +65,7 @@ def _r_toolchain_impl(ctx):
 
     toolchain_info = platform_common.ToolchainInfo(
         RInfo = RInfo(
+            makevars_site = ctx.attr.makevars_site,
             r = R,
             rscript = Rscript,
             state = state_file,
@@ -93,6 +96,9 @@ r_toolchain = rule(
             ],
             doc = ("Arguments to R and Rscript, in addition to " +
                    "--slave --no-restore --no-init-file"),
+        ),
+        "makevars_site": attr.label(
+            doc = "Site-wide Makevars file",
         ),
         "tools": attr.label_list(
             allow_files = True,

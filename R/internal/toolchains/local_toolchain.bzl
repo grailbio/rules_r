@@ -49,6 +49,7 @@ r_toolchain(
     rscript = "{rscript}",
     version = {version},
     args = [{args}],
+    makevars_site = {makevars_site},
     tools = [{tools}],
     visibility = ["//visibility:public"],
 )
@@ -82,12 +83,17 @@ def _local_r_toolchain_impl(rctx):
         if not rscript or not rctx.path(rscript).exists:
             fail("Rscript not found")
 
+    makevars_site_str = "None"
+    if detect_os(rctx) == "darwin":
+        makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
+
     rctx.file("WORKSPACE", """workspace(name = %s)""" % rctx.name)
     rctx.file("BUILD.bazel", _BUILD.format(
         r = r,
         rscript = rscript,
         version = "\"%s\"" % rctx.attr.version if rctx.attr.version else "None",
         args = ", ".join(["\"%s\"" % arg for arg in rctx.attr.args]),
+        makevars_site = makevars_site_str,
         tools = ", ".join(["\"%s\"" % tool for tool in rctx.attr.tools]),
     ))
 
@@ -102,6 +108,9 @@ local_r_toolchain = repository_rule(
         "strict": attr.bool(
             default = True,
             doc = "Fail if R is not found on the host system.",
+        ),
+        "makevars_site": attr.bool(
+            doc = "Generate a site-wide Makevars file",
         ),
         "version": attr.string(
             doc = "version attribute for r_toolchain",

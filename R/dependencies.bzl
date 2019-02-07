@@ -21,19 +21,13 @@ load(
     _is_at_least = "is_at_least",
 )
 load(
-    "@com_grail_rules_r//makevars:makevars.bzl",
-    _r_makevars = "r_makevars",
-)
-load(
     "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
     _local_r_toolchain = "local_r_toolchain",
 )
 load("@com_grail_rules_r//R/internal:coverage_deps.bzl", "r_coverage_dependencies")
 
-def r_rules_dependencies(
-        makevars_darwin = "@com_grail_rules_r_makevars_darwin",
-        makevars_linux = None):
-    _is_at_least("0.10", native.bazel_version)
+def r_rules_dependencies():
+    _is_at_least("0.18.1", native.bazel_version)
 
     # TODO: Use bazel-skylib directly instead of replicating functionality when
     # nested workspaces become a reality.  Otherwise, dependencies will need to
@@ -45,13 +39,6 @@ def r_rules_dependencies(
         src = "@com_grail_rules_r//makevars:Makevars.darwin.tpl",
         processor = "@com_grail_rules_r//makevars:Makevars.darwin.sh",
         processor_args = ["-b"],
-    )
-
-    _maybe(
-        _r_makevars,
-        name = "com_grail_rules_r_makevars",
-        makevars_darwin = makevars_darwin,
-        makevars_linux = makevars_linux,
     )
 
 def r_register_toolchains(**kwargs):

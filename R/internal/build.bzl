@@ -22,6 +22,7 @@ load(
     _env_vars = "env_vars",
     _executables = "executables",
     _library_deps = "library_deps",
+    _makevars_files = "makevars_files",
     _package_dir = "package_dir",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
@@ -209,7 +210,7 @@ def _build_impl(ctx):
     pkg_lib_dir = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
-    flock = ctx.attr._flock.files_to_run.executable
+    flock = ctx.attr._flock
 
     # Instrumenting external R packages can be troublesome; e.g. RProtoBuf and testthat.
     external_repo = _external_repo(ctx)
@@ -230,7 +231,9 @@ def _build_impl(ctx):
     instrument_files = [ctx.file._instrument_R] if instrumented else []
     all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
                        cc_deps["files"].to_list() + inst_files.to_list() +
-                       build_tools.to_list() + [ctx.file.makevars_user, flock] + instrument_files)
+                       build_tools.to_list() +
+                       _makevars_files(info.makevars_site, ctx.file.makevars) +
+                       instrument_files + flock.files.to_list())
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
@@ -262,7 +265,8 @@ def _build_impl(ctx):
         "PKG_NAME": pkg_name,
         "PKG_SRC_ARCHIVE": pkg_src_archive.path,
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
-        "R_MAKEVARS_USER": ctx.file.makevars_user.path if ctx.file.makevars_user else "",
+        "R_MAKEVARS_SITE": info.makevars_site.path if info.makevars_site else "",
+        "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
         "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
         "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
         "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
@@ -275,7 +279,7 @@ def _build_impl(ctx):
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
         "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
-        "FLOCK_PATH": flock.path,
+        "FLOCK_PATH": flock.files_to_run.executable.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
         "INSTRUMENTED": "true" if instrumented else "false",
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
@@ -325,7 +329,7 @@ def _build_impl(ctx):
                 build_tools = build_tools,
                 cc_deps = cc_deps,
                 external_repo = external_repo,
-                makevars_user = ctx.file.makevars_user,
+                makevars = ctx.file.makevars,
                 pkg_deps = pkg_deps,
                 pkg_gcno_dir = pkg_gcno_dir,
                 pkg_lib_dir = pkg_lib_dir,
@@ -379,7 +383,7 @@ def _build_binary_pkg_impl(ctx):
             build_tools = None,
             cc_deps = None,
             external_repo = _external_repo(ctx),
-            makevars_user = None,
+            makevars = None,
             pkg_deps = ctx.attr.deps,
             pkg_gcno_dir = None,
             pkg_lib_dir = pkg_lib_dir,
@@ -442,10 +446,9 @@ r_pkg = rule(
         "roclets_deps": attr.label_list(
             doc = "roxygen2 or devtools dependency for running roclets",
         ),
-        "makevars_user": attr.label(
+        "makevars": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r_makevars//:Makevars",
-            doc = "User level Makevars file",
+            doc = "Additional Makevars file supplied as R_MAKEVARS_USER",
         ),
         "inst_files": attr.label_keyed_string_dict(
             allow_files = True,

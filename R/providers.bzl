@@ -24,7 +24,7 @@ RPackage = provider(
         "transitive_pkg_deps": "depset of all dependencies of this target",
         "transitive_tools": "depset of all system tools",
         "build_tools": "tools needed to build this package",
-        "makevars_user": "User level makevars file for native code compilation",
+        "makevars": "User level makevars file for native code compilation",
         "cc_deps": "cc_deps struct for the package",
         "pkg_gcno_dir": "Directory containing instrumented gcno files",
         "external_repo": "Boolean indicating if the package is from an external repo",

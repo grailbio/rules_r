@@ -36,8 +36,8 @@ def r_rules_dependencies():
     _maybe(
         _process_file,
         name = "com_grail_rules_r_makevars_darwin",
-        src = "@com_grail_rules_r//makevars:Makevars.darwin.tpl",
-        processor = "@com_grail_rules_r//makevars:Makevars.darwin.sh",
+        src = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.tpl",
+        processor = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.sh",
         processor_args = ["-b"],
     )
 

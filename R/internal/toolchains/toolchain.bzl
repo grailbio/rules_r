@@ -65,7 +65,7 @@ def _r_toolchain_impl(ctx):
 
     toolchain_info = platform_common.ToolchainInfo(
         RInfo = RInfo(
-            makevars_site = ctx.attr.makevars_site,
+            makevars_site = ctx.file.makevars_site,
             r = R,
             rscript = Rscript,
             state = state_file,
@@ -98,6 +98,7 @@ r_toolchain = rule(
                    "--slave --no-restore --no-init-file"),
         ),
         "makevars_site": attr.label(
+            allow_single_file = True,
             doc = "Site-wide Makevars file",
         ),
         "tools": attr.label_list(

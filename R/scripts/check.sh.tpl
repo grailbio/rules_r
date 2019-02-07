@@ -15,7 +15,6 @@
 
 set -euo pipefail
 
-set -x
 EXEC_ROOT=$(pwd -P)
 
 # Export environment variables, if any.

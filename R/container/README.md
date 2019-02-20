@@ -29,6 +29,7 @@ container_pull(
 )
 ```
 
+<a name="r_library_image"></a>
 ## r_library_image
 
 In a `BUILD` file, define your library of R packages and install them
@@ -81,6 +82,7 @@ container_image(
 )
 ```
 
+<a name="r_binary_image"></a>
 ## r_binary_image
 
 This rule wraps an `r_binary` target in a container, ideal for quickly setting

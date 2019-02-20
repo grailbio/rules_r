@@ -93,7 +93,7 @@ def _local_r_toolchain_impl(rctx):
         rscript = rscript,
         version = "\"%s\"" % rctx.attr.version if rctx.attr.version else "None",
         args = ", ".join(["\"%s\"" % arg for arg in rctx.attr.args]),
-        makevars_site = makevars_site_str,
+        makevars_site = makevars_site_str if rctx.attr.makevars_site else "None",
         tools = ", ".join(["\"%s\"" % tool for tool in rctx.attr.tools]),
     ))
 
@@ -110,10 +110,11 @@ local_r_toolchain = repository_rule(
             doc = "Fail if R is not found on the host system.",
         ),
         "makevars_site": attr.bool(
+            default = True,
             doc = "Generate a site-wide Makevars file",
         ),
         "version": attr.string(
-            doc = "version attribute for r_toolchain",
+            doc = "version attribute value for r_toolchain",
         ),
         "args": attr.string_list(
             default = [

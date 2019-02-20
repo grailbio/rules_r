@@ -101,14 +101,14 @@ r_toolchain = rule(
                 "--no-environ",
             ],
             doc = ("Arguments to R and Rscript, in addition to " +
-                   "--slave --no-restore --no-init-file"),
+                   "`--slave --no-restore --no-init-file`"),
         ),
         "makevars_site": attr.label(
             allow_single_file = True,
             doc = "Site-wide Makevars file",
         ),
         "env_vars": attr.string_dict(
-            doc = "Environment variable for BUILD actions",
+            doc = "Environment variables for BUILD actions",
         ),
         "tools": attr.label_list(
             allow_files = True,

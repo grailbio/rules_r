@@ -48,7 +48,7 @@ def _r_toolchain_impl(ctx):
     R = [ctx.attr.r] + R_args
     Rscript = [ctx.attr.rscript] + Rscript_args
 
-    state_file = ctx.actions.declare_file("state")
+    state_file = ctx.actions.declare_file(ctx.label.name + "_state")
     ctx.actions.run(
         outputs = [state_file],
         inputs = [],

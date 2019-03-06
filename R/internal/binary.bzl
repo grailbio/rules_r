@@ -104,7 +104,6 @@ _R_BINARY_ATTRS = {
     "data": attr.label_list(
         allow_files = True,
         doc = "Files needed by this rule at runtime",
-        cfg = "data",
     ),
     "env_vars": attr.string_dict(
         doc = "Extra environment variables to define before running the binary",

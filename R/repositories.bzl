@@ -60,8 +60,8 @@ def _r_repository_impl(rctx):
 
     razel = sh_quote(rctx.path(rctx.attr._razel))
     exec_result = rctx.execute([
-        "/usr/bin/env",
         "Rscript",
+        "--vanilla",
         "-e",
         "source(%s)" % razel,
         "-e",
@@ -125,8 +125,8 @@ def r_repositories():
 
     function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(args)
     cmd = [
-        "/usr/bin/env",
         "Rscript",
+        "--vanilla",
         "-e",
         "source(%s)" % razel,
         "-e",

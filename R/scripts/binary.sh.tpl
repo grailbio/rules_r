@@ -64,7 +64,7 @@ src_path="../{workspace_name}/{src}"
 if [[ -x "${src_path}" ]]; then
   "${src_path}" "$@"
 else
-  {Rscript} {Rscript_args} "${src_path}" "$@"
+  {Rscript} {Rscript_args} "${src_path}" {Script_args} "$@"
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."

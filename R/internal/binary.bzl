@@ -61,6 +61,7 @@ def _r_binary_impl(ctx):
             "{workspace_name}": ctx.workspace_name,
             "{Rscript}": " ".join(info.rscript),
             "{Rscript_args}": _sh_quote_args(ctx.attr.rscript_args),
+            "{Script_args}": _sh_quote_args(ctx.attr.script_args),
         },
         is_executable = True,
     )
@@ -117,6 +118,9 @@ _R_BINARY_ATTRS = {
                "arguments for the Rscript interpreter. We recommend " +
                "using the shebang line and giving your script " +
                "execute permissions instead of using this."),
+    ),
+    "script_args": attr.string_list(
+        doc = "A list of arguments to pass to the src script",
     ),
     "_binary_sh_tpl": attr.label(
         allow_single_file = True,

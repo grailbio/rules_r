@@ -106,6 +106,9 @@ def r_binary_image(**kwargs):
     if not kwargs.get("cmd"):
         kwargs.setdefault("null_cmd", True)
 
+    kwargs.setdefault("tags", [])
+    kwargs["tags"].append("manual")
+
     if "layers" in kwargs:
         _r_binary_image_by_deps(**kwargs)
     else:

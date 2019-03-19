@@ -123,4 +123,9 @@ def r_library_image(**kwargs):
 
     kwargs.setdefault("layers", [])
     kwargs["layers"].extend(_layers.values())
+
+    # Set "manual" by default to not build images in CI, etc.
+    kwargs.setdefault("tags", [])
+    kwargs["tags"].append("manual")
+
     _container_image(**kwargs)

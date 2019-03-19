@@ -106,6 +106,7 @@ def r_binary_image(**kwargs):
     if not kwargs.get("cmd"):
         kwargs.setdefault("null_cmd", True)
 
+    # Set "manual" by default to not build images in CI, etc.
     kwargs.setdefault("tags", [])
     kwargs["tags"].append("manual")
 

@@ -45,7 +45,7 @@ if $SOFT_INSTALL; then
   CMD=(ln -s -f)
 else
   echo "Copying installed packages to ${LIBRARY_PATH}"
-  CMD=(rsync --recursive --copy-links --force --delete)
+  CMD=(rsync --recursive --copy-links --force --delete --checksum)
 fi
 
 PWD=$(pwd -P)

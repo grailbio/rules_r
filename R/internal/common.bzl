@@ -106,3 +106,13 @@ def makevars_files(makevars_site, makevars_user):
     if makevars_user:
         files.append(makevars_user)
     return files
+
+def dict_to_r_vec(d):
+    """Convert a skylark dict to a named character vector for R."""
+
+    return ", ".join([k + "=" + v for k, v in d.items()])
+
+def quote_dict_values(d):
+    """Quote the values in the dictionary."""
+
+    return {k: "'%s'" % v for k, v in d.items()}

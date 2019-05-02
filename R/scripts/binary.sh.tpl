@@ -61,10 +61,10 @@ export R_LIBS_USER=dummy
 
 src_path="../{workspace_name}/{src}"
 
-if [[ -x "${src_path}" ]]; then
-  "${src_path}" "$@"
+if "{ignore_execute_permissions}" || ! [[ -x "${src_path}" ]]; then
+  {Rscript} {Rscript_args} "${src_path}" {script_args} "$@"
 else
-  {Rscript} {Rscript_args} "${src_path}" {Script_args} "$@"
+  "${src_path}" "$@"
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."

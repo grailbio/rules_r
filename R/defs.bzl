@@ -38,7 +38,7 @@ r_test is similar to r_binary, but acts as a test.
 load("@com_grail_rules_r//R/internal:build.bzl", "r_binary_pkg", "r_pkg")
 load("@com_grail_rules_r//R/internal:library.bzl", "r_library", "r_library_tar")
 load("@com_grail_rules_r//R/internal:tests.bzl", "r_pkg_test", "r_unit_test")
-load("@com_grail_rules_r//R/internal:binary.bzl", "r_binary", "r_test")
+load("@com_grail_rules_r//R/internal:binary.bzl", "r_binary", "r_markdown", "r_test")
 load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
 
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps = []):

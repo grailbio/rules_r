@@ -535,7 +535,7 @@ sandbox.
 ## r_binary
 
 ```python
-r_binary(name, srcs, deps, data, env_vars, tools, rscript_args)
+r_binary(name, src, deps, data, env_vars, tools, rscript_args, script_args)
 ```
 
 Build a wrapper shell script for running an executable which will have all the
@@ -595,10 +595,17 @@ the runfiles of the root executable.
     <tr>
       <td><code>rscript_args</code></td>
       <td>
-        <p><code>String; optional</code></p>
+        <p><code>List of strings; optional</code></p>
         <p>If src file does not have executable permissions, arguments for the
            Rscript interpreter. We recommend using the shebang line and giving
            your script execute permissions instead of using this.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>script_args</code></td>
+      <td>
+        <p><code>List of strings; optional</code></p>
+        <p>A list of arguments to pass to the src script.</p>
       </td>
     </tr>
   </tbody>
@@ -608,11 +615,30 @@ the runfiles of the root executable.
 ## r_test
 
 ```python
-r_test(name, srcs, deps, data, env_vars, tools, rscript_args)
+r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args)
 ```
 
-This is idential to [r_binary](#r_binary) but is run as a test.
+This is identical to [r_binary](#r_binary) but is run as a test.
 
+<a name="r_markdown"></a>
+## r_markdown
+
+```python
+r_markdown(name, src, deps, data, env_vars, tools, rscript_args, script_args,
+render_function="rmarkdown::render", input_argument="input", output_dir_argument="output_dir",
+render_args)
+```
+
+This rule renders an R markdown through generating a stub to call the render
+function. The render function and the argument names for the function are
+default set for `rmarkdown::render` but can be customized. Note that
+`render_args` will need to be quoted appropriately if set. This rule can be
+used wherever an [r_binary](#r_binary) rule can be used.
+
+If an argument is given on the command line when running the target, it will be
+the output directory, else the output directory will be the default output
+directory of the render function, typically the same directory as the input
+file.
 
 <a name="r_toolchain"></a>
 ## r_toolchain

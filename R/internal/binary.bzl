@@ -18,6 +18,7 @@ load(
 )
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
+    _dict_to_r_vec = "dict_to_r_vec",
     _env_vars = "env_vars",
     _executables = "executables",
     _layer_library_deps = "layer_library_deps",
@@ -26,10 +27,37 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
+def _r_markdown_stub(ctx):
+    stub = ctx.actions.declare_file(ctx.label.name + "_stub.R")
+    args = _dict_to_r_vec(ctx.attr.render_args)
+    ctx.actions.expand_template(
+        template = ctx.file._render_R_tpl,
+        output = stub,
+        substitutions = {
+            "{src}": ctx.file.src.short_path,
+            "{render_function}": ctx.attr.render_function,
+            "{input_argument}": ctx.attr.input_argument,
+            "{output_dir_argument}": ctx.attr.output_dir_argument,
+            "{render_args}": ", " + args if args else "",
+        },
+        is_executable = False,
+    )
+    return stub
+
 def _r_binary_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
-    srcs = depset([ctx.file.src])
+    if "render_function" in dir(ctx.attr):
+        src = _r_markdown_stub(ctx)
+        srcs = depset(direct = [ctx.file.src, src])
+
+        # bazel has a bug wherein an expanded template always has executable permissions.
+        ignore_execute_permissions = True
+    else:
+        src = ctx.file.src
+        srcs = depset(direct = [src])
+        ignore_execute_permissions = False
+
     exe = depset([ctx.outputs.executable])
     tools = depset(_executables(ctx.attr.tools))
     pkg_deps = []
@@ -54,14 +82,15 @@ def _r_binary_impl(ctx):
         template = ctx.file._binary_sh_tpl,
         output = ctx.outputs.executable,
         substitutions = {
-            "{src}": ctx.file.src.short_path,
+            "{src}": src.short_path,
             "{lib_dirs}": ":".join(lib_dirs),
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
             "{tools_export_cmd}": _runtime_path_export(transitive_tools),
             "{workspace_name}": ctx.workspace_name,
+            "{ignore_execute_permissions}": "true" if ignore_execute_permissions else "false",
             "{Rscript}": " ".join(info.rscript),
             "{Rscript_args}": _sh_quote_args(ctx.attr.rscript_args),
-            "{Script_args}": _sh_quote_args(ctx.attr.script_args),
+            "{script_args}": _sh_quote_args(ctx.attr.script_args),
         },
         is_executable = True,
     )
@@ -92,7 +121,8 @@ _R_BINARY_ATTRS = {
     "src": attr.label(
         allow_single_file = True,
         mandatory = True,
-        doc = "An Rscript interpreted file, or file with executable permissions",
+        doc = ("An Rscript interpreted file, or file with executable permissions. " +
+               "For r_markdown rule, this must be a valid input file to the render function."),
     ),
     "deps": attr.label_list(
         providers = [
@@ -128,6 +158,28 @@ _R_BINARY_ATTRS = {
     ),
 }
 
+_R_MARKDOWN_ATTRS = _R_BINARY_ATTRS + {
+    "render_function": attr.string(
+        default = "rmarkdown::render",
+        doc = "Name of the render function",
+    ),
+    "input_argument": attr.string(
+        default = "input",
+        doc = "Name of the input argument",
+    ),
+    "output_dir_argument": attr.string(
+        default = "output_dir",
+        doc = "Name of the output dir argument",
+    ),
+    "render_args": attr.string_dict(
+        doc = "Other arguments for the render function",
+    ),
+    "_render_R_tpl": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:render.R.tpl",
+    ),
+}
+
 r_binary = rule(
     attrs = _R_BINARY_ATTRS,
     doc = "Rule to run a binary with a configured R library.",
@@ -141,6 +193,14 @@ r_test = rule(
     doc = "Rule to run a binary with a configured R library.",
     executable = True,
     test = True,
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    implementation = _r_binary_impl,
+)
+
+r_markdown = rule(
+    attrs = _R_MARKDOWN_ATTRS,
+    doc = "Rule to render a markdown.",
+    executable = True,
     toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _r_binary_impl,
 )

@@ -21,6 +21,7 @@ exports_files([
     "instrument.R",
     "lcov_merger.sh",
     "library.sh.tpl",
+    "render.R.tpl",
     "system_state.sh",
     "test.sh.tpl",
 ])

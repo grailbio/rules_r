@@ -12,26 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//internal:shell.bzl", "sh_quote")
+load(
+    "@com_grail_rules_r//R/internal:common.bzl",
+    _dict_to_r_vec = "dict_to_r_vec",
+    _quote_dict_values = "quote_dict_values",
+)
+load("@com_grail_rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
 
 _razel = attr.label(
     default = "@com_grail_rules_r//scripts:razel.R",
     allow_single_file = True,
     doc = "R source file containing razel functions.",
 )
-
-def _py_type_to_r_type(v):
-    # Hack: We equate "TRUE" as True, because dict attributes can not have heterogenous values.
-    if v == True or v == "TRUE":
-        return "TRUE"
-    elif v == False or v == "FALSE":
-        return "FALSE"
-    else:
-        return "'" + v + "'"
-
-def _dict_to_r_vec(d):
-    # Convert a skylark dict to a named character vector for R.
-    return ", ".join([k + "=" + _py_type_to_r_type(v) for k, v in d.items()])
 
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
@@ -58,14 +50,14 @@ def _r_repository_impl(rctx):
     if rctx.attr.pkg_type == "binary":
         args["pkg_bin_archive"] = archive_basename
 
-    razel = sh_quote(rctx.path(rctx.attr._razel))
+    razel = _sh_quote(rctx.path(rctx.attr._razel))
     exec_result = rctx.execute([
         "Rscript",
         "--vanilla",
         "-e",
         "source(%s)" % razel,
         "-e",
-        "buildify(%s)" % _dict_to_r_vec(args),
+        "buildify(%s)" % _dict_to_r_vec(_quote_dict_values(args)),
     ])
     if exec_result.return_code:
         fail("Failed to generate BUILD file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))
@@ -111,8 +103,8 @@ def r_repositories():
 """, executable = False)
         return
 
-    razel = sh_quote(rctx.path(rctx.attr._razel))
-    repos = "c(%s)" % _dict_to_r_vec(rctx.attr.remote_repos)
+    razel = _sh_quote(rctx.path(rctx.attr._razel))
+    repos = "c(%s)" % _dict_to_r_vec(_quote_dict_values(rctx.attr.remote_repos))
 
     args = {
         "package_list_csv": str(rctx.path(rctx.attr.package_list)),
@@ -123,7 +115,7 @@ def r_repositories():
         }
     args += rctx.attr.other_args
 
-    function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(args)
+    function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(_quote_dict_values(args))
     cmd = [
         "Rscript",
         "--vanilla",

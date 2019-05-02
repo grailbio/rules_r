@@ -96,9 +96,9 @@ def _r_binary_impl(ctx):
     )
 
     layered_lib_files = _layer_library_deps(ctx, library_deps)
-
+    stamp_files = [ctx.info_file, ctx.version_file]
     runfiles = ctx.runfiles(
-        files = library_deps["lib_dirs"],
+        files = library_deps["lib_dirs"] + stamp_files,
         transitive_files = srcs + exe + transitive_tools,
         collect_data = True,
     )

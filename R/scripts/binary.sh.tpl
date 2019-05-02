@@ -20,6 +20,12 @@ fatal() {
   exit 1
 }
 
+# Make bazel status variables available as environment variables, if available.
+if [[ -e ./stable-status.txt ]]; then
+  e="$(cat ./{stable,volatile}-status.txt | sed -e 's/\([^[:space:]]*\) \(.*\)/export \1=\"\2\"/')"
+  eval "${e}"
+fi
+
 # Export environment variables, if any.
 {export_env_vars}
 

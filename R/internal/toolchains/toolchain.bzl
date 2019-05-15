@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@com_grail_rules_r//R/internal:common.bzl", "executables")
+
 RInfo = provider(
     doc = "Information about the system R installation.",
     fields = [
@@ -33,8 +35,6 @@ RInfo = provider(
         "state",
     ],
 )
-
-load("@com_grail_rules_r//R/internal:common.bzl", "executables")
 
 def _r_toolchain_impl(ctx):
     args = ctx.attr.args

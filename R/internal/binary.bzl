@@ -49,35 +49,42 @@ def _r_binary_impl(ctx):
 
     if "render_function" in dir(ctx.attr):
         src = _r_markdown_stub(ctx)
-        srcs = depset(direct = [ctx.file.src, src])
+        srcs = [ctx.file.src, src]
 
         # bazel has a bug wherein an expanded template always has executable permissions.
         ignore_execute_permissions = True
     else:
         src = ctx.file.src
-        srcs = depset(direct = [src])
+        srcs = [src]
         ignore_execute_permissions = False
 
-    exe = depset([ctx.outputs.executable])
-    tools = depset(_executables(ctx.attr.tools))
     pkg_deps = []
     for dep in ctx.attr.deps:
         if RPackage in dep:
-            pkg_deps += [dep]
+            pkg_deps.append(dep)
         elif RLibrary in dep:
-            pkg_deps += dep[RLibrary].pkgs
+            pkg_deps.extend(dep[RLibrary].pkgs)
         elif RBinary in dep:
-            srcs += dep[RBinary].srcs
-            exe += dep[RBinary].exe
-            tools += dep[RBinary].tools
-            pkg_deps += dep[RBinary].pkg_deps
+            pkg_deps.extend(dep[RBinary].pkg_deps)
         else:
             fail("Unknown dependency for %s: %s" % (str(ctx.label), str(dep)))
 
     library_deps = _library_deps(pkg_deps)
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
-    transitive_tools = tools + library_deps["transitive_tools"]
+    srcs = depset(
+        srcs,
+        transitive = [d[RBinary].srcs for d in ctx.attr.deps if RBinary in d],
+    )
+    exe = depset(
+        [ctx.outputs.executable],
+        transitive = [d[RBinary].exe for d in ctx.attr.deps if RBinary in d],
+    )
+    tools = depset(
+        _executables(ctx.attr.tools),
+        transitive = ([d[RBinary].tools for d in ctx.attr.deps if RBinary in d] + [library_deps.transitive_tools]),
+    )
+
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
     ctx.actions.expand_template(
         template = ctx.file._binary_sh_tpl,
         output = ctx.outputs.executable,
@@ -85,7 +92,7 @@ def _r_binary_impl(ctx):
             "{src}": src.short_path,
             "{lib_dirs}": ":".join(lib_dirs),
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
-            "{tools_export_cmd}": _runtime_path_export(transitive_tools),
+            "{tools_export_cmd}": _runtime_path_export(tools),
             "{workspace_name}": ctx.workspace_name,
             "{ignore_execute_permissions}": "true" if ignore_execute_permissions else "false",
             "{Rscript}": " ".join(info.rscript),
@@ -98,8 +105,8 @@ def _r_binary_impl(ctx):
     layered_lib_files = _layer_library_deps(ctx, library_deps)
     stamp_files = [ctx.info_file, ctx.version_file]
     runfiles = ctx.runfiles(
-        files = library_deps["lib_dirs"] + stamp_files,
-        transitive_files = srcs + exe + transitive_tools,
+        files = library_deps.lib_dirs + stamp_files,
+        transitive_files = depset(transitive = [srcs, exe, tools]),
         collect_data = True,
     )
     return [
@@ -113,7 +120,7 @@ def _r_binary_impl(ctx):
         OutputGroupInfo(
             external = layered_lib_files["external"],
             internal = layered_lib_files["internal"],
-            tools = transitive_tools,
+            tools = tools,
         ),
     ]
 
@@ -158,7 +165,9 @@ _R_BINARY_ATTRS = {
     ),
 }
 
-_R_MARKDOWN_ATTRS = _R_BINARY_ATTRS + {
+_R_MARKDOWN_ATTRS = dict(_R_BINARY_ATTRS)
+
+_R_MARKDOWN_ATTRS.update({
     "render_function": attr.string(
         default = "rmarkdown::render",
         doc = "Name of the render function",
@@ -178,7 +187,7 @@ _R_MARKDOWN_ATTRS = _R_BINARY_ATTRS + {
         allow_single_file = True,
         default = "@com_grail_rules_r//R/scripts:render.R.tpl",
     ),
-}
+})
 
 r_binary = rule(
     attrs = _R_BINARY_ATTRS,

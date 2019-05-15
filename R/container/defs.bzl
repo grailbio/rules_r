@@ -12,5 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R/container:library.bzl", "r_library_image")
-load("@com_grail_rules_r//R/container:binary.bzl", "r_binary_image")
+load("@com_grail_rules_r//R/container:library.bzl", _r_library_image = "r_library_image")
+load("@com_grail_rules_r//R/container:binary.bzl", _r_binary_image = "r_binary_image")
+
+r_library_image = _r_library_image
+
+r_binary_image = _r_binary_image

@@ -24,7 +24,12 @@ load(
     "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
     _local_r_toolchain = "local_r_toolchain",
 )
-load("@com_grail_rules_r//R/internal:coverage_deps.bzl", "r_coverage_dependencies")
+load(
+    "@com_grail_rules_r//R/internal:coverage_deps.bzl",
+    _r_coverage_dependencies = "r_coverage_dependencies",
+)
+
+r_coverage_dependencies = _r_coverage_dependencies
 
 def r_rules_dependencies():
     _is_at_least("0.18.1", native.bazel_version)

@@ -29,10 +29,14 @@ r_register_toolchains()
 
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "73fdad358857e120fd0fa19e071a96e15c0f23bb25f85d3f7009abfd4f264a2a",
-    strip_prefix = "protobuf-3.6.1.3",
-    urls = ["https://github.com/google/protobuf/archive/v3.6.1.3.tar.gz"],
+    sha256 = "d399f651dbdc5f9116a2da199a808c815c0aeeb8d0b46e3213eee5a41263aeff",
+    strip_prefix = "protobuf-3.8.0-rc1",
+    urls = ["https://github.com/protocolbuffers/protobuf/archive/v3.8.0-rc1.tar.gz"],
 )
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
 
 http_archive(
     name = "io_bazel_rules_docker",
@@ -58,14 +62,6 @@ container_pull(
     registry = "index.docker.io",
     repository = "rocker/r-base",
     tag = "latest",
-)
-
-http_archive(
-    name = "R_RProtoBuf",
-    build_file = "//cran:BUILD.RProtoBuf",
-    sha256 = "ef3e2943b49bd0359ea8d54b5a90868fb3fa90953b0c73e01772c0219320d9c7",
-    strip_prefix = "rprotobuf-f9db5b9beafb9ac46fb632a35e83627c40caf29c",
-    urls = ["https://github.com/eddelbuettel/rprotobuf/archive/f9db5b9beafb9ac46fb632a35e83627c40caf29c.tar.gz"],
 )
 
 load("@com_grail_rules_r//R:repositories.bzl", "r_repository_list")

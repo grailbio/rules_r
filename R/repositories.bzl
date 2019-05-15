@@ -110,10 +110,10 @@ def r_repositories():
         "package_list_csv": str(rctx.path(rctx.attr.package_list)),
     }
     if rctx.attr.build_file_overrides:
-        args += {
+        args.update({
             "build_file_overrides_csv": str(rctx.path(rctx.attr.build_file_overrides)),
-        }
-    args += rctx.attr.other_args
+        })
+    args.update(rctx.attr.other_args)
 
     function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(_quote_dict_values(args))
     cmd = [

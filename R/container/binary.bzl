@@ -43,19 +43,23 @@ def _binary_layer_impl(ctx):
         },
     )
 
+_binary_layer_attrs = dict(_layer.attrs)
+
+_binary_layer_attrs.update({
+    "binary": attr.label(
+        providers = [RBinary],
+        doc = "The r_binary target that this layer will capture.",
+    ),
+    "layer_type": attr.string(
+        doc = "The output group type of the files that this layer will capture.",
+    ),
+    # Override the defaults as in dep_layer.
+    "data_path": attr.string(default = "."),
+    "directory": attr.string(default = "/app"),
+})
+
 _r_binary_layer = rule(
-    attrs = _layer.attrs + {
-        "binary": attr.label(
-            providers = [RBinary],
-            doc = "The r_binary target that this layer will capture.",
-        ),
-        "layer_type": attr.string(
-            doc = "The output group type of the files that this layer will capture.",
-        ),
-        # Override the defaults as in dep_layer.
-        "data_path": attr.string(default = "."),
-        "directory": attr.string(default = "/app"),
-    },
+    attrs = _binary_layer_attrs,
     executable = False,
     outputs = _layer.outputs,
     toolchains = ["@io_bazel_rules_docker//toolchains/docker:toolchain_type"],

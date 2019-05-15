@@ -35,11 +35,31 @@ sandbox and generate a script to run the executable.
 r_test is similar to r_binary, but acts as a test.
 """
 
-load("@com_grail_rules_r//R/internal:build.bzl", "r_binary_pkg", "r_pkg")
-load("@com_grail_rules_r//R/internal:library.bzl", "r_library", "r_library_tar")
-load("@com_grail_rules_r//R/internal:tests.bzl", "r_pkg_test", "r_unit_test")
-load("@com_grail_rules_r//R/internal:binary.bzl", "r_binary", "r_markdown", "r_test")
-load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
+load("@com_grail_rules_r//R/internal:build.bzl", _r_binary_pkg = "r_binary_pkg", _r_pkg = "r_pkg")
+load("@com_grail_rules_r//R/internal:library.bzl", _r_library = "r_library", _r_library_tar = "r_library_tar")
+load("@com_grail_rules_r//R/internal:tests.bzl", _r_pkg_test = "r_pkg_test", _r_unit_test = "r_unit_test")
+load("@com_grail_rules_r//R/internal:binary.bzl", _r_binary = "r_binary", _r_markdown = "r_markdown", _r_test = "r_test")
+load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", _r_toolchain = "r_toolchain")
+
+r_binary_pkg = _r_binary_pkg
+
+r_pkg = _r_pkg
+
+r_library = _r_library
+
+r_library_tar = _r_library_tar
+
+r_pkg_test = _r_pkg_test
+
+r_unit_test = _r_unit_test
+
+r_binary = _r_binary
+
+r_markdown = _r_markdown
+
+r_test = _r_test
+
+r_toolchain = _r_toolchain
 
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps = []):
     """Convenience macro to generate the r_pkg and r_library targets."""

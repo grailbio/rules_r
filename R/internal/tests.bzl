@@ -49,9 +49,12 @@ def _test_impl(ctx):
         if src_file.path.startswith(pkg_tests_dir):
             test_files += [src_file]
 
-    tools = _executables(ctx.attr.tools) + ctx.attr.pkg[RPackage].transitive_tools
+    tools = depset(
+        _executables(ctx.attr.tools),
+        transitive = [ctx.attr.pkg[RPackage].transitive_tools],
+    )
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
     ctx.actions.expand_template(
         template = ctx.file._test_sh_tpl,
         output = ctx.outputs.executable,
@@ -68,7 +71,7 @@ def _test_impl(ctx):
     )
 
     runfiles = ctx.runfiles(
-        files = (library_deps["lib_dirs"] + library_deps["gcno_dirs"] + test_files +
+        files = (library_deps.lib_dirs + library_deps.gcno_dirs + test_files +
                  coverage_files + [info.state]),
         transitive_files = tools,
     )
@@ -137,23 +140,26 @@ def _check_impl(ctx):
     makevars = ctx.attr.pkg[RPackage].makevars
 
     library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
-    tools = _executables(ctx.attr.tools) + build_tools
+    tools = depset(
+        _executables(ctx.attr.tools),
+        transitive = [build_tools],
+    )
 
-    all_input_files = ([src_archive] + library_deps["lib_dirs"] +
+    all_input_files = ([src_archive] + library_deps.lib_dirs +
                        tools.to_list() + info.files +
-                       cc_deps["files"].to_list() +
+                       cc_deps.files +
                        _makevars_files(info.makevars_site, makevars) + [info.state])
 
-    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps["lib_dirs"]]
+    lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
     ctx.actions.expand_template(
         template = ctx.file._check_sh_tpl,
         output = ctx.outputs.executable,
         substitutions = {
             "{export_env_vars}": "\n".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
             "{tools_export_cmd}": _runtime_path_export(tools),
-            "{c_libs_flags}": " ".join(cc_deps["c_libs_flags_short"]),
-            "{c_cpp_flags}": " ".join(cc_deps["c_cpp_flags_short"]),
-            "{c_so_files}": _sh_quote_args([f.short_path for f in cc_deps["c_so_files"]]),
+            "{c_libs_flags}": " ".join(cc_deps.c_libs_flags_short),
+            "{c_cpp_flags}": " ".join(cc_deps.c_cpp_flags_short),
+            "{c_so_files}": _sh_quote_args([f.short_path for f in cc_deps.c_so_files]),
             "{r_makevars_user}": makevars.short_path if makevars else "",
             "{r_makevars_site}": info.makevars_site.short_path if info.makevars_site else "",
             "{lib_dirs}": ":".join(lib_dirs),

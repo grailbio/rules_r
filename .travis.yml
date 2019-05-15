@@ -21,12 +21,13 @@ before_install:
   # Track R version on macOS to be the same major version as from apt.
   # When updating major version, also update CRAN package versions for compatibility.
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        wget https://cloud.r-project.org/bin/macosx/R-3.5.0.pkg -O /tmp/R.pkg &&
+        wget https://cloud.r-project.org/bin/macosx/R-3.6.0.pkg -O /tmp/R.pkg &&
         sudo installer -pkg "/tmp/R.pkg" -target / &&
         rm "/tmp/R.pkg" &&
         brew update &&
         ( brew install gcc || brew link --overwrite gcc ) &&
-        brew install llvm bazel;
+        brew tap bazelbuild/tap &&
+        brew install llvm bazelbuild/tap/bazel;
     fi
 
 script:

@@ -29,17 +29,18 @@ def _library_impl(ctx):
         output = ctx.outputs.executable,
         substitutions = {
             "{library_path}": ctx.attr.library_path,
-            "{lib_dirs}": "\n".join([d.short_path for d in library_deps["lib_dirs"]]),
+            "{lib_dirs}": "\n".join([d.short_path for d in library_deps.lib_dirs]),
             "{Rscript}": " ".join(info.rscript),
         },
         is_executable = True,
     )
 
     layered_lib_files = _layer_library_deps(ctx, library_deps)
-    files_tools = library_deps["transitive_tools"].to_list()
-    container_file_map = layered_lib_files + {"tools": files_tools}
+    files_tools = library_deps.transitive_tools.to_list()
+    container_file_map = dict(layered_lib_files)
+    container_file_map.update({"tools": files_tools})
 
-    runfiles = ctx.runfiles(files = library_deps["lib_dirs"] + [info.state])
+    runfiles = ctx.runfiles(files = library_deps.lib_dirs + [info.state])
     return [
         DefaultInfo(
             files = depset([ctx.outputs.executable]),

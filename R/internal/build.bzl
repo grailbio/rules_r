@@ -77,6 +77,50 @@ def _strip_path_prefixes(iterable, p1, p2):
             res.append(s)
     return res
 
+def _link_info(dep, root_path):
+    # Returns libraries to link from a cc_dep, giving preference to PIC.
+
+    libraries_to_link = dep[CcInfo].linking_context.libraries_to_link
+    user_link_flags = dep[CcInfo].linking_context.user_link_flags
+    libs = []
+    c_so_files = []
+    c_libs_flags = list(user_link_flags)
+    c_libs_flags_short = list(user_link_flags)
+    for library_to_link in libraries_to_link:
+        if library_to_link.pic_static_library != None:
+            l = library_to_link.pic_static_library
+        elif library_to_link.static_library != None:
+            l = library_to_link.static_library
+        elif library_to_link.interface_library != None:
+            l = library_to_link.interface_library
+        elif library_to_link.dynamic_library != None:
+            l = library_to_link.dynamic_library
+        else:
+            fail("unreachable")
+
+        libs.append(l)
+
+        # dylib is not supported because macOS does not support $ORIGIN in rpath.
+        if l.extension == "so":
+            c_so_files.append(l)
+
+            # We copy the file in srcs and set relative rpath for R CMD INSTALL.
+            c_libs_flags.append(l.basename)
+
+            # We use LD_LIBRARY_PATH for R CMD check.
+            c_libs_flags_short.append(root_path + l.short_path)
+            continue
+
+        c_libs_flags.append(root_path + l.path)
+        c_libs_flags_short.append(root_path + l.short_path)
+
+    return struct(
+        c_libs_flags = c_libs_flags,
+        c_libs_flags_short = c_libs_flags_short,
+        c_so_files = c_so_files,
+        libs = libs,
+    )
+
 def _cc_deps(ctx, instrumented):
     # Returns information for native code compilation.
 
@@ -93,49 +137,43 @@ def _cc_deps(ctx, instrumented):
     # enabled and any transitive dep is instrumented.
     instrumented_cc_deps = (cc_deps and ctx.configuration.coverage_enabled)
 
-    libs = depset(order = "topological")
-    link_flags = []
-    hdrs = depset()
-    c_cpp_flags = depset()
-    c_cpp_flags_short = depset()
-    for d in cc_deps:
-        libs += d.cc.libs
-        link_flags += d.cc.link_flags
-        hdrs += d.cc.transitive_headers
-
-        for i in d.cc.defines:
-            c_cpp_flags += ["-D" + i]
-            c_cpp_flags_short += ["-D" + i]
-        for i in d.cc.quote_include_directories:
-            c_cpp_flags += ["-iquote " + root_path + i]
-        for i in d.cc.system_include_directories:
-            c_cpp_flags += ["-isystem " + root_path + i]
-        for i in d.cc.include_directories:
-            c_cpp_flags += ["-I " + root_path + i]
-
-        for i in _strip_path_prefixes(d.cc.quote_include_directories, bin_dir, gen_dir):
-            c_cpp_flags_short += ["-iquote " + root_path + i]
-        for i in _strip_path_prefixes(d.cc.system_include_directories, bin_dir, gen_dir):
-            c_cpp_flags_short += ["-isystem " + root_path + i]
-        for i in _strip_path_prefixes(d.cc.include_directories, bin_dir, gen_dir):
-            c_cpp_flags_short += ["-I " + root_path + i]
-
+    # Keep the original order of linker flags, and do not remove duplicates.
+    # https://stackoverflow.com/a/409470
+    libs = []
     c_so_files = []
-    c_libs_flags = list(link_flags)
-    c_libs_flags_short = list(link_flags)
-    for l in libs:
-        # dylib is not supported because macOS does not support $ORIGIN in rpath.
-        if l.extension == "so":
-            c_so_files += [l]
+    c_libs_flags = []
+    c_libs_flags_short = []
+    for dep in cc_deps:
+        link_info = _link_info(dep, root_path)
+        libs.extend(link_info.libs)
+        c_so_files.extend(link_info.c_so_files)
+        c_libs_flags.extend(link_info.c_libs_flags)
+        c_libs_flags_short.extend(link_info.c_libs_flags_short)
 
-            # We copy the file in srcs and set relative rpath for R CMD INSTALL.
-            c_libs_flags += [l.basename]
+    hdrs_sets = [d[CcInfo].compilation_context.headers for d in cc_deps]
+    defines = depset(transitive = [d[CcInfo].compilation_context.defines for d in cc_deps]).to_list()
+    quote_includes = depset(transitive = [d[CcInfo].compilation_context.quote_includes for d in cc_deps]).to_list()
+    system_includes = depset(transitive = [d[CcInfo].compilation_context.system_includes for d in cc_deps]).to_list()
+    includes = depset(transitive = [d[CcInfo].compilation_context.includes for d in cc_deps]).to_list()
 
-            # We use LD_LIBRARY_PATH for R CMD check.
-            c_libs_flags_short += [root_path + l.short_path]
-            continue
-        c_libs_flags += [root_path + l.path]
-        c_libs_flags_short += [root_path + l.short_path]
+    c_cpp_flags = []
+    c_cpp_flags_short = []
+    for i in defines:
+        c_cpp_flags += ["-D" + i]
+        c_cpp_flags_short += ["-D" + i]
+    for i in quote_includes:
+        c_cpp_flags += ["-iquote " + root_path + i]
+    for i in system_includes:
+        c_cpp_flags += ["-isystem " + root_path + i]
+    for i in includes:
+        c_cpp_flags += ["-I " + root_path + i]
+
+    for i in _strip_path_prefixes(quote_includes, bin_dir, gen_dir):
+        c_cpp_flags_short += ["-iquote " + root_path + i]
+    for i in _strip_path_prefixes(system_includes, bin_dir, gen_dir):
+        c_cpp_flags_short += ["-isystem " + root_path + i]
+    for i in _strip_path_prefixes(includes, bin_dir, gen_dir):
+        c_cpp_flags_short += ["-I " + root_path + i]
 
     # Note that clang has multiple code coverage implementations. covr can only
     # use the gcc compatible implementation based on DebugInfo.  This might be
@@ -157,24 +195,24 @@ def _cc_deps(ctx, instrumented):
         c_libs_flags += ["--coverage", "-O0"]
         c_libs_flags_short += ["--coverage", "-O0"]
 
-    return {
-        "files": hdrs + libs,
-        "c_so_files": c_so_files,
-        "c_libs_flags": c_libs_flags,
-        "c_libs_flags_short": c_libs_flags_short,
-        "c_cpp_flags": c_cpp_flags.to_list(),
-        "c_cpp_flags_short": c_cpp_flags_short.to_list(),
-    }
+    return struct(
+        c_cpp_flags = c_cpp_flags,
+        c_cpp_flags_short = c_cpp_flags_short,
+        c_libs_flags = c_libs_flags,
+        c_libs_flags_short = c_libs_flags_short,
+        c_so_files = depset(c_so_files).to_list(),
+        files = depset(libs, transitive = hdrs_sets).to_list(),
+    )
 
 def _remove_file(files, path_to_remove):
-    # Removes a file from a depset of a list, and returns the new depset.
+    # Removes a file from a given sequence.
 
-    new_depset = depset()
+    filtered_files = []
     for f in files:
         if f.path != path_to_remove:
-            new_depset += [f]
+            filtered_files.append(f)
 
-    return new_depset
+    return filtered_files
 
 def _inst_files(inst_files_dict):
     # Lists all files needed to be copied into the inst directory.
@@ -210,7 +248,7 @@ def _build_impl(ctx):
     pkg_lib_dir = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.outputs.bin_archive
     pkg_src_archive = ctx.outputs.src_archive
-    flock = ctx.attr._flock
+    flock = ctx.attr._flock.files_to_run.executable
 
     # Instrumenting external R packages can be troublesome; e.g. RProtoBuf and testthat.
     external_repo = _external_repo(ctx)
@@ -225,19 +263,23 @@ def _build_impl(ctx):
     inst_files = _inst_files(ctx.attr.inst_files)
     inst_files_map = _inst_files_copy_map(ctx)
     transitive_tools = depset(
-        transitive = [_executables(ctx.attr.tools), library_deps["transitive_tools"]],
+        _executables(ctx.attr.tools),
+        transitive = [library_deps.transitive_tools],
     )
-    build_tools = _executables(ctx.attr.build_tools + info.tools) + transitive_tools
+    build_tools = depset(
+        _executables(ctx.attr.build_tools + info.tools),
+        transitive = [transitive_tools],
+    )
     instrument_files = [ctx.file._instrument_R] if instrumented else []
-    all_input_files = (library_deps["lib_dirs"] + ctx.files.srcs +
-                       cc_deps["files"].to_list() + inst_files.to_list() +
+    all_input_files = (library_deps.lib_dirs + ctx.files.srcs +
+                       cc_deps.files + inst_files.to_list() +
                        build_tools.to_list() + info.files +
                        _makevars_files(info.makevars_site, ctx.file.makevars) +
-                       instrument_files + flock.files.to_list())
+                       instrument_files)
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
-        roclets_lib_dirs = _library_deps(ctx.attr.roclets_deps)["lib_dirs"]
+        roclets_lib_dirs = _library_deps(ctx.attr.roclets_deps).lib_dirs
         all_input_files.extend(roclets_lib_dirs)
 
     if ctx.file.config_override:
@@ -269,17 +311,17 @@ def _build_impl(ctx):
         "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
         "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
         "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
-        "C_LIBS_FLAGS": " ".join(cc_deps["c_libs_flags"]),
-        "C_CPP_FLAGS": " ".join(cc_deps["c_cpp_flags"]),
-        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps["c_so_files"]]),
-        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "C_LIBS_FLAGS": " ".join(cc_deps.c_libs_flags),
+        "C_CPP_FLAGS": " ".join(cc_deps.c_cpp_flags),
+        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps.c_so_files]),
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
         "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
         "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
-        "FLOCK_PATH": flock.files_to_run.executable.path,
+        "FLOCK_PATH": flock.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
         "INSTRUMENTED": "true" if instrumented else "false",
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
@@ -291,6 +333,7 @@ def _build_impl(ctx):
     ctx.actions.run(
         outputs = output_files,
         inputs = all_input_files + [info.state],
+        tools = [flock],
         executable = ctx.executable._build_sh,
         env = build_env,
         mnemonic = "RBuild",
@@ -300,11 +343,15 @@ def _build_impl(ctx):
 
     # Lightweight action to build just the source archive.
 
+    src_build_env = dict(build_env)
+    src_build_env.update({"BUILD_SRC_ARCHIVE": "true"})
+
     ctx.actions.run(
         outputs = [pkg_src_archive],
         inputs = all_input_files + [info.state],
+        tools = [flock],
         executable = ctx.executable._build_sh,
-        env = build_env + {"BUILD_SRC_ARCHIVE": "true"},
+        env = src_build_env,
         mnemonic = "RSrcBuild",
         use_default_shell_env = False,
         progress_message = "Building R (source) package %s" % pkg_name,
@@ -336,7 +383,7 @@ def _build_impl(ctx):
                 pkg_name = pkg_name,
                 src_archive = pkg_src_archive,
                 src_files = ctx.files.srcs,
-                transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+                transitive_pkg_deps = library_deps.transitive_pkg_deps,
                 transitive_tools = transitive_tools,
             ),
         ],
@@ -349,7 +396,10 @@ def _build_binary_pkg_impl(ctx):
     pkg_lib_dir = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.file.src
     library_deps = _library_deps(ctx.attr.deps)
-    transitive_tools = library_deps["transitive_tools"] + _executables(ctx.attr.tools)
+    transitive_tools = depset(
+        _executables(ctx.attr.tools),
+        transitive = [library_deps["transitive_tools"]],
+    )
 
     build_env = {
         "PKG_LIB_PATH": pkg_lib_dir.path,
@@ -390,7 +440,7 @@ def _build_binary_pkg_impl(ctx):
             pkg_name = pkg_name,
             src_archive = None,
             src_files = None,
-            transitive_pkg_deps = library_deps["transitive_pkg_deps"],
+            transitive_pkg_deps = library_deps.transitive_pkg_deps,
             transitive_tools = transitive_tools,
         ),
     ]
@@ -415,69 +465,89 @@ _COMMON_ATTRS = {
     ),
 }
 
+_PKG_ATTRS = dict(_COMMON_ATTRS)
+
+_PKG_ATTRS.update({
+    "srcs": attr.label_list(
+        allow_files = True,
+        mandatory = True,
+        doc = "Source files to be included for building the package",
+    ),
+    "cc_deps": attr.label_list(
+        doc = "cc_library dependencies for this package",
+    ),
+    "build_args": attr.string_list(
+        default = [
+            "--no-build-vignettes",
+            "--no-manual",
+        ],
+        doc = "Additional arguments to supply to R CMD build",
+    ),
+    "config_override": attr.label(
+        allow_single_file = True,
+        doc = "Replace the package configure script with this file",
+    ),
+    "roclets": attr.string_list(
+        doc = ("roclets to run before installing the package. If this is non-empty, " +
+               "then you must specify roclets_deps as the R package you want to " +
+               "use for running roclets. The runtime code will check if devtools " +
+               "is available and use `devtools::document`, failing which, it will " +
+               "check if roxygen2 is available and use `roxygen2::roxygenize`"),
+    ),
+    "roclets_deps": attr.label_list(
+        doc = "roxygen2 or devtools dependency for running roclets",
+    ),
+    "makevars": attr.label(
+        allow_single_file = True,
+        doc = "Additional Makevars file supplied as R_MAKEVARS_USER",
+    ),
+    "inst_files": attr.label_keyed_string_dict(
+        allow_files = True,
+        cfg = "target",
+        doc = "Files to be bundled with the package through the inst directory. " +
+              "The values of the dictionary will specify the package relative " +
+              "destination path. For example, '' will bundle the files to the top level " +
+              "directory, and 'mydir' will bundle all files into a directory mydir.",
+    ),
+    "build_tools": attr.label_list(
+        allow_files = True,
+        doc = "Executables that package build and load will try to find in the system",
+    ),
+    "_build_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build.sh",
+        executable = True,
+        cfg = "host",
+    ),
+    "_flock": attr.label(
+        default = "@com_grail_rules_r//R/scripts:flock",
+        executable = True,
+        cfg = "host",
+    ),
+    "_instrument_R": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:instrument.R",
+    ),
+})
+
+_BINARY_PKG_ATTRS = dict(_COMMON_ATTRS)
+
+_BINARY_PKG_ATTRS.update({
+    "src": attr.label(
+        allow_single_file = True,
+        mandatory = True,
+        doc = "Binary archive of the package",
+    ),
+    "_build_binary_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build_binary.sh",
+        executable = True,
+        cfg = "host",
+    ),
+})
+
 r_pkg = rule(
-    attrs = _COMMON_ATTRS + {
-        "srcs": attr.label_list(
-            allow_files = True,
-            mandatory = True,
-            doc = "Source files to be included for building the package",
-        ),
-        "cc_deps": attr.label_list(
-            doc = "cc_library dependencies for this package",
-        ),
-        "build_args": attr.string_list(
-            default = [
-                "--no-build-vignettes",
-                "--no-manual",
-            ],
-            doc = "Additional arguments to supply to R CMD build",
-        ),
-        "config_override": attr.label(
-            allow_single_file = True,
-            doc = "Replace the package configure script with this file",
-        ),
-        "roclets": attr.string_list(
-            doc = ("roclets to run before installing the package. If this is non-empty, " +
-                   "then you must specify roclets_deps as the R package you want to " +
-                   "use for running roclets. The runtime code will check if devtools " +
-                   "is available and use `devtools::document`, failing which, it will " +
-                   "check if roxygen2 is available and use `roxygen2::roxygenize`"),
-        ),
-        "roclets_deps": attr.label_list(
-            doc = "roxygen2 or devtools dependency for running roclets",
-        ),
-        "makevars": attr.label(
-            allow_single_file = True,
-            doc = "Additional Makevars file supplied as R_MAKEVARS_USER",
-        ),
-        "inst_files": attr.label_keyed_string_dict(
-            allow_files = True,
-            cfg = "target",
-            doc = "Files to be bundled with the package through the inst directory. " +
-                  "The values of the dictionary will specify the package relative " +
-                  "destination path. For example, '' will bundle the files to the top level " +
-                  "directory, and 'mydir' will bundle all files into a directory mydir.",
-        ),
-        "build_tools": attr.label_list(
-            allow_files = True,
-            doc = "Executables that package build and load will try to find in the system",
-        ),
-        "_build_sh": attr.label(
-            allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:build.sh",
-            executable = True,
-            cfg = "host",
-        ),
-        "_flock": attr.label(
-            default = "@com_grail_rules_r//R/scripts:flock",
-            executable = True,
-            cfg = "host",
-        ),
-        "_instrument_R": attr.label(
-            allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:instrument.R",
-        ),
-    },
+    attrs = _PKG_ATTRS,
     doc = ("Rule to install the package and its transitive dependencies " +
            "in the Bazel sandbox."),
     outputs = {
@@ -489,19 +559,7 @@ r_pkg = rule(
 )
 
 r_binary_pkg = rule(
-    attrs = _COMMON_ATTRS + {
-        "src": attr.label(
-            allow_single_file = True,
-            mandatory = True,
-            doc = "Binary archive of the package",
-        ),
-        "_build_binary_sh": attr.label(
-            allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:build_binary.sh",
-            executable = True,
-            cfg = "host",
-        ),
-    },
+    attrs = _BINARY_PKG_ATTRS,
     doc = ("Rule to install the package and its transitive dependencies in " +
            "the Bazel sandbox from a binary archive."),
     toolchains = ["@com_grail_rules_r//R:toolchain_type"],

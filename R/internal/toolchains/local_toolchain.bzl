@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-_home_env_var = "BAZEL_R_HOME"
-
 load("@com_grail_rules_r//internal:os.bzl", "detect_os")
+
+_home_env_var = "BAZEL_R_HOME"
 
 def _must_execute(rctx, cmd, fail_msg):
     exec_result = rctx.execute(cmd)

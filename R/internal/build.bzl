@@ -398,14 +398,14 @@ def _build_binary_pkg_impl(ctx):
     library_deps = _library_deps(ctx.attr.deps)
     transitive_tools = depset(
         _executables(ctx.attr.tools),
-        transitive = [library_deps["transitive_tools"]],
+        transitive = [library_deps.transitive_tools],
     )
 
     build_env = {
         "PKG_LIB_PATH": pkg_lib_dir.path,
         "PKG_NAME": pkg_name,
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
-        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps["lib_dirs"]]),
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",

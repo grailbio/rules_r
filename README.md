@@ -635,8 +635,11 @@ default set for `rmarkdown::render` but can be customized. Note that
 `render_args` will need to be quoted appropriately if set. This rule can be
 used wherever an [r_binary](#r_binary) rule can be used.
 
-If an argument is given on the command line when running the target, it will be
-the output directory, else the output directory will be the default output
+If arguments are given on the command line when running the target, flags of
+the form --arg=value are passed as keyword arguments to the render
+function. The values can be arbitrary R expressions, and strings will need to
+be quoted. The last argument without the prefix `--` will be the output
+directory, else the output directory will be the default output
 directory of the render function, typically the same directory as the input
 file.
 

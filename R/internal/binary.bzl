@@ -38,7 +38,7 @@ def _r_markdown_stub(ctx):
             "{render_function}": ctx.attr.render_function,
             "{input_argument}": ctx.attr.input_argument,
             "{output_dir_argument}": ctx.attr.output_dir_argument,
-            "{render_args}": ", " + args if args else "",
+            "{render_args}": args,
         },
         is_executable = False,
     )

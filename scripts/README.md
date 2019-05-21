@@ -146,21 +146,12 @@ updateRepoIndex <- function(repo_dir) ...
 #' @param versions Character vector of same length as pkgs, containing version strings for each
 #'        package. A value of NA_character_ for version implies latest available package.
 #' @param repo_dir Directory where the repository structure will be created.
-#' @param deps If FALSE, will not automatically download (unstated) dependencies. See argument
-#'        dependencies in \link{install.packages}.
+#' @param deps The type of dependencies to traverse.
 #' @return Data frame containing package name, version and sha256 of the source archive for all
 #'         packages added to the repo that were not previously present.
 #' @export
-addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) ...
-
-
-#' Adds all deps of a dev package to the repo, if not already present.
-#'
-#' @param pkg Name of the package directory or tarball.
-#' @param repo_dir Directory where the repository structure will be created.
-#' @return Same as addPackagesToRepo.
-#' @export
-addDevPackageDepsToRepo <- function(pkg, repo_dir) ...
+addPackagesToRepo <- function(pkgs, versions = NA, repo_dir,
+                              deps = c("Depends", "Imports", "LinkingTo")) ...
 
 
 #' Writes a CSV of all packages in the repo.

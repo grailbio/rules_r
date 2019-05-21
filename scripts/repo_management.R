@@ -17,17 +17,14 @@
 # Only CRAN and Bioc mirrors are tested.
 
 # This script needs the following packages to function.
-# - BiocInstaller
-# - devtools
 # - digest
 # - tools
-
-# TODO: Use tools::package_dependencies to avoid using devtools.
 
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
 options("RVersions" = c("3.4", "3.5", "3.6"))  # Binaries for these R versions.
+options("ForceDownload" = FALSE)  # Download packages even if src package already present in repo.
 
 # Factors in unexpected places create problems.
 options("stringsAsFactors" = FALSE)
@@ -191,12 +188,12 @@ updateRepoIndex <- function(repo_dir) {
 #' @param versions Character vector of same length as pkgs, containing version strings for each
 #'        package. A value of NA_character_ for version implies latest available package.
 #' @param repo_dir Directory where the repository structure will be created.
-#' @param deps If FALSE, will not automatically download (unstated) dependencies. See argument
-#'        dependencies in \link{install.packages}.
+#' @param deps The type of dependencies to traverse.
 #' @return Data frame containing package name, version and sha256 of the source archive for all
 #'         packages added to the repo that were not previously present.
 #' @export
-addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
+addPackagesToRepo <- function(pkgs, versions = NA, repo_dir,
+                              deps = c("Depends", "Imports", "LinkingTo")) {
   stopifnot(is.character(pkgs))
   if ((length(versions) == 1) && is.na(versions[1])) {
     versions <- rep(NA_character_, length(pkgs))
@@ -210,7 +207,8 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
 
   repo_packages <- repoPackages(repo_dir)
 
-  package_deps <- devtools::package_deps(pkgs, dependencies = deps, type = "source")$package
+  package_deps <- tools::package_dependencies(pkgs, which = deps, recursive = TRUE)
+  package_deps <- unique(unlist(package_deps, use.names = FALSE))
   implicit_package_deps <- setdiff(package_deps, pkgs)
   implicit_package_deps <- setdiff(implicit_package_deps, repo_packages$Package)
 
@@ -230,8 +228,10 @@ addPackagesToRepo <- function(pkgs, versions = NA, repo_dir, deps = NA) {
                                     packages_merged$Version)
 
   # Discard packages that are already in the repo for their requested version.
-  current_packages <- merge(packages_merged, repo_packages)[, "Package"]
-  packages_merged <- packages_merged[!(packages_merged$Package %in% current_packages), ]
+  if (!getOption("ForceDownload")) {
+    current_packages <- merge(packages_merged, repo_packages)[, "Package"]
+    packages_merged <- packages_merged[!(packages_merged$Package %in% current_packages), ]
+  }
 
   # Packages that are requested at their latest version.
   latest_packages_mask <- (packages_merged$Version == packages_merged$Version.available)
@@ -260,21 +260,6 @@ packageList <- function(repo_dir, output_file, sha256=TRUE) {
     repo_packages <- cbind(repo_packages, "sha256"="")
   }
   write.table(repo_packages, file=output_file, col.names=TRUE, row.names=FALSE, sep=",")
-}
-
-#' Adds all deps of a dev package to the repo, if not already present.
-#'
-#' @param pkg Name of the package directory or tarball.
-#' @param repo_dir Directory where the repository structure will be created.
-#' @return Same as addPackagesToRepo.
-#' @export
-addDevPackageDepsToRepo <- function(pkg, repo_dir) {
-  repos <- getOption("repos")
-
-  # Also get suggested deps to build vignettes, etc. with dependencies = TRUE.
-  deps <- devtools::dev_package_deps(pkg, dependencies = TRUE, repos = repos, type="source")$package
-  addPackagesToRepo(pkgs = deps, versions = rep(NA_character_, length(deps)),
-                    repo_dir = repo_dir)
 }
 
 #' Dumps the packages installed in this library into a repo structure.

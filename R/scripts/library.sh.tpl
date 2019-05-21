@@ -45,12 +45,17 @@ if $SOFT_INSTALL; then
   CMD=(ln -s -f)
 else
   echo "Copying installed packages to ${LIBRARY_PATH}"
-  CMD=(rsync --recursive --copy-links --force --delete --checksum)
+  CMD=(rsync
+  --recursive --copy-links
+  --no-perms --chmod=u+w --executability
+  --times --group --owner
+  --specials
+  --force --delete
+  --checksum
+  )
 fi
 
 PWD=$(pwd -P)
 for LIB_DIR in "${BAZEL_LIB_DIRS[@]+"${BAZEL_LIB_DIRS[@]}"}"; do
   "${CMD[@]}" "${PWD}/${LIB_DIR}"/* "${LIBRARY_PATH}"
-  # bazel 0.14 onwards omits write permissions from files; reinstate those in our copy.
-  chmod -R u+w "${LIBRARY_PATH}"
 done

@@ -169,15 +169,15 @@ repoPackages <- function(repo_dir) {
 #' @param repo_dir Directory with the repository structure.
 #' @export
 updateRepoIndex <- function(repo_dir) {
-  tools::write_PACKAGES(paste0(repo_dir, srcContribDir()), type = "source")
+  tools::write_PACKAGES(paste0(repo_dir, srcContribDir()), type = "source", latestOnly = FALSE)
   for (r_version in getOption("RVersions")) {
     macDir <- paste0(repo_dir, macContribDir(r_version))
     winDir <- paste0(repo_dir, winContribDir(r_version))
     if (file.exists(macDir)) {
-      tools::write_PACKAGES(macDir, type = "mac.binary")
+      tools::write_PACKAGES(macDir, type = "mac.binary", latestOnly = FALSE)
     }
     if (file.exists(winDir)) {
-      tools::write_PACKAGES(winDir, type = "win.binary")
+      tools::write_PACKAGES(winDir, type = "win.binary", latestOnly = FALSE)
     }
   }
 }

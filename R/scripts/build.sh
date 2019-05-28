@@ -176,7 +176,7 @@ lock "${LOCK_DIR}" "${PKG_NAME}"
 TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
 mkdir -p "${TMP_SRC_PKG}"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
-cp -a "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
+cp -a -L "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
 TMP_FILES+=("${TMP_SRC_PKG}")
 
 # Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.

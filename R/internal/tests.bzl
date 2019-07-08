@@ -24,6 +24,7 @@ load(
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
     _runtime_path_export = "runtime_path_export",
+    _tests_dir = "tests_dir",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
@@ -42,12 +43,8 @@ def _test_impl(ctx):
 
     library_deps = _library_deps(pkg_deps)
 
-    pkg_name = ctx.attr.pkg[RPackage].pkg_name
-    pkg_tests_dir = _package_dir(ctx) + "/tests"
-    test_files = []
-    for src_file in ctx.attr.pkg[RPackage].src_files:
-        if src_file.path.startswith(pkg_tests_dir):
-            test_files += [src_file]
+    pkg_tests_dir = _tests_dir(_package_dir(ctx))
+    test_files = ctx.attr.pkg[RPackage].test_files
 
     tools = depset(
         _executables(ctx.attr.tools),

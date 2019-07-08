@@ -24,6 +24,7 @@ load(
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
+    _tests_dir = "tests_dir",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
 
@@ -267,6 +268,15 @@ def _build_impl(ctx):
 
     pkg_deps = list(ctx.attr.deps)
 
+    src_files_sans_tests = []
+    test_files = []
+    pkg_tests_dir = _tests_dir(pkg_src_dir)
+    for src_file in ctx.files.srcs:
+        if src_file.path.startswith(pkg_tests_dir):
+            test_files.append(src_file)
+        else:
+            src_files_sans_tests.append(src_file)
+
     library_deps = _library_deps(pkg_deps)
     cc_deps = _cc_deps(ctx, instrumented)
     inst_files = _inst_files(ctx.attr.inst_files)
@@ -280,7 +290,7 @@ def _build_impl(ctx):
         transitive = [transitive_tools],
     )
     instrument_files = [ctx.file._instrument_R] if instrumented else []
-    all_input_files = (library_deps.lib_dirs + ctx.files.srcs +
+    all_input_files = (library_deps.lib_dirs + src_files_sans_tests +
                        cc_deps.files + inst_files.to_list() +
                        build_tools.to_list() + info.files +
                        _makevars_files(info.makevars_site, ctx.file.makevars) +
@@ -357,7 +367,7 @@ def _build_impl(ctx):
 
     ctx.actions.run(
         outputs = [pkg_src_archive],
-        inputs = all_input_files + [info.state],
+        inputs = all_input_files + test_files + [info.state],
         tools = [flock],
         executable = ctx.executable._build_sh,
         env = src_build_env,
@@ -392,6 +402,7 @@ def _build_impl(ctx):
                 pkg_name = pkg_name,
                 src_archive = pkg_src_archive,
                 src_files = ctx.files.srcs,
+                test_files = test_files,
                 transitive_pkg_deps = library_deps.transitive_pkg_deps,
                 transitive_tools = transitive_tools,
             ),

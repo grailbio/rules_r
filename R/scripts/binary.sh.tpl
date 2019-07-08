@@ -70,7 +70,7 @@ src_path="../{workspace_name}/{src}"
 if "{ignore_execute_permissions}" || ! [[ -x "${src_path}" ]]; then
   {Rscript} {Rscript_args} "${src_path}" {script_args} "$@"
 else
-  "${src_path}" "$@"
+  "${src_path}" {script_args} "$@"
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."

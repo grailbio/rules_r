@@ -27,6 +27,11 @@ def package_dir(ctx):
     package_dir = workspace_root + ctx.label.package
     return package_dir
 
+def tests_dir(pkg_dir):
+    # Standard tests directory within a package.
+
+    return pkg_dir + "/tests"
+
 def env_vars(env_vars):
     # Array of commands to export environment variables.
 

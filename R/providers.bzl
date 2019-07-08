@@ -18,6 +18,7 @@ RPackage = provider(
         "pkg_name": "Name of the package",
         "pkg_lib_dir": "Directory where this package is installed",
         "src_files": "All source files in this package",
+        "test_files": "All test files in this package",
         "src_archive": "Source archive of this package",
         "bin_archive": "Binary archive of this package",
         "pkg_deps": "Direct deps of this package",

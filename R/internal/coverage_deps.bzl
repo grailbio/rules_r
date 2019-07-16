@@ -16,10 +16,6 @@ load(
     "@com_grail_rules_r//R:repositories.bzl",
     _r_repository = "r_repository",
 )
-load(
-    "@bazel_tools//tools/build_defs/repo:http.bzl",
-    _http_archive = "http_archive",
-)
 
 _REPO_NAME_PREFIX = "R_"
 

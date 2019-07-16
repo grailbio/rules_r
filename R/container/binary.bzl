@@ -16,10 +16,6 @@
 # https://github.com/bazelbuild/rules_docker/issues/193
 
 load(
-    "@io_bazel_rules_docker//container:container.bzl",
-    _container = "container",
-)
-load(
     "@io_bazel_rules_docker//container:layer.bzl",
     _layer = "layer",
 )

@@ -44,6 +44,15 @@ function_args <- c(function_args, build_flags_list, cmd_flags_list)
 # Retain only the last element with a given name.
 function_args <- rev(function_args)[unique(names(function_args))]
 
+# When the source directory is read-only, and when latexmk will be used, i.e.
+# when the output_format is pdf, dvi, ps, etc., the output_directory argument
+# needs to be set explicitly.
+# See https://github.com/rstudio/rmarkdown/issues/1615.
+if ("{render_function}" == "rmarkdown::render") {
+    options(tinytex.output_dir = output_dir)
+    options(tinytex.engine_args = sprintf("'--output-directory=%s'", output_dir))
+}
+
 # Actually render.
 message("Calling {render_function} with arguments: ", list(function_args), "\n")
 do.call({render_function}, function_args)

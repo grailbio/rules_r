@@ -30,7 +30,7 @@ def _r_repository_impl(rctx):
         fail(("No sources found for repository '@%s'. Perhaps this package is " % rctx.name) +
              "not available for your R version.")
 
-    archive_basename = rctx.attr.urls[0].rsplit("/", maxsplit = 1)[1]
+    archive_basename = rctx.attr.urls[0].rsplit("/", 1)[1]
 
     if rctx.attr.pkg_type == "source":
         rctx.download_and_extract(

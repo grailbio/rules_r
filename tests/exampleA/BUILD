@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
+load("@com_grail_rules_r//R:defs.bzl", "r_pkg", "r_test")
 
 r_pkg(
     name = "exampleA",
@@ -23,4 +23,9 @@ r_pkg(
         ],
     ),
     visibility = ["//exampleB:__pkg__"],
+)
+
+r_test(
+    name = "test",
+    src = "//exampleA/R:fn.R",
 )

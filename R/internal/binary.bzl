@@ -25,7 +25,7 @@ load(
     _library_deps = "library_deps",
     _runtime_path_export = "runtime_path_export",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
+load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage", "RContextInfo")
 
 def _r_markdown_stub(ctx):
     stub = ctx.actions.declare_file(ctx.label.name + "_stub.R")
@@ -103,7 +103,8 @@ def _r_binary_impl(ctx):
     )
 
     layered_lib_files = _layer_library_deps(ctx, library_deps)
-    stamp_files = [ctx.info_file, ctx.version_file]
+    stamp = ctx.attr.stamp == 1 if ctx.attr.stamp >= 0 else ctx.attr._r_context_data[RContextInfo].stamp
+    stamp_files = [ctx.info_file, ctx.version_file] if stamp else []
     runfiles = ctx.runfiles(
         files = library_deps.lib_dirs + stamp_files,
         transitive_files = depset(transitive = [srcs, exe, tools]),
@@ -159,9 +160,17 @@ _R_BINARY_ATTRS = {
     "script_args": attr.string_list(
         doc = "A list of arguments to pass to the src script",
     ),
+    "stamp": attr.int(
+        default = -1,
+        doc = "Enable link stamping. Whether to encode build information into the binary. Default -1: Embedding of build information is controlled by the --[no]stamp flag.",
+    ),
     "_binary_sh_tpl": attr.label(
         allow_single_file = True,
         default = "@com_grail_rules_r//R/scripts:binary.sh.tpl",
+    ),
+    "_r_context_data": attr.label(
+        default = "@com_grail_rules_r//R/internal:r_context_data",
+        providers = [RContextInfo],
     ),
 }
 

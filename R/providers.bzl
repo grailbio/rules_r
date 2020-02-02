@@ -49,3 +49,9 @@ RBinary = provider(
         "pkg_deps": "list of direct package dependencies for this and other binary dependencies",
     },
 )
+
+#Modelled after _GoContextData in rules_go/go/private/context.bzl
+RContextInfo = provider(
+    doc = "Provides data about the build context, like config_setting's",
+    fields = ["stamp"],
+)

@@ -183,7 +183,7 @@ TMP_FILES+=("${TMP_SRC_PKG}")
 TZ=UTC find "${TMP_SRC_PKG}" -type f -exec touch -t 197001010000 {} \+
 
 # Override flags to the compiler for reproducible builds.
-R_MAKEVARS_SITE="$(mktemp)"
+R_MAKEVARS_SITE=${R_MAKEVARS_SITE:="$(mktemp)"}
 TMP_FILES+=("${R_MAKEVARS_SITE}")
 export R_MAKEVARS_SITE
 
@@ -194,7 +194,8 @@ repro_flags=(
 "-D__TIME__=\"redacted\""
 "-fdebug-prefix-map=\"${EXEC_ROOT}/=\""
 )
-echo "CPPFLAGS += ${repro_flags[*]}" > "${R_MAKEVARS_SITE}"
+touch ${R_MAKEVARS_SITE}
+echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 
 # Check if we just need to build the source archive.
 if "${BUILD_SRC_ARCHIVE:-"false"}"; then

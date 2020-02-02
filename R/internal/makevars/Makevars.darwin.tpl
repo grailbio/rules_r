@@ -21,7 +21,7 @@ FC=${F77}
 FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
 
 CC = @CC@
-CXX = @CC@
+CXX = @CXX@
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 

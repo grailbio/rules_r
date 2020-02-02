@@ -129,13 +129,17 @@ export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
 export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
 
+# Ensure we have a clean site Makevars file, using user-provided content, if applicable.
+tmp_mkvars="$(mktemp)"
+TMP_FILES+=("${tmp_mkvars}")
 if [[ "${R_MAKEVARS_SITE:-}" ]]; then
-  tmp_mkvars="$(mktemp)"
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_SITE}" > "${tmp_mkvars}"
-  export R_MAKEVARS_SITE="${tmp_mkvars}"
 fi
+export R_MAKEVARS_SITE="${tmp_mkvars}"
+
 if [[ "${R_MAKEVARS_USER:-}" ]]; then
   tmp_mkvars="$(mktemp)"
+  TMP_FILES+=("${tmp_mkvars}")
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
   export R_MAKEVARS_USER="${tmp_mkvars}"
 fi
@@ -183,10 +187,6 @@ TMP_FILES+=("${TMP_SRC_PKG}")
 TZ=UTC find "${TMP_SRC_PKG}" -type f -exec touch -t 197001010000 {} \+
 
 # Override flags to the compiler for reproducible builds.
-R_MAKEVARS_SITE=${R_MAKEVARS_SITE:="$(mktemp)"}
-TMP_FILES+=("${R_MAKEVARS_SITE}")
-export R_MAKEVARS_SITE
-
 repro_flags=(
 "-Wno-builtin-macro-redefined"
 "-D__DATE__=\"redacted\""
@@ -194,7 +194,6 @@ repro_flags=(
 "-D__TIME__=\"redacted\""
 "-fdebug-prefix-map=\"${EXEC_ROOT}/=\""
 )
-touch ${R_MAKEVARS_SITE}
 echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 
 # Check if we just need to build the source archive.

@@ -31,4 +31,4 @@ printf "\\n=== R environment ===\\n"
 # https://stat.ethz.ch/R-manual/R-devel/library/base/html/EnvVar.html
 # But in build actions, bazel will mask most of the ones not coming from R, so we can ignore those.
 # shellcheck disable=SC2086
-"${RSCRIPT:-"Rscript"}" --no-init-file ${ARGS:-} -e 'Sys.getenv()' | grep "^R_"
+"${RSCRIPT:-"Rscript"}" --no-init-file ${ARGS:-} -e 'Sys.getenv()' | grep "^R_" | grep -v "^R_SESSION_TMPDIR"

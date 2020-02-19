@@ -26,6 +26,7 @@ before_install:
         rm "/tmp/R.pkg" &&
         brew update &&
         ( brew install gcc || brew link --overwrite gcc ) &&
+        ( brew upgrade python || true ) &&
         brew tap bazelbuild/tap &&
         brew install llvm bazelbuild/tap/bazel;
     fi

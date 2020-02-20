@@ -608,6 +608,14 @@ the runfiles of the root executable.
         <p>A list of arguments to pass to the src script.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>stamp</code></td>
+      <td>
+        <p><code>Bool; default False</code></p>
+        <p>Include the stable status file in the runfiles of the binary.
+           The volatile status file is always included.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -615,7 +623,7 @@ the runfiles of the root executable.
 ## r_test
 
 ```python
-r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args)
+r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp)
 ```
 
 This is identical to [r_binary](#r_binary) but is run as a test.
@@ -624,7 +632,7 @@ This is identical to [r_binary](#r_binary) but is run as a test.
 ## r_markdown
 
 ```python
-r_markdown(name, src, deps, data, env_vars, tools, rscript_args, script_args,
+r_markdown(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp,
 render_function="rmarkdown::render", input_argument="input", output_dir_argument="output_dir",
 render_args)
 ```

@@ -47,6 +47,7 @@
             </method>
           </methods>
           <lines>
+            <line number="24" hits="1" branch="false"/>
             <line number="25" hits="2" branch="false"/>
             <line number="27" hits="1" branch="false"/>
             <line number="28" hits="1" branch="false"/>

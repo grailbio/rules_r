@@ -35,20 +35,22 @@ while getopts "b" opt; do
   esac
 done
 
+sysroot="$(xcrun --show-sdk-path)"
+
 export HOME=/tmp  # Needed for Homebrew.
 # Prefer brew clang if available, for openmp support.
 CC=""
 CXX=""
-CPPFLAGS=""
+CPPFLAGS="-isysroot ${sysroot} "
 LDFLAGS=""
 OPENMP_FLAGS=""
 if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
   LLVM_PREFIX="$(brew --prefix llvm)"
   CC="${LLVM_PREFIX}/bin/clang"
   CXX="${LLVM_PREFIX}/bin/clang++"
-  CPPFLAGS="-I${LLVM_PREFIX}/include"
-  LDFLAGS="-L${LLVM_PREFIX}/lib"
-  OPENMP_FLAGS="-fopenmp"
+  CPPFLAGS+="-I${LLVM_PREFIX}/include"
+  LDFLAGS+="-L${LLVM_PREFIX}/lib"
+  OPENMP_FLAGS+="-fopenmp"
 elif command -v clang > /dev/null; then
   CC=$(command -v clang)
   CXX=$(command -v clang++)

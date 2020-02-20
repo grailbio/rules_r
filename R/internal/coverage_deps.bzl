@@ -15,6 +15,7 @@
 load(
     "@com_grail_rules_r//R:repositories.bzl",
     _r_repository = "r_repository",
+    _r_repository_list = "r_repository_list",
 )
 
 _REPO_NAME_PREFIX = "R_"
@@ -54,13 +55,13 @@ def r_coverage_dependencies():
         version = None,
     )
 
-    _r_dep("R6", "2.2.2", "0ef7df0ace1fddf821d329f9d9a5d42296085350ae0d94af62c45bd203c8415e")
-    _r_dep("Rcpp", "0.12.18", "fcecd01e53cfcbcf58dec19842b7235a917b8d98988e4003cc090478c5bbd300")
-    _r_dep("crayon", "1.3.4", "fc6e9bf990e9532c4fcf1a3d2ce22d8cf12d25a95e4779adfa17713ed836fa68")
-    _r_dep("digest", "0.6.15", "882e74bb4f0722260bd912fd7f8a0fcefcf44c558f43ac8a03d63e53d25444c5")
-    _r_dep("jsonlite", "1.5", "6490371082a387cb1834048ad8cdecacb8b6b6643751b50298c741490c798e02")
-    _r_dep("lazyeval", "0.2.1", "83b3a43e94c40fe7977e43eb607be0a3cd64c02800eae4f2774e7866d1e93f61")
-    _r_dep("magrittr", "1.5", "05c45943ada9443134caa0ab24db4a962b629f00b755ccf039a2a2a7b2c92ae8")
-    _r_dep("rex", "1.1.2", "bd3c74ceaf335336f5dd04314d0a791f6311e421a2158f321f5aab275f539a2a")
-    _r_dep("withr", "2.1.2", "41366f777d8adb83d0bdbac1392a1ab118b36217ca648d3bb9db763aa7ff4686")
-    _r_dep("xml2", "1.2.0", "0a7a916fe9c5da9ac45aeb4c6b6b25d33c07652d422b9f2bb570f2e8f4ac9494")
+    _r_repository_list(
+        name = "r_coverage_deps_bzl",
+        other_args = {
+            "pkg_type": "both",
+        },
+        package_list = "@com_grail_rules_r//R/internal:coverage_deps_list.csv",
+        remote_repos = {
+            "CRAN": "https://cloud.r-project.org",
+        },
+    )

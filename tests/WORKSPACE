@@ -69,6 +69,9 @@ load("@com_grail_rules_r//R:repositories.bzl", "r_repository_list")
 r_repository_list(
     name = "r_repositories_bzl",
     build_file_overrides = "@com_grail_rules_r_tests//cran:build_file_overrides.csv",
+    other_args = {
+        "pkg_type": "both",
+    },
     package_list = "@com_grail_rules_r_tests//cran:packages.csv",
     remote_repos = {
         "CRAN": "https://cloud.r-project.org",
@@ -82,3 +85,7 @@ r_repositories()
 load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
 
 r_coverage_dependencies()
+
+load("@r_coverage_deps_bzl//:r_repositories.bzl", coverage_deps = "r_repositories")
+
+coverage_deps()

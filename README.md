@@ -852,6 +852,8 @@ as `r_repositories()`, for `r_repository` definitions for packages in
 ## r_rules_dependencies
 
 ```python
+load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+
 r_rules_dependencies()
 ```
 
@@ -863,7 +865,13 @@ BUILD system. One such dependency is the site-wide Makevars file for macOS.
 ## r_coverage_dependencies
 
 ```python
+load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
+
 r_coverage_dependencies()
+
+load("@r_coverage_deps_bzl//:r_repositories.bzl", coverage_deps = "r_repositories")
+
+coverage_deps()
 ```
 
 Repository rule that provides repository definitions for dependencies in
@@ -875,6 +883,8 @@ a repository definition for the [covr](https://github.com/r-lib/covr) package.
 ## r_register_toolchains
 
 ```python
+load("@com_grail_rules_r//R:dependencies.bzl", "r_register_toolchains")
+
 r_register_toolchains(r_home, strict, makevars_site, version, args, tools)
 ```
 
@@ -907,7 +917,7 @@ preference.
     <tr>
       <td><code>strict</code></td>
       <td>
-        <p><code>Boolean; default True</code></p>
+        <p><code>Bool; default True</code></p>
         <p>Fail if R is not found on the host system.</p>
       </td>
     </tr>

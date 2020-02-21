@@ -24,3 +24,12 @@ r_test(
     name = "nostamp_test",
     src = "nostamp_test.sh",
 )
+
+r_test(
+    name = "pkg_metadata",
+    src = "pkg_metadata.R",
+    deps = [
+        "//exampleA",
+        "//exampleB",
+    ],
+)

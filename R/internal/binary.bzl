@@ -162,9 +162,9 @@ _R_BINARY_ATTRS = {
         doc = "A list of arguments to pass to the src script",
     ),
     "stamp": attr.bool(
+        default = False,
         doc = ("Include the stable status file in the runfiles of the binary. " +
                "The volatile status file is always included."),
-        default = False,
     ),
     "_binary_sh_tpl": attr.label(
         allow_single_file = True,

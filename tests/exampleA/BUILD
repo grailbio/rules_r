@@ -22,5 +22,13 @@ r_pkg(
             "BUILD",
         ],
     ),
-    visibility = ["//exampleB:__pkg__"],
+    # Package metadata test in //stamping:pkg_metadata
+    metadata = {
+        "VAR": "{VAR}",
+        "STABLE_VAR": "{STABLE_VAR}",
+    },
+    visibility = [
+        "//exampleB:__pkg__",
+        "//stamping:__pkg__",
+    ],
 )

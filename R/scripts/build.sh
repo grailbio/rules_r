@@ -113,6 +113,30 @@ copy_inst_files() {
 }
 copy_inst_files
 
+# Make a script file for sed that can substitute status vars enclosed in {}, with their values.
+status_substitution_commands="$(mktemp)"
+TMP_FILES+=("${status_substitution_commands}")
+add_substitute_commands() {
+  local status_file="$1"
+  sed -e 's/@/\\@/' -e 's/^/s@{/' -e 's/ /}@/' -e 's/$/@/' "${status_file}" >> "${status_substitution_commands}"
+}
+
+stamped_description="$(mktemp)"
+TMP_FILES+=("${stamped_description}")
+cp "${PKG_SRC_DIR}/DESCRIPTION" "${stamped_description}"
+add_metadata() {
+  local IFS=","
+  for status_file in ${STATUS_FILES}; do
+    add_substitute_commands "${status_file}"
+  done
+  for key_value in ${METADATA_MAP:-}; do
+    IFS=":" read -r key value <<< "${key_value}"
+    value=$(echo "${value}" | sed -f "${status_substitution_commands}")
+    printf "%s: %s\n" "${key}" "${value}" >> "${stamped_description}"
+  done
+}
+add_metadata
+
 # Hack: copy the .so files inside the package source so that they are installed
 # (in bazel's sandbox as well as on user's system) along with package libs, and
 # use relative rpath.
@@ -181,6 +205,7 @@ TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
 mkdir -p "${TMP_SRC_PKG}"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a -L "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
+cp "${stamped_description}" "${TMP_SRC_PKG}/DESCRIPTION"
 TMP_FILES+=("${TMP_SRC_PKG}")
 
 # Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.

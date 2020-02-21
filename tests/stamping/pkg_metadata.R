@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env Rscript
 # Copyright 2020 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,17 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euo pipefail
+descA <- packageDescription("exampleA")
+descB <- packageDescription("exampleB")
 
-fail() {
-  echo "$@"
-  exit 1
+assertEqual <- function(got, want) {
+  if (got != want) {
+    stop(sprintf("got %s, want %s", got, want))
+  }
 }
 
-if ! grep "^VAR" "volatile-status.txt"; then
-  fail "volatile status file expected"
-fi
+assertEqual(descA[["VAR"]], "foo")
+assertEqual(descA[["STABLE_VAR"]], "{STABLE_VAR}") # stable status file is not available.
 
-if ! grep "^STABLE_VAR" "stable-status.txt"; then
-  fail "stable status file expected and not empty"
-fi
+assertEqual(descB[["VAR"]], "foo")
+assertEqual(descB[["STABLE_VAR"]], "bar")

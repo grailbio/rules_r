@@ -289,12 +289,15 @@ def _build_impl(ctx):
         _executables(ctx.attr.build_tools + info.tools),
         transitive = [transitive_tools],
     )
+    stamp_files = [ctx.version_file]
+    if ctx.attr.stamp:
+        stamp_files.append(ctx.info_file)
     instrument_files = [ctx.file._instrument_R] if instrumented else []
     all_input_files = (library_deps.lib_dirs + src_files_sans_tests +
                        cc_deps.files + inst_files.to_list() +
                        build_tools.to_list() + info.files +
                        _makevars_files(info.makevars_site, ctx.file.makevars) +
-                       instrument_files)
+                       stamp_files + instrument_files + [info.state])
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
@@ -340,6 +343,8 @@ def _build_impl(ctx):
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
         "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
         "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
+        "METADATA_MAP": ",".join([key + ":" + value for (key, value) in ctx.attr.metadata.items()]),
+        "STATUS_FILES": ",".join([f.path for f in stamp_files]),
         "FLOCK_PATH": flock.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
         "INSTRUMENTED": "true" if instrumented else "false",
@@ -351,7 +356,7 @@ def _build_impl(ctx):
     }
     ctx.actions.run(
         outputs = output_files,
-        inputs = all_input_files + [info.state],
+        inputs = all_input_files,
         tools = [flock],
         executable = ctx.executable._build_sh,
         env = build_env,
@@ -367,7 +372,7 @@ def _build_impl(ctx):
 
     ctx.actions.run(
         outputs = [pkg_src_archive],
-        inputs = all_input_files + test_files + [info.state],
+        inputs = all_input_files + test_files,
         tools = [flock],
         executable = ctx.executable._build_sh,
         env = src_build_env,
@@ -532,6 +537,15 @@ _PKG_ATTRS.update({
     "build_tools": attr.label_list(
         allow_files = True,
         doc = "Executables that package build and load will try to find in the system",
+    ),
+    "metadata": attr.string_dict(
+        doc = ("Metadata key-value pairs to add to the DESCRIPTION file before building. " +
+               "Build status variables can be substituted when enclosed within `{}`"),
+    ),
+    "stamp": attr.bool(
+        default = False,
+        doc = ("Include the stable status file when substituting values in the metadata. " +
+               "The volatile status file is always included."),
     ),
     "_build_sh": attr.label(
         allow_single_file = True,

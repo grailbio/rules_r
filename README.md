@@ -212,8 +212,9 @@ Please check open issues at the github repo.
 ## r_pkg
 
 ```python
-r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override, roclets,
-      roclets_deps, makevars, env_vars, inst_files, tools, build_tools)
+r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override,
+      roclets, roclets_deps, makevars, env_vars, inst_files, tools, build_tools,
+      metadata, stamp)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -362,6 +363,22 @@ with the same R installation.
       <td>
         <p><code>List of labels; optional</code></p>
         <p>Executables that native code compilation will try to find in the system.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>metadata</code></td>
+      <td>
+        <p><code>String keyed Dictionary; optional</code></p>
+        <p>Metadata key-value pairs to add to the DESCRIPTION file before building.
+           Build status variables can be substituted when enclosed within `{}`.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>stamp</code></td>
+      <td>
+        <p><code>Bool; default False</code></p>
+        <p>Include the stable status file when substituting values in the metadata.
+           The volatile status file is always included.</p>
       </td>
     </tr>
   </tbody>
@@ -535,7 +552,7 @@ sandbox.
 ## r_binary
 
 ```python
-r_binary(name, src, deps, data, env_vars, tools, rscript_args, script_args)
+r_binary(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp)
 ```
 
 Build a wrapper shell script for running an executable which will have all the

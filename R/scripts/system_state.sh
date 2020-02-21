@@ -1,11 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
+r_major_version="$("${R:-"R"}" --slave --vanilla \
+  -e 'v <- getRversion()' \
+  -e 'cat(v$major)')"
+r_minor_version="$("${R:-"R"}" --slave --vanilla \
+  -e 'v <- getRversion()' \
+  -e 'cat(v$minor)')"
+r_version="${r_major_version}.${r_minor_version}"
+
+# Check we have at least a minimum version needed for internal tools.
+if (( r_major_version < 3 )) || { (( r_major_version == 3 )) && (( r_minor_version < 4 )); }; then
+  >&2 echo "rules_r needs at least R 3.4; you have ${r_version}"
+  exit 1
+fi
+
 # Check version
 if [[ "${REQUIRED_VERSION:-}" ]]; then
-  r_version="$("${R:-"R"}" --slave --vanilla \
-    -e 'v <- getRversion()' \
-    -e 'cat(v$major, v$minor, sep=".")')"
   if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
     >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
     exit 1

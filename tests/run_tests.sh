@@ -38,3 +38,5 @@ export BAZEL_TEST_OPTS=(
 bazel test "${BAZEL_TEST_OPTS[@]}" //...
 
 coverage/coverage_test.sh
+
+repro/repro_test.sh

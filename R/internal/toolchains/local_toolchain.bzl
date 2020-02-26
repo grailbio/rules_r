@@ -43,6 +43,10 @@ def _check_version(expected, actual):
 
 _BUILD = """load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
 
+exports_files(
+    ["{state_file}"]
+)
+
 r_toolchain(
     name = "r_toolchain_generic",
     r = "{r}",
@@ -51,6 +55,7 @@ r_toolchain(
     args = [{args}],
     makevars_site = {makevars_site},
     tools = [{tools}],
+    system_state_file = "{state_file}",
     visibility = ["//visibility:public"],
 )
 
@@ -67,12 +72,12 @@ def _local_r_toolchain_impl(rctx):
     version = rctx.attr.version
 
     exec_result = rctx.execute(["printenv", _home_env_var])
-    if exec_result == 0:
+    if exec_result.return_code == 0:
         r_home = exec_result.stdout.strip()
 
     if r_home:
-        r = "%s/bin/R" % r_home
-        rscript = "%s/bin/Rscript" % r_home
+        r = rctx.path("%s/bin/R" % r_home)
+        rscript = rctx.path("%s/bin/Rscript" % r_home)
     else:
         r = rctx.which("R")
         rscript = rctx.which("Rscript")
@@ -87,6 +92,24 @@ def _local_r_toolchain_impl(rctx):
     if detect_os(rctx) == "darwin":
         makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
 
+    state_file = "system_state.txt"
+    exec_result = rctx.execute(
+        [rctx.path(rctx.attr._system_state_computer), rctx.path(state_file)],
+        environment = {
+            "R": str(r),
+            "RSCRIPT": str(rscript),
+            "SITE_FILES_FLAG": "--no-site-files" if "-no-site-file" in rctx.attr.args else "",
+            "ARGS": " ".join(rctx.attr.args),
+            "REQUIRED_VERSION": rctx.attr.version,
+        },
+    )
+    if exec_result.return_code != 0:
+        fail("system_state_computer failed (%d):\n%s\n%s" % (
+            exec_result.return_code,
+            exec_result.stdout,
+            exec_result.stderr,
+        ))
+
     rctx.file("WORKSPACE", """workspace(name = %s)""" % rctx.name)
     rctx.file("BUILD.bazel", _BUILD.format(
         r = r,
@@ -95,6 +118,7 @@ def _local_r_toolchain_impl(rctx):
         args = ", ".join(["\"%s\"" % arg for arg in rctx.attr.args]),
         makevars_site = makevars_site_str if rctx.attr.makevars_site else "None",
         tools = ", ".join(["\"%s\"" % tool for tool in rctx.attr.tools]),
+        state_file = state_file,
     ))
 
 # A generator for r_toolchain type that uses environment variables to locate R
@@ -127,7 +151,13 @@ local_r_toolchain = repository_rule(
         "tools": attr.string_list(
             doc = "tools attribute value for r_toolchain",
         ),
+        "_system_state_computer": attr.label(
+            allow_single_file = True,
+            default = "@com_grail_rules_r//R/scripts:system_state.sh",
+            doc = "Executable to output R system state",
+        ),
     },
+    configure = True,
     environ = [_home_env_var],
     implementation = _local_r_toolchain_impl,
 )

@@ -57,6 +57,7 @@ process_file = repository_rule(
             doc = "Environment variables to provide to processor.",
         ),
     },
+    configure = True,
     environ = ["PATH"],
     local = True,
     implementation = _process_file_impl,

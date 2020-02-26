@@ -59,9 +59,10 @@ load(
 
 container_pull(
     name = "r_base",
+    digest = "sha256:483647d32211b3a61a9a329f0e4f834a44f6b81de8c05c8df2981fc532b170f7",
     registry = "index.docker.io",
-    repository = "rocker/r-base",
-    tag = "latest",
+    repository = "rocker/r-ver",
+    tag = "3.6.2",
 )
 
 load("@com_grail_rules_r//R:repositories.bzl", "r_repository_list")

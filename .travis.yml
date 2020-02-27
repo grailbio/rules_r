@@ -11,7 +11,7 @@ addons:
     sources:
     - sourceline: 'deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8'
       key_url: 'https://bazel.build/bazel-release.pub.gpg'
-    - sourceline: 'ppa:marutter/rrutter'
+    - sourceline: 'ppa:marutter/rrutter3.5'
     packages:
     - bazel
     - r-recommended

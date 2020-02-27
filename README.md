@@ -52,7 +52,7 @@ GRAIL to build 400+ R packages from CRAN and Bioconductor.
 
 The following assumes that you are familiar with how to use Bazel in general.
 
-In order to use the rules, you must have bazel 0.18.1 or later and add the
+In order to use the rules, you must have bazel 1.0.0 or later and add the
 following to your WORKSPACE file:
 
 ```python

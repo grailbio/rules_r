@@ -67,32 +67,7 @@ toolchain(
 )
 """
 
-def _local_r_toolchain_impl(rctx):
-    r_home = rctx.attr.r_home
-    version = rctx.attr.version
-
-    exec_result = rctx.execute(["printenv", _home_env_var])
-    if exec_result.return_code == 0:
-        r_home = exec_result.stdout.strip()
-
-    if r_home:
-        r = rctx.path("%s/bin/R" % r_home)
-        rscript = rctx.path("%s/bin/Rscript" % r_home)
-    else:
-        r = rctx.which("R")
-        rscript = rctx.which("Rscript")
-
-    if rctx.attr.strict:
-        if not r or not rctx.path(r).exists:
-            fail("R not found")
-        if not rscript or not rctx.path(rscript).exists:
-            fail("Rscript not found")
-
-    makevars_site_str = "None"
-    if detect_os(rctx) == "darwin":
-        makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
-
-    state_file = "system_state.txt"
+def _compute_system_state(rctx, r, rscript, state_file):
     exec_result = rctx.execute(
         [rctx.path(rctx.attr._system_state_computer), rctx.path(state_file)],
         environment = {
@@ -109,6 +84,38 @@ def _local_r_toolchain_impl(rctx):
             exec_result.stdout,
             exec_result.stderr,
         ))
+
+def _local_r_toolchain_impl(rctx):
+    r_home = rctx.attr.r_home
+    version = rctx.attr.version
+
+    exec_result = rctx.execute(["printenv", _home_env_var])
+    if exec_result.return_code == 0:
+        r_home = exec_result.stdout.strip()
+
+    if r_home:
+        r = rctx.path("%s/bin/R" % r_home)
+        rscript = rctx.path("%s/bin/Rscript" % r_home)
+    else:
+        r = rctx.which("R")
+        rscript = rctx.which("Rscript")
+
+    r_found = True
+    if not r or not rctx.path(r).exists or not rscript or not rctx.path(rscript).exists:
+        r_found = False
+
+    if rctx.attr.strict and not r_found:
+        fail("R or Rscript is not installed")
+
+    makevars_site_str = "None"
+    if detect_os(rctx) == "darwin":
+        makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
+
+    state_file = "system_state.txt"
+    if not r_found:
+        rctx.file(state_file, content = 'R could not be found on host\n', executable = False)
+    else:
+        _compute_system_state(rctx, r, rscript, state_file)
 
     rctx.file("WORKSPACE", """workspace(name = %s)""" % rctx.name)
     rctx.file("BUILD.bazel", _BUILD.format(

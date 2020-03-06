@@ -23,7 +23,13 @@ fail() {
 if ! grep "^VAR" "volatile-status.txt"; then
   fail "volatile status file expected"
 fi
+if ! [[ "${VAR:-}" ]]; then
+  fail "volatile status var expected as env var"
+fi
 
 if [[ -e stable-info.txt ]]; then
   fail "stable status file not expected"
+fi
+if [[ "${STABLE_VAR:-}" ]]; then
+  fail "stable status var not expected as env var"
 fi

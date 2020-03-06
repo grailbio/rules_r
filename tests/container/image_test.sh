@@ -33,11 +33,13 @@ check() {
     echo "${TAR}" not found.
     exit 1
   fi
-  echo "Looking for file ${FILE_TO_CHECK} in ${TAR}:"
+  printf "Looking for file %s in %s: " "${FILE_TO_CHECK}" "${TAR}"
   if tar -tf "${TAR}" "${FILE_TO_CHECK}" >/dev/null 2>/dev/null; then
-    $EXPECT || (echo "Found but not expecting!" && exit 1)
+    ($EXPECT && echo "Found and expecting") || (echo "Found but not expecting!" && exit 1)
   elif $EXPECT; then
     echo "Not found!" && exit 1
+  else
+    echo "Not found and not expecting"
   fi
 }
 
@@ -49,4 +51,40 @@ check "library_image_internal-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "fa
 check "library_archive.tar.gz" "./grail/r-libs/exampleC/DESCRIPTION" "false"
 check "library_archive.tar.gz" "./grail/r-libs/bitops/DESCRIPTION" "true"
 
-echo "Found!"
+# TODO: Making an image by repo is not working as intended because all files
+# are also present in the topmost layer.
+
+# Check binary script and R library packages.
+check "binary_image-layer.tar" "/app/binary/binary" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/binary/binary.R" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleA/lib/exampleA/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleB/lib/exampleB/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleC/lib/exampleC/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "true"
+
+# TODO: Making an image by explicit layers is currently broken because the
+# package files are not symlinked correctly because of change in behavior re
+# remap_main_repo.
+
+# Check that explicitly layered packages are not in the top layer, but in one layer below.
+check "binary_image_explicit_layers-layer.tar" "/app/binary/binary" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/binary/binary.R" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleA/lib/exampleA/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleB/lib/exampleB/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/exampleC/lib/exampleC/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "false"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "false"
+#check "binary_image_explicit_layers.0-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "true"
+check "binary_image_explicit_layers.0-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "false"
+check "binary_image_explicit_layers.1-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "false"
+#check "binary_image_explicit_layers.1-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "true"
+
+# TODO: fix image by explicit layers (see also TODO above).
+
+if docker --version; then
+  binary_image.executable
+  # binary_image_explicit_layers.executable
+fi
+
+echo "SUCCESS!"

@@ -35,7 +35,7 @@ def _binary_layer_impl(ctx):
         directory = "/",
         file_map = {
             _layer_file_path(ctx, f): f
-            for f in ctx.attr.binary[OutputGroupInfo][ctx.attr.layer_type]
+            for f in ctx.attr.binary[OutputGroupInfo][ctx.attr.layer_type].to_list()
         },
     )
 

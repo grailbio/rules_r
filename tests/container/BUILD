@@ -42,12 +42,12 @@ sh_test(
     size = "small",
     srcs = ["image_test.sh"],
     data = [
+        ":binary_image",
+        ":binary_image_explicit_layers",
         ":library_archive",
         ":library_image",
     ],
 )
-
-# TODO: Introduce tests for binary_image after moving to rules_docker.
 
 r_binary_image(
     name = "binary_image",

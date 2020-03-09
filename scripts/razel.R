@@ -271,7 +271,10 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   }
 
   if (!is.null(package_list_csv)) {
-    repo_pkgs <- read.csv(package_list_csv, header = TRUE, stringsAsFactors = FALSE)
+    repo_pkgs <- read.csv(package_list_csv,
+                          header = TRUE,
+                          stringsAsFactors = FALSE,
+                          comment.char = "#")
     colnames(repo_pkgs)[1:3] <- c("Package", "Version", "sha256")
     repo_pkgs[, "binary_package_available"] <- FALSE
     if (pkg_type == "both") {
@@ -354,9 +357,11 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   }
 
   if (!is.null(build_file_overrides_csv)) {
-    build_file_overrides <- read.csv(build_file_overrides_csv, header = TRUE,
-                                      stringsAsFactors = FALSE,
-                                      col.names = c("Package", "build_file"))
+    build_file_overrides <- read.csv(build_file_overrides_csv,
+                                     header = TRUE,
+                                     col.names = c("Package", "build_file"),
+                                     stringsAsFactors = FALSE,
+                                     comment.char = "#")
     repo_pkgs <- merge(repo_pkgs, build_file_overrides, by = "Package",
                        all.x = TRUE, all.y = FALSE)
   } else {

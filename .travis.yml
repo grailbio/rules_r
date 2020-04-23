@@ -15,6 +15,7 @@ addons:
     packages:
     - bazel
     - r-recommended
+    - texinfo
 
 before_install:
   # brew r does not quite work.
@@ -27,7 +28,8 @@ before_install:
         rm "/tmp/R.pkg" &&
         ( brew upgrade python || true ) &&
         brew tap bazelbuild/tap &&
-        brew install bazelbuild/tap/bazel;
+        brew install bazelbuild/tap/bazel &&
+        brew install texinfo;
     fi
 
 script:

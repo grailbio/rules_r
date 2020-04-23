@@ -202,6 +202,7 @@ mkdir -p "${TMP_SRC}"
 lock "${LOCK_DIR}" "${PKG_NAME}"
 
 TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
+TMP_SRC_PKG_TAR="${TMP_SRC}/${PKG_SRC_DIR}.tar.gz"
 mkdir -p "${TMP_SRC_PKG}"
 rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
 cp -a -L "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
@@ -221,15 +222,25 @@ repro_flags=(
 )
 echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 
-# Check if we just need to build the source archive.
-if "${BUILD_SRC_ARCHIVE:-"false"}"; then
-  silent "${R}" CMD build --built-timestamp='' "${BUILD_ARGS}" "${PKG_SRC_DIR}"
-  mv "${PKG_NAME}"*.tar.gz "${PKG_SRC_ARCHIVE}"
+# Set HOME for pandoc.
+HOME="${TMP_SRC_PKG}"
 
+silent "${R}" CMD build --built-timestamp='' "${BUILD_ARGS}" "${TMP_SRC_PKG}"
+mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_PKG_TAR}"
+cp "${TMP_SRC_PKG_TAR}" "${PKG_SRC_ARCHIVE}"
+
+# Check if we needed to build only the source archive.
+if "${BUILD_SRC_ARCHIVE_ONLY:-"false"}"; then
   trap - EXIT
   cleanup
   exit
 fi
+
+# Unzip the built package as the new source, and remove any non-reproducible artifacts.
+rm -r "${TMP_SRC_PKG}"
+mkdir -p "${TMP_SRC_PKG}"
+tar -C "${TMP_SRC_PKG}" --strip-components=1 -xzf "${TMP_SRC_PKG_TAR}"
+sed -i'' -e "/^Packaged: /d" "${TMP_SRC_PKG}/DESCRIPTION"
 
 # Install the package to the common temp library.
 silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"

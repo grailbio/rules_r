@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_unit_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -34,4 +34,31 @@ PKG_CHECK_DEPS = [
     "@R_testthat//:testthat",
 ]
 
-r_package_with_test(PKG_NAME, PKG_SRCS, PKG_DEPS, PKG_CHECK_DEPS)
+r_pkg(
+    name = PKG_NAME,
+    srcs = PKG_SRCS,
+    # Override default to build package vignettes and manuals.
+    # Note that you will need texinfo installed for this to work.
+    build_args = [],
+    deps = PKG_DEPS,
+)
+
+r_library(
+    name = "library",
+    pkgs = [PKG_NAME],
+    tags = ["manual"],
+)
+
+r_unit_test(
+    name = "test",
+    timeout = "short",
+    pkg = PKG_NAME,
+    suggested_deps = PKG_CHECK_DEPS,
+)
+
+r_pkg_test(
+    name = "check",
+    timeout = "short",
+    pkg = PKG_NAME,
+    suggested_deps = PKG_CHECK_DEPS,
+)

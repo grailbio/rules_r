@@ -368,7 +368,7 @@ def _build_impl(ctx):
     # Lightweight action to build just the source archive.
 
     src_build_env = dict(build_env)
-    src_build_env.update({"BUILD_SRC_ARCHIVE": "true"})
+    src_build_env.update({"BUILD_SRC_ARCHIVE_ONLY": "true"})
 
     ctx.actions.run(
         outputs = [pkg_src_archive],

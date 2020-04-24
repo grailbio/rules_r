@@ -1,4 +1,4 @@
-R Rules for Bazel [![Build Status](https://travis-ci.org/grailbio/rules_r.svg?branch=master)](https://travis-ci.org/grailbio/rules_r)
+R Rules for Bazel ![Build Status](https://github.com/grailbio/rules_r/workflows/Tests/badge.svg?branch=master)
 =================
 
 #### General Information

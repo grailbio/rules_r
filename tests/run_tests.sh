@@ -13,29 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -euxo pipefail
+set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+source "./setup-bazel.sh"
 
 # r_binary related tests.  Run these individually most layered target first,
 # before building everything so we don't have runfiles built for wrapped
 # targets. The alternative is to clean the workspace before each test.
-bazel clean
-bazel run //binary:binary_sh_test
+set -x
+"${bazel}" clean
+"${bazel}" run //binary:binary_sh_test
 bazel-bin/binary/binary_sh_test
-bazel run //binary:binary_r_test
+"${bazel}" run //binary:binary_r_test
 bazel-bin/binary/binary_r_test
-bazel run //binary
+"${bazel}" run //binary
 bazel-bin/binary/binary
+set +x
 
-export BAZEL_TEST_OPTS=(
-"--color=yes"
-"--show_progress_rate_limit=30"
-"--keep_going"
-"--test_output=errors"
-)
-
-bazel test "${BAZEL_TEST_OPTS[@]}" //...
+"${bazel}" test "${bazel_test_opts[@]}" //...
 
 coverage/coverage_test.sh
 

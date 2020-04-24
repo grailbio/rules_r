@@ -196,6 +196,7 @@ export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 LOCK_DIR="/tmp/bazel/R/locks"
 TMP_LIB="/tmp/bazel/R/lib_${PKG_NAME}"
 TMP_SRC="/tmp/bazel/R/src"
+TMP_HOME="/tmp/bazel/R/home"
 mkdir -p "${LOCK_DIR}"
 mkdir -p "${TMP_LIB}"
 mkdir -p "${TMP_SRC}"
@@ -222,10 +223,12 @@ repro_flags=(
 )
 echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 
-# Set HOME for pandoc.
-HOME="${TMP_SRC_PKG}"
+# Set HOME for pandoc for building vignettes.
+mkdir -p "${TMP_HOME}"
+TMP_FILES+=("${TMP_HOME}")
+export HOME="${TMP_HOME}"
 
-silent "${R}" CMD build --built-timestamp='' "${BUILD_ARGS}" "${TMP_SRC_PKG}"
+silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC_PKG}"
 mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_PKG_TAR}"
 cp "${TMP_SRC_PKG_TAR}" "${PKG_SRC_ARCHIVE}"
 

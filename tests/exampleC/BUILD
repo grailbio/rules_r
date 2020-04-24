@@ -38,7 +38,7 @@ r_pkg(
     name = PKG_NAME,
     srcs = PKG_SRCS,
     # Override default to build package vignettes and manuals.
-    # Note that you will need texinfo installed for this to work.
+    # Note that we have a custom Makefile to create dummy HTMLs as vignettes.
     build_args = [],
     deps = PKG_DEPS,
 )

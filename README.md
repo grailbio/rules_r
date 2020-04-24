@@ -297,7 +297,11 @@ with the same R installation.
       <td><code>build_args</code></td>
       <td>
         <p><code>List of strings; default ["--no-build-vignettes", "--no-manual"]</code></p>
-        <p>Additional arguments to supply to R CMD build.</p>
+        <p>Additional arguments to supply to R CMD build. Note that building
+           vignettes is disabled by default to not require Tex installation for
+           users. In order to build vignettes, override this attribute, and ensure
+           that the relevant binaries are available in your system default
+           PATH (usually /usr/bin and /usr/local/bin)</p>
       </td>
     </tr>
     <tr>
@@ -532,7 +536,11 @@ sandbox.
       <td><code>check_args</code></td>
       <td>
         <p><code>List of strings; default ["--no-build-vignettes, "--no-manual"]</code></p>
-        <p>Additional arguments to supply to R CMD check.</p>
+        <p>Additional arguments to supply to R CMD build. Note that building
+           vignettes is disabled by default to not require Tex installation for
+           users. In order to build vignettes, override this attribute, and ensure
+           that the relevant binaries are available in your system default
+           PATH (usually /usr/bin and /usr/local/bin)</p>
       </td>
     </tr>
     <tr>

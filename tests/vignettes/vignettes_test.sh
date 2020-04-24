@@ -15,4 +15,4 @@
 
 # Test that the example vignette was rendered into pdf.
 tar -tzf ./exampleC/exampleC.bin.tar.gz | \
-  grep -q "exampleC/doc/example.pdf" || (>&2 echo "rendered vignette file not found" && exit 1)
+  grep -q "exampleC/doc/example.html" || (>&2 echo "rendered vignette file not found" && exit 1)

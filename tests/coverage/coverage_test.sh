@@ -17,23 +17,25 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-if ! [[ "${BAZEL_TEST_OPTS[*]:+${BAZEL_TEST_OPTS[*]}}" ]]; then
-  BAZEL_TEST_OPTS=("--test_output=errors")
+source "../setup-bazel.sh"
+
+if ! [[ "${bazel_test_opts[*]:+${bazel_test_opts[*]}}" ]]; then
+  bazel_test_opts=("--test_output=errors")
 fi
 
-# LLVM and gcc deal with code coverage differently:
+# Older versions of LLVM and gcc dealt with code coverage differently:
 #
 # - With LLVM, the first statement in a function body is counted double,
 # and the function header is ignored.
 #
 # - With gcc, the function header and the first statement count as separate
 # hits, unless they are on the same line.
-suffix="_clang"
-if [[ $(R CMD config CC) == "gcc"* ]]; then
-  suffix="_gcc"
-fi
+# However, LLVM behavior from Apple clang version 11+ onwards is consistent with gcc.
+version_info="$($(R CMD config CC) --version)"
+echo "Checking coverage results with the following system compiler:"
+echo "${version_info}"
 
-coverage_file="$(bazel info bazel-testlogs)/exampleC/test/coverage.dat"
+coverage_file="$("${bazel}" info bazel-testlogs)/exampleC/test/coverage.dat"
 readonly coverage_file
 
 expect_equal() {
@@ -52,13 +54,13 @@ expect_equal() {
 }
 
 # For instrumentation of dependencies in the same package.
-bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter=exampleC //exampleC:test
-expect_equal "default_instrumented${suffix}.xml" "${coverage_file}"
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=exampleC //exampleC:test
+expect_equal "default_instrumented.xml" "${coverage_file}"
 
 # For instrumentation of packages without tests, and of indirect test dependencies.
-bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter=// //...
-expect_equal "workspace_instrumented${suffix}.xml" "${coverage_file}"
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=// //...
+expect_equal "workspace_instrumented.xml" "${coverage_file}"
 
 # Set instrumentation filter to everything.
 # Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
-bazel coverage "${BAZEL_TEST_OPTS[@]}" --instrumentation_filter='.' --test_output=summary //...
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary //...

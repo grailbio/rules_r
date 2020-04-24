@@ -17,9 +17,11 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+source "../setup-bazel.sh"
+
 # Clean up bazel-* symlinks in workspace root to not confuse bazel when running
 # with a different output_path.
-rm "$(bazel info workspace)/bazel-*" 2>/dev/null || true
+rm "$("${bazel}" info workspace)/bazel-*" 2>/dev/null || true
 
 tmpdir="$(mktemp -d)"
 readonly tmpdir
@@ -28,16 +30,16 @@ readonly second="${tmpdir}/second"
 
 run_bazel() {
   base="$1"
-  bazel --bazelrc=/dev/null --output_base="${base}" build //exampleC
-  bazel --bazelrc=/dev/null --output_base="${base}" info bazel-bin
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //exampleC
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" info bazel-bin
 }
 first_output="$(run_bazel "${first}")"
 second_output="$(run_bazel "${second}")"
 
 shutdown_bazel() {
   base="$1"
-  bazel --bazelrc=/dev/null --output_base="${base}" clean --expunge
-  bazel --bazelrc=/dev/null --output_base="${base}" shutdown
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" clean --expunge
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" shutdown
 }
 
 cleanup() {

@@ -61,4 +61,9 @@ R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 export R_LIBS
 export R_LIBS_USER=dummy
 
+# Set HOME for pandoc for building vignettes.
+TMP_HOME="/tmp/bazel/R/home"
+mkdir -p "${TMP_HOME}"
+export HOME="${TMP_HOME}"
+
 exec {R} CMD check {check_args} {pkg_src_archive}

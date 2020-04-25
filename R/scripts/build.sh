@@ -225,7 +225,6 @@ echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 
 # Set HOME for pandoc for building vignettes.
 mkdir -p "${TMP_HOME}"
-TMP_FILES+=("${TMP_HOME}")
 export HOME="${TMP_HOME}"
 
 silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC_PKG}"

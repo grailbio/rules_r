@@ -124,4 +124,9 @@ def dict_to_r_vec(d):
 def quote_dict_values(d):
     """Quote the values in the dictionary."""
 
-    return {k: "'%s'" % v for k, v in d.items()}
+    return {k: quote_literal(v) for k, v in d.items()}
+
+def quote_literal(s):
+    """Quote a literal string constant."""
+
+    return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"

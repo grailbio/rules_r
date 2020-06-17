@@ -16,6 +16,7 @@ load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _dict_to_r_vec = "dict_to_r_vec",
     _quote_dict_values = "quote_dict_values",
+    _quote_literal = "quote_literal",
 )
 load("@com_grail_rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
 
@@ -24,6 +25,8 @@ _razel = attr.label(
     allow_single_file = True,
     doc = "R source file containing razel functions.",
 )
+
+_razel_tmp_script_name = "razel_script.R"
 
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
@@ -49,20 +52,25 @@ def _r_repository_impl(rctx):
     args = dict(rctx.attr.razel_args)
     if rctx.attr.pkg_type == "binary":
         args["pkg_bin_archive"] = archive_basename
+    script_content = """
+source({razel})
+buildify({args})
+""".format(
+        razel = _quote_literal(str(rctx.path(rctx.attr._razel))),
+        args = _dict_to_r_vec(_quote_dict_values(args)),
+    )
+    rctx.file(_razel_tmp_script_name, content = script_content)
 
-    razel = _sh_quote(rctx.path(rctx.attr._razel))
     exec_result = rctx.execute([
         "Rscript",
         "--vanilla",
-        "-e",
-        "source(%s)" % razel,
-        "-e",
-        "buildify(%s)" % _dict_to_r_vec(_quote_dict_values(args)),
+        _razel_tmp_script_name,
     ])
     if exec_result.return_code:
         fail("Failed to generate BUILD file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))
     if exec_result.stderr:
         print(exec_result.stderr)
+    rctx.delete(_razel_tmp_script_name)
 
     return
 
@@ -103,9 +111,6 @@ def r_repositories():
 """, executable = False)
         return
 
-    razel = _sh_quote(rctx.path(rctx.attr._razel))
-    repos = "c(%s)" % _dict_to_r_vec(_quote_dict_values(rctx.attr.remote_repos))
-
     args = {
         "package_list_csv": str(rctx.path(rctx.attr.package_list)),
     }
@@ -114,23 +119,28 @@ def r_repositories():
             "build_file_overrides_csv": str(rctx.path(rctx.attr.build_file_overrides)),
         })
     args.update(rctx.attr.other_args)
+    script_content = """
+source({razel})
+options(repos = c({repos}))
+generateWorkspaceMacro({args})
+""".format(
+        razel = _quote_literal(str(rctx.path(rctx.attr._razel))),
+        repos = _dict_to_r_vec(_quote_dict_values(rctx.attr.remote_repos)),
+        args = _dict_to_r_vec(_quote_dict_values(args)),
+    )
+    rctx.file(_razel_tmp_script_name, content = script_content)
 
-    function_call = "generateWorkspaceMacro(%s)" % _dict_to_r_vec(_quote_dict_values(args))
     cmd = [
         "Rscript",
         "--vanilla",
-        "-e",
-        "source(%s)" % razel,
-        "-e",
-        "options(repos=%s)" % repos,
-        "-e",
-        function_call,
+        _razel_tmp_script_name,
     ]
     exec_result = rctx.execute(cmd)
     if exec_result.return_code:
         fail("Failed to generate bzl file: \n%s\n%s" % (exec_result.stdout, exec_result.stderr))
     if exec_result.stderr:
         print(exec_result.stderr)
+    rctx.delete(_razel_tmp_script_name)
 
     return
 

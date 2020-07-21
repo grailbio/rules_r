@@ -91,6 +91,8 @@ def _r_binary_impl(ctx):
         substitutions = {
             "{src}": src.short_path,
             "{lib_dirs}": ":".join(lib_dirs),
+            "{build_package_path}": ctx.label.package,
+            "{build_label_name}": ctx.label.name,
             "{export_env_vars}": "; ".join(_env_vars(ctx.attr.env_vars)),
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{workspace_name}": ctx.workspace_name,

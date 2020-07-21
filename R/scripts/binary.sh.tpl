@@ -34,6 +34,16 @@ if [[ -e "./stable-status.txt" ]]; then
   status_to_env "./stable-status.txt"
 fi
 
+# Export some basic label information without explicit user configuration in
+# the BUILD file, that can not be provided through build status. This can be
+# useful to trace which bazel target was run.
+# If these variables are already set, then we do not set them again, to allow nested
+# targets to retain information from the top-level target.
+# NOTE: Just like bazel status variables, users can override these in the BUILD file
+# as environment variables.
+export BUILD_PACKAGE_PATH=${BUILD_PACKAGE_PATH:-'{build_package_path}'}
+export BUILD_LABEL_NAME=${BUILD_LABEL_NAME:-'{build_label_name}'}
+
 # Export environment variables, if any.
 {export_env_vars}
 

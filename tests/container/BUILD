@@ -53,6 +53,9 @@ r_binary_image(
     name = "binary_image",
     base = "@r_base//image",
     binary = "//binary",
+    # TODO(siddharthab): Providing `-i` here (as in the default value) makes
+    # the docker daemon hang when starting the container on macOS.
+    docker_run_flags = "--rm",
 )
 
 r_binary_image(

@@ -40,10 +40,10 @@ protobuf_deps()
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "09604a0f544f544df1a3c335ef012d4f24b1c158aff8e8c00a9087e1f41a2869",
-    strip_prefix = "rules_docker-0.14.0",
+    sha256 = "4521794f0fba2e20f3bf15846ab5e01d5332e587e9ce81629c7f96c793bb7036",
+    strip_prefix = "rules_docker-0.14.4",
     urls = [
-        "https://github.com/bazelbuild/rules_docker/releases/download/v0.14.0/rules_docker-v0.14.0.tar.gz",
+        "https://github.com/bazelbuild/rules_docker/releases/download/v0.14.4/rules_docker-v0.14.4.tar.gz",
     ],
 )
 
@@ -57,6 +57,10 @@ container_repositories()
 load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
 
 container_deps()
+
+load("@io_bazel_rules_docker//repositories:pip_repositories.bzl", "pip_deps")
+
+pip_deps()
 
 load(
     "@io_bazel_rules_docker//container:container.bzl",

@@ -23,8 +23,9 @@ fail() {
 }
 
 # Check R version information.
-if ! grep -q "^R version 3.6" "${state_file}"; then
-  fail "R version information not found"
+# For this test, version is fixed in .github/workflows/tests.yml
+if ! grep -q "^R version 4.0.2" "${state_file}"; then
+  fail "R version information not found or mismatch"
 fi
 
 # Check CC information.

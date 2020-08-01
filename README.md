@@ -184,8 +184,8 @@ your shell with
 $ bazel query 'filter(":R_", //external:*)'
 ```
 
-NOTE: Periods ('.') in the package names are replaced with underscores ('_')
-because bazel does not allow periods in repository names.
+**NOTE**: Periods ('.') in the package names are replaced with underscores
+('_') because bazel does not allow periods in repository names.
 
 <a name="examples"></a>
 ## Examples
@@ -940,6 +940,15 @@ of type [r_toolchain](#r_toolchain) based on the user's system and
 environment. If you want to register your own toolchain for specific platforms,
 register them before calling this function in your WORKSPACE file to give them
 preference.
+
+
+**NOTE**: These toolchains read your system state and cache the findings for
+future runs. Whenever you install a new R version, or if you want to reset the
+toolchain for any reason, run:
+```bash
+bazel sync --configure
+```
+
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>

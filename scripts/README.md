@@ -18,7 +18,8 @@ packages, you will have to first create a local repository containing all the
 packages that you want included in your build system, and then call
 `buildifyRepo` and `generateWorkspaceFile`. See
 [repo_management.R](#repo_managementr) for managing a local repo of your package
-dependencies.
+dependencies. Also see the repository rule
+[r_repository_list][r_repository_list].
 
 ```R
 #' Create a BUILD file from the package directory.
@@ -122,7 +123,7 @@ you want to use this local repo as a functional mirror for macOS and windows.
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.3", "3.4"))  # Binaries for these R versions.
+options("RVersions" = c("3.4", "3.5", "3.6", "4.0"))  # Binaries for these R versions.
 
 
 #' Already downloaded source archive packages in the repo.
@@ -180,3 +181,5 @@ cloneLibraryToRepo <- function(repo_dir, keep_versions = TRUE) ...
 #' @export
 installRepoToLibrary <- function(repo_dir, lib_site) ...
 ```
+
+[r_repository_list]: ../README.md#r_repository_list

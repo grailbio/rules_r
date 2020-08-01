@@ -142,10 +142,11 @@ For more details on how R searches different paths for packages, see
 
 To depend on external packages from CRAN and other remote repos, you can define the
 packages as a CSV with three columns -- Package, Version, and sha256. Then use
-`repository_list` rule to define R repositories for each package. For packages
-not in a CRAN like repo (e.g. github), you can use `r_repository` rule directly. For
-packages on your local system but outside your main repository, you will have to use
-`local_repository` with a saved BUILD file. Same for VCS repositories.
+[r_repository_list](#r_repository_list) rule to define R repositories for each
+package. For packages not in a CRAN like repo (e.g. github), you can use
+[r_repository](#r_repository) rule directly. For packages on your local system
+but outside your main repository, you will have to use `local_repository` with
+a saved BUILD file. Same for VCS repositories.
 
 ```
 load("@com_grail_rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
@@ -161,14 +162,15 @@ r_repository(
 )
 
 # R packages with standard sources.
+# See below for an example of how to generate the CSV package_list.
 r_repository_list(
     name = "r_repositories_bzl",
     build_file_overrides = "@myrepo//third-party/R:build_file_overrides.csv",
     package_list = "@myrepo//third-party/R:packages.csv",
     remote_repos = {
-        "BioCsoft": "https://bioconductor.org/packages/3.6/bioc",
-        "BioCann": "https://bioconductor.org/packages/3.6/data/annotation",
-        "BioCexp": "https://bioconductor.org/packages/3.6/data/experiment",
+        "BioCsoft": "https://bioconductor.org/packages/3.11/bioc",
+        "BioCann": "https://bioconductor.org/packages/3.11/data/annotation",
+        "BioCexp": "https://bioconductor.org/packages/3.11/data/experiment",
         "CRAN": "https://cloud.r-project.org",
     },
 )
@@ -187,6 +189,38 @@ $ bazel query 'filter(":R_", //external:*)'
 **NOTE**: Periods ('.') in the package names are replaced with underscores
 ('_') because bazel does not allow periods in repository names.
 
+To generate and maintain a CSV file containing all your external dependencies
+for use with `r_repository_list`, you can use the functions in the script
+`repo_management.R`.
+
+For example:
+```bash
+script="/path/to/rules_r/scripts/repo_management.R"
+package_list_csv="/path/to/output/csv/file"
+packages="comma-separated list of packages you want to add to the local cache"
+bioc_version="bioc_version to use, e.g. 3.11"
+
+# This will be the cache directory for a local copy of all the packages.
+# The output CSV will always reflect the state of this directory.
+local_r_repo="${HOME}/.cache/grail-r-repo"
+
+Rscript - <<EOF
+source('${script}')
+pkgs <- strsplit('${packages}', ',')[[1]]
+# Set ForceDownload to TRUE when switching R or Bioc versions.
+# options("ForceDownload" = TRUE)
+# Keep in sync with r_repository_list in WORKSPACE.
+options(repos = c(
+    BioCsoft = "https://bioconductor.org/packages/${bioc_version}/bioc",
+    BioCann = "https://bioconductor.org/packages/${bioc_version}/data/annotation",
+    BioCexp = "https://bioconductor.org/packages/${bioc_version}/data/experiment",
+    CRAN = "https://cloud.r-project.org")
+)
+addPackagesToRepo(pkgs, repo_dir = '${local_r_repo}')
+packageList('${local_r_repo}', '${package_list_csv}')
+EOF
+```
+
 <a name="examples"></a>
 ## Examples
 
@@ -196,7 +230,7 @@ Some examples are available in the tests directory of this repo.
 - See [tests/exampleC][exampleC] for an R package that depends on external R packages.
 
 Also see [Razel scripts][scripts] that provide utility functions to generate `BUILD` files
-and `WORKSPACE` rules for external packages.
+and `WORKSPACE` rules.
 
 <a name="contributing"></a>
 ## Contributing
@@ -782,7 +816,8 @@ r_repository(urls, strip_prefix, type, sha256, build_file)
 ```
 
 Repository rule in place of `new_http_archive` that can run razel to generate
-the BUILD file automatically.
+the BUILD file automatically. See section on
+[external packages](#external-packages).
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -850,7 +885,7 @@ r_repository_list(package_list, build_file_overrides, remote_repos, other_args)
 
 Repository rule that will generate a bzl file containing a macro, to be called
 as `r_repositories()`, for `r_repository` definitions for packages in
-`package_list` CSV.
+`package_list` CSV. See section on [external packages](#external-packages).
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>

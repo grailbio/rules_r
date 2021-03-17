@@ -27,6 +27,4 @@ jobs:
       run: sudo apt-get install libcurl4-openssl-dev
 
     - name: Run tests
-      env:
-        BAZELISK_GITHUB_TOKEN: ${{ secrets.BAZELISK_GITHUB_TOKEN }}
       run: tests/run_tests.sh

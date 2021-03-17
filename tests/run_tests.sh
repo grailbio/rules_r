@@ -24,6 +24,7 @@ source "./setup-bazel.sh"
 # targets. The alternative is to clean the workspace before each test.
 set -x
 "${bazel}" clean
+"${bazel}" version
 "${bazel}" run //binary:binary_sh_test
 bazel-bin/binary/binary_sh_test
 "${bazel}" run //binary:binary_r_test

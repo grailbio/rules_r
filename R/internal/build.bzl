@@ -80,49 +80,43 @@ def _strip_path_prefixes(iterable, p1, p2):
 
 def _link_info(dep, root_path):
     # Returns libraries to link from a cc_dep, giving preference to PIC.
-
-    linking_context = dep[CcInfo].linking_context
-    libraries_to_link = linking_context.libraries_to_link
-    user_link_flags = linking_context.user_link_flags
     libs = []
     c_so_files = []
-    c_libs_flags = list(user_link_flags)
-    c_libs_flags_short = list(user_link_flags)
+    c_libs_flags = []
+    c_libs_flags_short = []
 
-    # https://github.com/bazelbuild/bazel/issues/8118
-    # TODO: Simplify when we don't support bazel 0.26.
-    if hasattr(linking_context.libraries_to_link, "to_list"):
-        libraries_to_link = linking_context.libraries_to_link.to_list()
-    else:
-        libraries_to_link = linking_context.libraries_to_link
+    linker_inputs = dep[CcInfo].linking_context.linker_inputs.to_list()
+    for linker_input in linker_inputs:
+        for library_to_link in linker_input.libraries:
+            if library_to_link.pic_static_library != None:
+                l = library_to_link.pic_static_library
+            elif library_to_link.static_library != None:
+                l = library_to_link.static_library
+            elif library_to_link.interface_library != None:
+                l = library_to_link.interface_library
+            elif library_to_link.dynamic_library != None:
+                l = library_to_link.dynamic_library
+            else:
+                fail("unreachable")
 
-    for library_to_link in libraries_to_link:
-        if library_to_link.pic_static_library != None:
-            l = library_to_link.pic_static_library
-        elif library_to_link.static_library != None:
-            l = library_to_link.static_library
-        elif library_to_link.interface_library != None:
-            l = library_to_link.interface_library
-        elif library_to_link.dynamic_library != None:
-            l = library_to_link.dynamic_library
-        else:
-            fail("unreachable")
+            libs.append(l)
 
-        libs.append(l)
+            # dylib is not supported because macOS does not support $ORIGIN in rpath.
+            if l.extension == "so":
+                c_so_files.append(l)
 
-        # dylib is not supported because macOS does not support $ORIGIN in rpath.
-        if l.extension == "so":
-            c_so_files.append(l)
+                # We copy the file in srcs and set relative rpath for R CMD INSTALL.
+                c_libs_flags.append(l.basename)
 
-            # We copy the file in srcs and set relative rpath for R CMD INSTALL.
-            c_libs_flags.append(l.basename)
+                # We use LD_LIBRARY_PATH for R CMD check.
+                c_libs_flags_short.append(root_path + l.short_path)
+                continue
 
-            # We use LD_LIBRARY_PATH for R CMD check.
+            c_libs_flags.append(root_path + l.path)
             c_libs_flags_short.append(root_path + l.short_path)
-            continue
 
-        c_libs_flags.append(root_path + l.path)
-        c_libs_flags_short.append(root_path + l.short_path)
+        c_libs_flags.extend(linker_input.user_link_flags)
+        c_libs_flags_short.extend(linker_input.user_link_flags)
 
     return struct(
         c_libs_flags = c_libs_flags,

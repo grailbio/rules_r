@@ -52,8 +52,7 @@ GRAIL to build 400+ R packages from CRAN and Bioconductor.
 
 The following assumes that you are familiar with how to use Bazel in general.
 
-In order to use the rules, you must have bazel 1.0.0 or later and add the
-following to your WORKSPACE file:
+To begin, you can add the following or equivalent to your WORKSPACE file:
 
 ```python
 # Change master to the git tag you want.
@@ -89,8 +88,10 @@ load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
 <a name="configuration"></a>
 ## Configuration
 
-These rules assume that you have R installed on your system (we recommend 3.4.3
-or above), and can be located using the `PATH` environment variable.
+The following software must be installed on your system:
+
+    1. bazel (v3.0.0 or above)
+    2. R (3.4.3 or above; should be locatable using the `PATH` environment variable)
 
 **NOTE**: After re-installing or upgrading R, please reset the registered
 toolchain with `bazel sync --configure` to rebuild your packages with the new

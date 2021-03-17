@@ -64,6 +64,8 @@ r_toolchain = _r_toolchain
 def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps = []):
     """Convenience macro to generate the r_pkg and r_library targets."""
 
+    print("r_package is deprecated and will be removed in a future release")
+
     r_pkg(
         name = pkg_name,
         srcs = pkg_srcs,
@@ -78,6 +80,8 @@ def r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps = []):
 
 def r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps = [], test_timeout = "short"):
     """Convenience macro to generate the r_pkg, r_unit_test, r_pkg_test, and r_library targets."""
+
+    print("r_package_with_test is deprecated and will be removed in a future release")
 
     r_pkg(
         name = pkg_name,

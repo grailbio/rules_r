@@ -30,10 +30,6 @@ R Rules for Bazel ![Build Status](https://github.com/grailbio/rules_r/workflows/
 - [r_library_image](R/container/README.md#r_library_image)
 - [r_binary_image](R/container/README.md#r_binary_image)
 
-#### Convenience Macros
-- [r_package](#r_package)
-- [r_package_with_test](#r_package_with_test)
-
 <a name="overview"></a>
 ## Overview
 
@@ -1043,29 +1039,6 @@ bazel sync --configure
     </tr>
   </tbody>
 </table>
-
-
-# Convenience Macros
-
-<a name="r_package"></a>
-## r_package
-
-```python
-r_package(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[])
-```
-
-Convenience macro to generate the `r_pkg` and `r_library` targets.
-
-
-<a name="r_package_with_test"></a>
-## r_package_with_test
-
-```python
-r_package_with_test(pkg_name, pkg_srcs, pkg_deps, pkg_suggested_deps=[], test_timeout="short")
-```
-
-Convenience macro to generate the `r_pkg`, `r_library`,
-`r_unit_test`, and `r_pkg_test` targets.
 
 
 [r]: https://cran.r-project.org

@@ -42,7 +42,7 @@ export HOME=/tmp  # Needed for Homebrew.
 CC=""
 CXX=""
 CPPFLAGS="-isysroot ${sysroot} "
-LDFLAGS=""
+LDFLAGS="-isysroot ${sysroot} "
 OPENMP_FLAGS=""
 if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
   LLVM_PREFIX="$(brew --prefix llvm)"

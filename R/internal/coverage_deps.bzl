@@ -58,7 +58,6 @@ def r_coverage_dependencies():
     _r_repository_list(
         name = "r_coverage_deps_bzl",
         other_args = {
-            "mirror_repo_url": "https://s3-us-west-2.amazonaws.com/grail-r-repo",
             "pkg_type": "both",
         },
         package_list = "@com_grail_rules_r//R/internal:coverage_deps_list.csv",

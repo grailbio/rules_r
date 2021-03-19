@@ -33,8 +33,10 @@ bazel-bin/binary/binary_r_test
 bazel-bin/binary/binary
 set +x
 
-"${bazel}" test "${bazel_test_opts[@]}" //...
+"${bazel}" test "${bazel_test_opts[@]}" //... @workspaceroot//:all
 
 coverage/coverage_test.sh
 
 repro/repro_test.sh
+
+workspaceroot/workspaceroot_test.sh

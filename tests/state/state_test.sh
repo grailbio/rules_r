@@ -23,8 +23,10 @@ fail() {
 }
 
 # Check R version information.
-# For this test, version is fixed in .github/workflows/tests.yml
-if ! grep -q "^R version 4.0.2" "${state_file}"; then
+r_version="$(R \
+  -e 'v <- getRversion()' \
+  -e 'cat(v$major, v$minor, sep=".")')"
+if ! grep -q "^R version ${r_version}" "${state_file}"; then
   fail "R version information not found or mismatch"
 fi
 

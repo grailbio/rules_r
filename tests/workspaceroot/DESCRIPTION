@@ -1,0 +1,7 @@
+Package: workspaceroot
+Title: An R Package At The Bazel Workspace Root
+Version: 0.1.0
+Description: Checks if we can build a package that is not in a subdirectory.
+Author: Siddhartha Bagaria <siddharthab@users.noreply.github.com>
+Maintainer: Siddhartha Bagaria <siddharthab@users.noreply.github.com>
+License: file LICENSE

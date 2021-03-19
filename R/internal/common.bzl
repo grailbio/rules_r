@@ -23,9 +23,11 @@ def package_dir(ctx):
 
     workspace_root = ctx.label.workspace_root
     if workspace_root != "" and ctx.label.package != "":
-        workspace_root += "/"
-    package_dir = workspace_root + ctx.label.package
-    return package_dir
+        return workspace_root + "/" + ctx.label.package
+    elif workspace_root == "" and ctx.label.package == "":
+        return "."
+    else:
+        return workspace_root or ctx.label.package
 
 def tests_dir(pkg_dir):
     # Standard tests directory within a package.

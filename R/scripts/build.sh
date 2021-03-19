@@ -194,24 +194,34 @@ export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 # installing the packages to the same destination, from the same source path,
 # to get reproducibility in embedded paths.
 LOCK_DIR="/tmp/bazel/R/locks"
-TMP_LIB="/tmp/bazel/R/lib_${PKG_NAME}"
-TMP_SRC="/tmp/bazel/R/src"
+TMP_LIB="/tmp/bazel/R/lib/${PKG_NAME}"
+TMP_SRC="/tmp/bazel/R/src/${PKG_NAME}"
 TMP_HOME="/tmp/bazel/R/home"
+
+# Obtain a lock across all builds on this machine for packages with this name.
 mkdir -p "${LOCK_DIR}"
-mkdir -p "${TMP_LIB}"
-mkdir -p "${TMP_SRC}"
 lock "${LOCK_DIR}" "${PKG_NAME}"
 
-TMP_SRC_PKG="${TMP_SRC}/${PKG_SRC_DIR}"
-TMP_SRC_PKG_TAR="${TMP_SRC}/${PKG_SRC_DIR}.tar.gz"
-mkdir -p "${TMP_SRC_PKG}"
-rm -rf "${TMP_SRC_PKG}" 2>/dev/null || true
-cp -a -L "${EXEC_ROOT}/${PKG_SRC_DIR}" "${TMP_SRC_PKG}"
-cp "${stamped_description}" "${TMP_SRC_PKG}/DESCRIPTION"
-TMP_FILES+=("${TMP_SRC_PKG}")
+# Clean any leftover files from previous builds.
+rm -rf "${TMP_LIB}" 2>/dev/null || true
+rm -rf "${TMP_SRC}" 2>/dev/null || true
+mkdir -p "${TMP_LIB}"
+mkdir -p "${TMP_SRC}"
+
+TMP_SRC_TAR="${TMP_SRC}.tar.gz"
+copy_cmd=(
+  rsync --recursive --copy-links --exclude --no-perms --chmod=u+w --executability --specials)
+if [[ "${PKG_SRC_DIR}" == "." ]]; then
+  # Need to exclude special directories in the execroot.
+  copy_cmd+=(--exclude "bazel-out" --exclude "external" --delete-excluded)
+fi
+copy_cmd+=("${EXEC_ROOT}/${PKG_SRC_DIR}/" "${TMP_SRC}")
+"${copy_cmd[@]}"
+cp "${stamped_description}" "${TMP_SRC}/DESCRIPTION"
+TMP_FILES+=("${TMP_SRC}")
 
 # Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.
-TZ=UTC find "${TMP_SRC_PKG}" -type f -exec touch -t 197001010000 {} \+
+TZ=UTC find "${TMP_SRC}" -type f -exec touch -t 197001010000 {} \+
 
 # Override flags to the compiler for reproducible builds.
 repro_flags=(
@@ -227,9 +237,9 @@ echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 
-silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC_PKG}"
-mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_PKG_TAR}"
-cp "${TMP_SRC_PKG_TAR}" "${PKG_SRC_ARCHIVE}"
+silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC}"
+mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_TAR}"
+cp "${TMP_SRC_TAR}" "${PKG_SRC_ARCHIVE}"
 
 # Check if we needed to build only the source archive.
 if "${BUILD_SRC_ARCHIVE_ONLY:-"false"}"; then
@@ -239,19 +249,19 @@ if "${BUILD_SRC_ARCHIVE_ONLY:-"false"}"; then
 fi
 
 # Unzip the built package as the new source, and remove any non-reproducible artifacts.
-rm -r "${TMP_SRC_PKG}"
-mkdir -p "${TMP_SRC_PKG}"
-tar -C "${TMP_SRC_PKG}" --strip-components=1 -xzf "${TMP_SRC_PKG_TAR}"
-sed -i'' -e "/^Packaged: /d" "${TMP_SRC_PKG}/DESCRIPTION"
+rm -r "${TMP_SRC}"
+mkdir -p "${TMP_SRC}"
+tar -C "${TMP_SRC}" --strip-components=1 -xzf "${TMP_SRC_TAR}"
+sed -i'' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
 
 # Install the package to the common temp library.
-silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" "${TMP_SRC_PKG}"
+silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" "${TMP_SRC}"
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
 if "${INSTRUMENTED}"; then
-  add_instrumentation_hook "${TMP_SRC_PKG}"
+  add_instrumentation_hook "${TMP_SRC}"
 fi
 
 trap - EXIT

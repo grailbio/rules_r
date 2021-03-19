@@ -20,10 +20,6 @@
 # rules is in the roadmap --
 # https://bazel.build/roadmaps/coverage.html#improve-adding-coverage-support-for-skylark-rules-p2
 
-# TODO: COVERAGE_GCOV_PATH comes from the gcov tool defined in the toolchain for the rule.
-# We currently do not have a toolchain for R.
-# https://source.bazel.build/bazel/+/master:src/main/java/com/google/devtools/build/lib/rules/cpp/CcToolchain.java;l=542
-
 options(warn=2)
 
 bazel_r_debug <- (Sys.getenv("BAZEL_R_DEBUG") == "true")
@@ -102,6 +98,9 @@ vfix_gcov_file <- Vectorize(fix_gcov_file, "gcov_file", USE.NAMES = FALSE)
 
 # Try the given gcov command, returning TRUE or FALSE indicating success.
 try_gcov <- function(gcov_path, args) {
+  gcov_version_line <- paste(system2(gcov_path, "--version", stdout = TRUE), collapse = " ")
+  message(paste("gcov version:", gcov_version_line))
+  message(paste(c(gcov_path, args), collapse = " "), file = stderr())
   options(warn=1)
   res <- suppressWarnings(system2(gcov_path, args, stderr = TRUE))
   options(warn=2)
@@ -115,7 +114,7 @@ try_gcov <- function(gcov_path, args) {
     return(FALSE)
   }
   if (bazel_r_verbose) {
-    writeLines(res)
+    writeLines(res, stderr())
   }
   return(TRUE)
 }
@@ -135,9 +134,11 @@ run_gcov <- function() {
     # Switch to the compiler directory to run gcov so all embedded relative paths makes sense.
     orig_dir <- getwd()
     setwd(path)
-    res <- try_gcov(gcov_path, args = c(gcov_inputs, "-p"))
+    res <- FALSE
+    if (nchar(gcov_path) > 0) {
+      res <- try_gcov(gcov_path, args = c(gcov_inputs, "-p"))
+    }
     if (!isTRUE(res) && nchar(llvm_cov_path) > 0) {
-      message("gcov failed to process .gcno files; trying llvm-cov")
       res <- try_gcov(llvm_cov_path, args = c("gcov", gcov_inputs, "-p"))
     }
     if (!isTRUE(res)) {

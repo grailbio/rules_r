@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_binary", "r_library", "r_library_tar", "r_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library")
 
 r_library(
     name = "library",

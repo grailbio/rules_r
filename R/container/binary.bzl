@@ -70,7 +70,11 @@ def _r_binary_image_by_deps(**kwargs):
         _app_layer(name = this_name, base = kwargs["base"], dep = dep, tags = ["manual"])
         kwargs["base"] = this_name
 
-    _app_layer(**kwargs)
+    # Also create an empty directory for the workspace of the binary so that
+    # relative symlinks to external repos constructed from short_path (in the
+    # form of 'workspace_name/../...') makes sense. See
+    # https://github.com/bazelbuild/rules_docker/issues/161.
+    _app_layer(create_empty_workspace_dir = True, **kwargs)
 
 def _r_binary_image_by_repo_type(**kwargs):
     name = kwargs["name"]

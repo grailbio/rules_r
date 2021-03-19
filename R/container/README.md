@@ -6,11 +6,14 @@ You can create Docker or OCI images of R packages using Bazel.
 In your `WORKSPACE` file, load the Docker rules and specify the base R image.
 
 ```python
-# Change to the version of these rules you want and use sha256.
+# Change to the version of these rules you want and use the corresponding sha256.
 http_archive(
     name = "io_bazel_rules_docker",
-    strip_prefix = "rules_docker-master",
-    urls = ["https://github.com/bazelbuild/rules_docker/archive/master.tar.gz"],
+    sha256 = "95d39fd84ff4474babaf190450ee034d958202043e366b9fc38f438c9e6c3334",
+    strip_prefix = "rules_docker-0.16.0",
+    urls = [
+        "https://github.com/bazelbuild/rules_docker/releases/download/v0.16.0/rules_docker-v0.16.0.tar.gz",
+    ],
 )
 
 load(

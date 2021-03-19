@@ -36,4 +36,5 @@ bazel_test_opts=(
 "--show_progress_rate_limit=30"
 "--keep_going"
 "--test_output=errors"
+"--experimental_convenience_symlinks=ignore" # symlinks in nested workspaces may cause infinite loop
 )

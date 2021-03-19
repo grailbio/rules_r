@@ -25,3 +25,45 @@ r_library(
         "//container:__pkg__",
     ],
 )
+
+load("@com_grail_rules_r//R:defs.bzl", "r_toolchain")
+
+r_toolchain(
+    name = "r_toolchain_linux",
+    args = [
+        "--no-save",
+        "--no-site-file",
+        "--no-environ",
+    ],
+    files = [
+        "@llvm_toolchain//:compiler_components",
+        "@llvm_toolchain//:linker_components",
+    ],
+    makevars_site = "@llvm_toolchain//:Makevars",
+    r = "/usr/bin/R",
+    rscript = "/usr/bin/Rscript",
+    system_state_file = "@com_grail_rules_r_toolchains//:system_state.txt",
+    tools = [
+        "@llvm_toolchain//:bin/clang",
+        "@llvm_toolchain//:bin/clang++",
+        "@llvm_toolchain//:bin/ld",
+        "@llvm_toolchain//:bin/ld.lld",
+        "@llvm_toolchain//:bin/llvm-cov",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+toolchain(
+    name = "toolchain_linux",
+    exec_compatible_with = [
+        "@bazel_tools//platforms:linux",
+        "@bazel_tools//platforms:x86_64",
+    ],
+    target_compatible_with = [
+        "@bazel_tools//platforms:linux",
+        "@bazel_tools//platforms:x86_64",
+    ],
+    toolchain = ":r_toolchain_linux",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
+    visibility = ["//visibility:public"],
+)

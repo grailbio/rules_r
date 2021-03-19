@@ -47,7 +47,7 @@ def _test_impl(ctx):
     test_files = ctx.attr.pkg[RPackage].test_files
 
     tools = depset(
-        _executables(ctx.attr.tools),
+        _executables(ctx.attr.tools + info.tools),
         transitive = [ctx.attr.pkg[RPackage].transitive_tools],
     )
 
@@ -69,7 +69,7 @@ def _test_impl(ctx):
 
     runfiles = ctx.runfiles(
         files = (library_deps.lib_dirs + library_deps.gcno_dirs + test_files +
-                 coverage_files + [info.state]),
+                 coverage_files + info.files + [info.state]),
         transitive_files = tools,
     )
     return struct(
@@ -138,7 +138,7 @@ def _check_impl(ctx):
 
     library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
     tools = depset(
-        _executables(ctx.attr.tools),
+        _executables(ctx.attr.tools + info.tools),
         transitive = [build_tools],
     )
 

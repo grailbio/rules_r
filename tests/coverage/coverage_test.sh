@@ -64,3 +64,16 @@ expect_equal "workspace_instrumented.xml" "${coverage_file}"
 # Set instrumentation filter to everything.
 # Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary //...
+
+if [[ "$(uname)" == "Linux" ]]; then
+  # Check if we can compute coverage using supplied LLVM tools.
+  echo "Checking coverage results with the LLVM toolchain:"
+  toolchain_args=(
+    "--extra_toolchains=//:toolchain-linux"
+    "--extra_toolchains=@llvm_toolchain//:cc-toolchain-linux"
+    "--crosstool_top=@llvm_toolchain//:toolchain"
+    "--toolchain_resolution_debug"
+  )
+  "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //exampleC:test
+  expect_equal "default_instrumented.xml" "${coverage_file}"
+fi

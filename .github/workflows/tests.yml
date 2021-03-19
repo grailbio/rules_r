@@ -28,3 +28,10 @@ jobs:
 
     - name: Run tests
       run: tests/run_tests.sh
+
+    - name: Archive debug artifacts
+      uses: actions/upload-artifact@v2
+      if: ${{ always() }}
+      with:
+        name: archive-debug-artifacts
+        path: /tmp/debug-artifacts/*

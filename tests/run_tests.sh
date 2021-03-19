@@ -19,19 +19,27 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 source "./setup-bazel.sh"
 
+"${bazel}" clean
+"${bazel}" version
+
+set -x
 # r_binary related tests.  Run these individually most layered target first,
 # before building everything so we don't have runfiles built for wrapped
 # targets. The alternative is to clean the workspace before each test.
-set -x
-"${bazel}" clean
-"${bazel}" version
 "${bazel}" run //binary:binary_sh_test
 bazel-bin/binary/binary_sh_test
 "${bazel}" run //binary:binary_r_test
 bazel-bin/binary/binary_r_test
 "${bazel}" run //binary
 bazel-bin/binary/binary
+
 set +x
+
+# Store debug artifacts before we run the main test suite.
+artifacts_dir="/tmp/debug-artifacts/"
+mkdir -p "${artifacts_dir}"
+"${bazel}" query --output=build 'kind("r_repository", "//external:*")' > "${artifacts_dir}/repository_list.txt"
+cp "$("${bazel}" info output_base)/external/com_grail_rules_r_toolchains/system_state.txt" "${artifacts_dir}/"
 
 "${bazel}" test "${bazel_test_opts[@]}" //... @workspaceroot//:all
 
@@ -40,3 +48,4 @@ coverage/coverage_test.sh
 repro/repro_test.sh
 
 workspaceroot/workspaceroot_test.sh
+

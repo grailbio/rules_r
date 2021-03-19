@@ -113,7 +113,7 @@ def _local_r_toolchain_impl(rctx):
 
     state_file = "system_state.txt"
     if not r_found:
-        rctx.file(state_file, content = 'R could not be found on host\n', executable = False)
+        rctx.file(state_file, content = "R could not be found on host\n", executable = False)
     else:
         _compute_system_state(rctx, r, rscript, state_file)
 

@@ -43,3 +43,8 @@ printf "\\n=== R environment ===\\n"
 # But in build actions, bazel will mask most of the ones not coming from R, so we can ignore those.
 # shellcheck disable=SC2086
 "${RSCRIPT:-"Rscript"}" --no-init-file ${ARGS:-} -e 'Sys.getenv()' | grep "^R_" | grep -v "^R_SESSION_TMPDIR"
+
+# System compiler
+printf "\\n=== C compiler ===\\n"
+# Don't quote the value of CC because it is meant to be tokenized.
+$("${R:-"R"}" CMD config CC) --version

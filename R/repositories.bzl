@@ -20,6 +20,10 @@ load(
 )
 load("@com_grail_rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
 
+_rscript = attr.string(
+    default = "Rscript",
+    doc = "Name or path of the interpreter to use for running the razel script.",
+)
 _razel = attr.label(
     default = "@com_grail_rules_r//scripts:razel.R",
     allow_single_file = True,
@@ -62,7 +66,7 @@ buildify({args})
     rctx.file(_razel_tmp_script_name, content = script_content)
 
     exec_result = rctx.execute([
-        "Rscript",
+        rctx.attr.rscript,
         "--vanilla",
         _razel_tmp_script_name,
     ])
@@ -96,6 +100,7 @@ r_repository = repository_rule(
         "razel_args": attr.string_dict(
             doc = "Other arguments to supply to buildify function in razel.",
         ),
+        "rscript": _rscript,
         "_razel": _razel,
     },
     implementation = _r_repository_impl,
@@ -104,7 +109,7 @@ r_repository = repository_rule(
 def _r_repository_list_impl(rctx):
     rctx.file("BUILD", content = "", executable = False)
 
-    if not rctx.which("Rscript"):
+    if not rctx.which(rctx.attr.rscript):
         rctx.file("r_repositories.bzl", content = """
 def r_repositories():
     return
@@ -131,7 +136,7 @@ generateWorkspaceMacro({args})
     rctx.file(_razel_tmp_script_name, content = script_content)
 
     cmd = [
-        "Rscript",
+        rctx.attr.rscript,
         "--vanilla",
         _razel_tmp_script_name,
     ]
@@ -165,7 +170,9 @@ r_repository_list = repository_rule(
         "other_args": attr.string_dict(
             doc = "Other arguments to supply to generateWorkspaceMacro function in razel.",
         ),
+        "rscript": _rscript,
         "_razel": _razel,
     },
+    configure = True,
     implementation = _r_repository_list_impl,
 )

@@ -36,7 +36,7 @@ bazel-bin/binary/binary
 set +x
 
 # Store debug artifacts before we run the main test suite.
-artifacts_dir="/tmp/debug-artifacts/"
+artifacts_dir="/tmp/debug-artifacts/$(uname)"
 mkdir -p "${artifacts_dir}"
 "${bazel}" query --output=build 'kind("r_repository", "//external:*")' > "${artifacts_dir}/repository_list.txt"
 cp "$("${bazel}" info output_base)/external/com_grail_rules_r_toolchains/system_state.txt" "${artifacts_dir}/"

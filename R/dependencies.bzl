@@ -13,12 +13,12 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:process.bzl",
-    _process_file = "process_file",
-)
-load(
     "@com_grail_rules_r//internal:versions.bzl",
     _is_at_least = "is_at_least",
+)
+load(
+    "@com_grail_rules_r//R/internal/makevars:darwin.bzl",
+    _local_darwin_makevars = "local_darwin_makevars",
 )
 load(
     "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
@@ -39,11 +39,8 @@ def r_rules_dependencies():
     # be loaded in two stages, first load skylib and then load this file.
 
     _maybe(
-        _process_file,
+        _local_darwin_makevars,
         name = "com_grail_rules_r_makevars_darwin",
-        src = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.tpl",
-        processor = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.sh",
-        processor_args = ["-b"],
     )
 
 def r_register_toolchains(**kwargs):

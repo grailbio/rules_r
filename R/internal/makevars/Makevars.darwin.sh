@@ -51,6 +51,11 @@ if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
   CPPFLAGS+="-I${LLVM_PREFIX}/include"
   LDFLAGS+="-L${LLVM_PREFIX}/lib"
   OPENMP_FLAGS+="-fopenmp"
+  # Symlink llvm-cov from Homebrew next to the Makevars file so we can
+  # reference as an additional tool in the local toolchain later.
+  if [[ -x "${LLVM_PREFIX}/bin/llvm-cov" ]]; then
+    ln -s "${LLVM_PREFIX}/bin/llvm-cov" "llvm-cov"
+  fi
 elif command -v clang > /dev/null; then
   CC=$(command -v clang)
   CXX=$(command -v clang++)

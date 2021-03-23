@@ -108,8 +108,14 @@ def _local_r_toolchain_impl(rctx):
         fail("R or Rscript is not installed")
 
     makevars_site_str = "None"
-    if detect_os(rctx) == "darwin":
+    tools = list(rctx.attr.tools)
+    if rctx.attr.makevars_site and detect_os(rctx) == "darwin":
         makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
+        llvm_cov_dir = rctx.path(Label("@com_grail_rules_r_makevars_darwin")).dirname
+        llvm_cov_path = llvm_cov_dir.get_child("llvm-cov")
+        if llvm_cov_path.exists:
+            llvm_cov = Label("@com_grail_rules_r_makevars_darwin//:llvm-cov")
+            tools.append(llvm_cov)
 
     state_file = "system_state.txt"
     if not r_found:
@@ -123,8 +129,8 @@ def _local_r_toolchain_impl(rctx):
         rscript = rscript,
         version = "\"%s\"" % rctx.attr.version if rctx.attr.version else "None",
         args = ", ".join(["\"%s\"" % arg for arg in rctx.attr.args]),
-        makevars_site = makevars_site_str if rctx.attr.makevars_site else "None",
-        tools = ", ".join(["\"%s\"" % tool for tool in rctx.attr.tools]),
+        makevars_site = makevars_site_str,
+        tools = ", ".join(["\"%s\"" % tool for tool in tools]),
         state_file = state_file,
     ))
 
@@ -142,7 +148,7 @@ local_r_toolchain = repository_rule(
         ),
         "makevars_site": attr.bool(
             default = True,
-            doc = "Generate a site-wide Makevars file",
+            doc = "Generate a site-wide Makevars file (currently for Darwin only).",
         ),
         "version": attr.string(
             doc = "version attribute value for r_toolchain",

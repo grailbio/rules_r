@@ -1,4 +1,4 @@
-R Rules for Bazel ![Build Status](https://github.com/grailbio/rules_r/workflows/Tests/badge.svg?branch=master)
+R Rules for Bazel [![Tests](https://github.com/siddharthab/rules_r/actions/workflows/tests.yml/badge.svg)](https://github.com/siddharthab/rules_r/actions/workflows/tests.yml)
 =================
 
 #### General Information

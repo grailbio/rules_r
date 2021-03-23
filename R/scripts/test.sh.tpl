@@ -67,6 +67,7 @@ EOF
   }
   GCOV_PREFIX_STRIP="$(gcov_prefix_strip)"
   export GCOV_PREFIX_STRIP
+  export GCOV_EXIT_AT_ERROR=1
 fi
 
 cleanup() {

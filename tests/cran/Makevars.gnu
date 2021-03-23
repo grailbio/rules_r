@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors.
+# Copyright 2021 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files(["Makevars.gnu"])
+# Default Makevars file from the LLVM toolchain uses the C standard, but some
+# packages might need the C standard with GNU extensions.
+CFLAGS = -std=gnu11
+CXXFLAGS = -std=gnu++11

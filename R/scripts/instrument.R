@@ -25,11 +25,10 @@
 options(warn=2)
 
 args_list <- commandArgs(trailingOnly = TRUE)
-stopifnot(length(args_list) == 3)
+stopifnot(length(args_list) == 2)
 
 lib <- args_list[[1]]
 pkg_name <- args_list[[2]]
-pkg_src <- args_list[[3]]
 
 # Skip instrumented execution if covr is not available.
 # Needed for using instrumented packages without covr as a runtime dependency.
@@ -63,11 +62,3 @@ trace_lines <-
 loader_lines <- c(loader_lines, trace_lines)
 
 writeLines(text = loader_lines, con = load_script)
-
-# We copy the src files along with the .gcno, etc. files to their corresponding
-# location in bazel-bin.
-# TODO: Trim down to only the files we need; make C/C++ files a separate dependency.
-from <- file.path(pkg_src, "src")
-if (dir.exists(from)) {
-  file.copy(from = from, to = dirname(lib), recursive = TRUE, copy.date = TRUE)
-}

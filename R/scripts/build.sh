@@ -87,9 +87,10 @@ lock() {
 }
 
 add_instrumentation_hook() {
-  local pkg_src="$1"
-  silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}" "${pkg_src}"
+  silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}"
 }
+# Hard fail compilation on any gcov error.
+export GCOV_EXIT_AT_ERROR=1
 
 eval "${EXPORT_ENV_VARS_CMD:-}"
 
@@ -210,10 +211,10 @@ mkdir -p "${TMP_SRC}"
 
 TMP_SRC_TAR="${TMP_SRC}.tar.gz"
 copy_cmd=(
-  rsync --recursive --copy-links --exclude --no-perms --chmod=u+w --executability --specials)
+  rsync "--recursive" "--copy-links" "--no-perms" "--chmod=u+w" "--executability" "--specials")
 if [[ "${PKG_SRC_DIR}" == "." ]]; then
   # Need to exclude special directories in the execroot.
-  copy_cmd+=(--exclude "bazel-out" --exclude "external" --delete-excluded)
+  copy_cmd+=("--exclude" "bazel-out" "--exclude" "external" "--delete-excluded")
 fi
 copy_cmd+=("${EXEC_ROOT}/${PKG_SRC_DIR}/" "${TMP_SRC}")
 "${copy_cmd[@]}"
@@ -239,29 +240,44 @@ export HOME="${TMP_HOME}"
 
 silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC}"
 mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_TAR}"
-cp "${TMP_SRC_TAR}" "${PKG_SRC_ARCHIVE}"
+TMP_FILES+=("${TMP_SRC_TAR}")
 
-# Check if we needed to build only the source archive.
+# Unzip the built package as the new source, remove any non-reproducible
+# artifacts, perform any additional cleanups, and repackage.
+rm -r "${TMP_SRC}"
+mkdir -p "${TMP_SRC}"
+tar -C "${TMP_SRC}" --strip-components=1 -xzf "${TMP_SRC_TAR}"
+sed -i'' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
+if "${INSTRUMENTED}"; then
+  # .gcno and .gcda files are not cleaned up after R CMD build.
+  find "${TMP_SRC}" \( -name '*.gcda' -or -name '*.gcno' \) -delete
+fi
+tar -C "$(dirname "${TMP_SRC}")" -czf "${TMP_SRC_TAR}" "$(basename "${TMP_SRC}")"
+
+# Done building the package source archive.
+cp "${TMP_SRC_TAR}" "${PKG_SRC_ARCHIVE}"
 if "${BUILD_SRC_ARCHIVE_ONLY:-"false"}"; then
   trap - EXIT
   cleanup
   exit
 fi
 
-# Unzip the built package as the new source, and remove any non-reproducible artifacts.
-rm -r "${TMP_SRC}"
-mkdir -p "${TMP_SRC}"
-tar -C "${TMP_SRC}" --strip-components=1 -xzf "${TMP_SRC_TAR}"
-sed -i'' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
-
 # Install the package to the common temp library.
-silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" "${TMP_SRC}"
+silent "${R}" CMD INSTALL --built-timestamp='' "${INSTALL_ARGS}" --no-lock --build --library="${TMP_LIB}" --clean "${TMP_SRC}"
 rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way for move.
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
 if "${INSTRUMENTED}"; then
-  add_instrumentation_hook "${TMP_SRC}"
+  add_instrumentation_hook
+  # Copy native code instrumentation files into a separate directory.
+  # Note that we used `--clean` option during `R CMD INSTALL` so typical
+  # intermediate files like .o, .so, etc. have been deleted, but .gcno
+  # and .gcda files have not been deleted.
+  if [[ -d "${TMP_SRC}/src" ]]; then
+    find "${TMP_SRC}/src" -name '*.gcda' -delete
+    cp -a -L "${TMP_SRC}/src" "$(dirname "${PKG_LIB_PATH}")"
+  fi
 fi
 
 trap - EXIT

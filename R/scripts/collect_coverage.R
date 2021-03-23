@@ -48,15 +48,26 @@ coverage <- local({
 ############
 # Native code coverage
 
-# Copy the gcno files to their corresponding location within COVERAGE_DIR.
+# Copy the gcno files and their corresponding source code to locations within
+# COVERAGE_DIR.
 # e.g. COVERAGE_DIR/workspace_path_to_package/src/init.gcno, etc.
 local({
-  file_copy <- function(from, to) {
-    dir.create(dirname(to), showWarnings = FALSE, recursive = TRUE)
-    file.copy(from = from, to = to)
+  copy_gcno <- function(gcno) {
+    to_dir <- file.path(coverage_dir, dirname(gcno))
+    if (!dir.exists(to_dir)) {
+      dir.create(to_dir, recursive = TRUE)
+    }
+    filename_sans_ext <- tools::file_path_sans_ext(basename(gcno))
+    filegroup_pattern <- sprintf("^%s\\.?[^.]*$", filename_sans_ext)
+    gcno_filegroup <- list.files(dirname(gcno),
+                                 pattern = filegroup_pattern,
+                                 full.names = TRUE)
+    for (f in gcno_filegroup) {
+      file.copy(from = f, to = file.path(coverage_dir, f))
+    }
   }
   gcno_files <- list.files(pattern = "\\.gcno$", all.files = TRUE, recursive = TRUE)
-  invisible(Vectorize(file_copy)(gcno_files, file.path(coverage_dir, gcno_files)))
+  invisible(Vectorize(copy_gcno)(gcno_files))
 })
 
 if (bazel_r_debug) {
@@ -99,10 +110,12 @@ vfix_gcov_file <- Vectorize(fix_gcov_file, "gcov_file", USE.NAMES = FALSE)
 # Try the given gcov command, returning TRUE or FALSE indicating success.
 try_gcov <- function(gcov_path, args) {
   gcov_version_line <- paste(system2(gcov_path, "--version", stdout = TRUE), collapse = " ")
-  message(paste("gcov version:", gcov_version_line))
-  message(paste(c(gcov_path, args), collapse = " "), file = stderr())
+  if (bazel_r_debug) {
+    message(paste("gcov version:", gcov_version_line))
+    message(paste(c(gcov_path, args), collapse = " "))
+  }
   options(warn=1)
-  res <- suppressWarnings(system2(gcov_path, args, stderr = TRUE))
+  res <- system2(gcov_path, args, env = c("GCOV_EXIT_AT_ERROR=1"), stdout = TRUE, stderr = TRUE)
   options(warn=2)
   if (length(attributes(res)) > 0) {
     writeLines(res, stderr())

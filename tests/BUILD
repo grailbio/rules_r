@@ -29,7 +29,7 @@ r_library(
 load("@com_grail_rules_r//R:defs.bzl", "r_toolchain")
 
 r_toolchain(
-    name = "r_toolchain_linux",
+    name = "r-toolchain-linux",
     args = [
         "--no-save",
         "--no-site-file",
@@ -54,7 +54,7 @@ r_toolchain(
 )
 
 toolchain(
-    name = "toolchain_linux",
+    name = "toolchain-linux",
     exec_compatible_with = [
         "@bazel_tools//platforms:linux",
         "@bazel_tools//platforms:x86_64",
@@ -63,7 +63,7 @@ toolchain(
         "@bazel_tools//platforms:linux",
         "@bazel_tools//platforms:x86_64",
     ],
-    toolchain = ":r_toolchain_linux",
+    toolchain = ":r-toolchain-linux",
     toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )

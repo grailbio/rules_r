@@ -133,7 +133,7 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
 
   # Convenience alias for external repos to map repo name to pkg target.
   pkg_alias <- sprintf('\nalias(\n    name="%s",\n    actual="%s",\n)',
-                          paste0(repo_name_prefix, gsub("\\.", "_", name)), name)
+                       paste0(repo_name_prefix, gsub("\\.", "_", name)), name)
 
   r_pkg <- sprintf('\n%s(\n    name="%s",\n    %s,\n    deps=%s%s)',
                    pkg_rule, name, srcs_attr, build_deps, tags_attr)
@@ -145,6 +145,51 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
   r_pkg_test <- sprintf(paste0('\nr_pkg_test(\n    name="check",\n    pkg="%s",\n',
                                '    suggested_deps=%s)'),
                         name, check_deps)
+
+  cc_import <- local({
+    # C library for "Linking To" type dependencies.
+
+    if (is.null(pkg_bin_archive)) {
+      file_list <- list.files(pkg_directory, recursive = TRUE)
+      include_dir <- "inst/include/"
+      has_so_lib <- any(grepl("^src/", file_list))
+    } else {
+      file_list <- untar(pkg_bin_archive, list = TRUE)
+      include_dir <- sprintf("%s/include/", name)
+      has_so_lib <- any(grepl(sprintf("^%s/libs/", name), file_list))
+      # Also extract the include dir from the tarball.
+      untar(pkg_bin_archive, files = grep(sprintf("^%s", include_dir), file_list, value = TRUE))
+    }
+
+    has_hdrs <- any(grepl(sprintf("^%s", include_dir), file_list))
+    if (has_hdrs) {
+      hdrs_attr <- sprintf('glob(["%s**"])', include_dir)
+      strip_include_prefix <- include_dir
+    }
+
+    if (has_so_lib && has_hdrs) {
+      return(sprintf(paste0('\ncc_import(\n    name = "%s.cc.so",',
+                            '\n    shared_library = "%s.so",',
+                            '\n    visibility = ["//visibility:private"],',
+                            '\n)',
+                            '\ncc_library(\n    name = "%s.cc",',
+                            '\n    deps = ["%s.cc.so"],',
+                            '\n    hdrs = %s,',
+                            '\n    strip_include_prefix = "%s",',
+                            '\n)'),
+                     name, name, name, name, hdrs_attr, strip_include_prefix))
+    } else if (has_so_lib) {
+      return(sprintf(paste0('\ncc_import(\n    name = "%s.cc",',
+                            '\n    shared_library = "%s.so",\n)'),
+                     name, name))
+    } else if (has_hdrs) {
+      return(sprintf(paste0('\ncc_library(\n    name = "%s.cc",',
+                            '\n    hdrs = %s,',
+                            '\n    strip_include_prefix = "%s",\n)'),
+                     name, hdrs_attr, strip_include_prefix))
+    }
+    return("")
+  })
 
   build_file <- file.path(pkg_directory, build_file_name)
   if (file.exists(build_file)) {
@@ -158,6 +203,7 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
   if (!no_test_rules) {
     cat(r_unit_test, r_pkg_test, file = build_file, sep = "\n", append = TRUE)
   }
+  cat(cc_import, file = build_file, append = TRUE)
 
   if (Sys.which("buildifier") == "") {
     return()

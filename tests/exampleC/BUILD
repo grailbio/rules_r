@@ -22,6 +22,7 @@ PKG_SRCS = glob(
     ["**"],
     exclude = [
         "BUILD",
+        "lib/**",  # Handled through cc_library.
     ],
 )
 
@@ -40,6 +41,7 @@ r_pkg(
     # Override default to build package vignettes and manuals.
     # Note that we have a custom Makefile to create dummy HTMLs as vignettes.
     build_args = [],
+    cc_deps = [":cc_lib"],
     deps = PKG_DEPS,
 )
 
@@ -61,4 +63,20 @@ r_pkg_test(
     timeout = "short",
     pkg = PKG_NAME,
     suggested_deps = PKG_CHECK_DEPS,
+)
+
+cc_library(
+    name = "cc_lib",
+    srcs = [
+        "src/lib/getCharacter.c",
+        "src/lib/rcpp.cc",
+    ],
+    hdrs = ["src/lib/rcpp.h"],
+    copts = select({
+        "@platforms//os:macos": ["-isystem /Library/Frameworks/R.framework/Headers"],
+        # symlinked from /usr/share/R/include to work with default cxx_builtin_include_directories
+        "@platforms//os:linux": ["-isystem /usr/include/R"],
+    }) + ["-Wno-unused-variable"],
+    strip_include_prefix = "src",
+    deps = ["@R_Rcpp//:Rcpp.cc"],
 )

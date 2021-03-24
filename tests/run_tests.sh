@@ -17,10 +17,14 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-echo "::group::Setting up bazel"
+echo "::group::Setting up"
 source "./setup-bazel.sh"
 "${bazel}" clean
 "${bazel}" version
+if [[ "$(uname)" == "Linux" ]] && ! [[ -d "/usr/include/R" ]]; then
+  # exampleC:cc_lib needs a symlink for R include directory.
+  sudo ln -s "$(Rscript -e 'cat(R.home("include"))')" "/usr/include/R"
+fi
 echo "::endgroup::"
 
 echo "::group::Binary tests"

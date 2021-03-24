@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors.
+# Copyright 2021 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-OBJECTS = fn.o lib/getCharacter.o
+rcppHello <- function() {
+  .Call("rcppHello", PACKAGE = "exampleC")
+}
+
+rcppHelloWrapped <- function() {
+  .Call("rcppHelloWrapped", PACKAGE = "exampleC")
+}

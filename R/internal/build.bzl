@@ -88,6 +88,7 @@ def _link_info(dep, root_path):
     linker_inputs = dep[CcInfo].linking_context.linker_inputs.to_list()
     for linker_input in linker_inputs:
         for library_to_link in linker_input.libraries:
+            dynamic_library = False
             if library_to_link.pic_static_library != None:
                 l = library_to_link.pic_static_library
             elif library_to_link.static_library != None:
@@ -95,21 +96,15 @@ def _link_info(dep, root_path):
             elif library_to_link.interface_library != None:
                 l = library_to_link.interface_library
             elif library_to_link.dynamic_library != None:
+                dynamic_library = True
                 l = library_to_link.dynamic_library
             else:
                 fail("unreachable")
 
             libs.append(l)
 
-            # dylib is not supported because macOS does not support $ORIGIN in rpath.
-            if l.extension == "so":
+            if dynamic_library:
                 c_so_files.append(l)
-
-                # We copy the file in srcs and set relative rpath for R CMD INSTALL.
-                c_libs_flags.append(l.basename)
-
-                # We use LD_LIBRARY_PATH for R CMD check.
-                c_libs_flags_short.append(root_path + l.short_path)
                 continue
 
             c_libs_flags.append(root_path + l.path)
@@ -244,6 +239,30 @@ def _external_repo(ctx):
     # Returns True if this package is tagged as an external R package.
     return "external-r-repo" in ctx.attr.tags
 
+def _symlink_so_lib(ctx, pkg_name, pkg_lib_dir):
+    # Makes an action to output the .so lib file from the R package.
+
+    so_path = "{pkg_lib_dir}/{pkg_name}/libs/{pkg_name}.so".format(
+        pkg_lib_dir = pkg_lib_dir.path,
+        pkg_name = pkg_name,
+    )
+    script = """#!/bin/bash
+set -euo pipefail
+if [[ -f {so_path} ]]; then
+  ln -s ./lib/{pkg_name}/libs/{pkg_name}.so {so_lib_out}
+else
+  touch {so_lib_out}
+fi
+""".format(pkg_name = pkg_name, so_path = so_path, so_lib_out = ctx.outputs.so_lib.path)
+    ctx.actions.run_shell(
+        outputs = [ctx.outputs.so_lib],
+        inputs = [pkg_lib_dir],
+        command = script,
+        mnemonic = "RSharedLib",
+        use_default_shell_env = False,
+        progress_message = "Copying .so from R package %s" % pkg_name,
+    )
+
 def _build_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
@@ -375,6 +394,8 @@ def _build_impl(ctx):
         progress_message = "Building R (source) package %s" % pkg_name,
     )
 
+    _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
+
     return struct(
         instrumented_files = struct(
             # List the dependencies in which transitive instrumented files can be found.
@@ -441,6 +462,10 @@ def _build_binary_pkg_impl(ctx):
         use_default_shell_env = False,
         progress_message = "Extracting R binary package %s" % pkg_name,
     )
+
+    ctx.actions.symlink(output = ctx.outputs.bin_archive, target_file = pkg_bin_archive)
+
+    _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
 
     return [
         DefaultInfo(
@@ -581,6 +606,7 @@ r_pkg = rule(
     outputs = {
         "bin_archive": "%{name}.bin.tar.gz",
         "src_archive": "%{name}.tar.gz",
+        "so_lib": "%{name}.so",
     },
     toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _build_impl,
@@ -590,6 +616,10 @@ r_binary_pkg = rule(
     attrs = _BINARY_PKG_ATTRS,
     doc = ("Rule to install the package and its transitive dependencies in " +
            "the Bazel sandbox from a binary archive."),
+    outputs = {
+        "bin_archive": "%{name}.bin.tar.gz",
+        "so_lib": "%{name}.so",
+    },
     toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _build_binary_pkg_impl,
 )

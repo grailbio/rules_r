@@ -114,83 +114,6 @@ copy_inst_files() {
 }
 copy_inst_files
 
-# Make a script file for sed that can substitute status vars enclosed in {}, with their values.
-status_substitution_commands="$(mktemp)"
-TMP_FILES+=("${status_substitution_commands}")
-add_substitute_commands() {
-  local status_file="$1"
-  sed -e 's/@/\\@/' -e 's/^/s@{/' -e 's/ /}@/' -e 's/$/@/' "${status_file}" >> "${status_substitution_commands}"
-}
-
-stamped_description="$(mktemp)"
-TMP_FILES+=("${stamped_description}")
-cp "${PKG_SRC_DIR}/DESCRIPTION" "${stamped_description}"
-add_metadata() {
-  local IFS=","
-  for status_file in ${STATUS_FILES}; do
-    add_substitute_commands "${status_file}"
-  done
-  for key_value in ${METADATA_MAP:-}; do
-    IFS=":" read -r key value <<< "${key_value}"
-    value=$(echo "${value}" | sed -f "${status_substitution_commands}")
-    printf "%s: %s\n" "${key}" "${value}" >> "${stamped_description}"
-  done
-}
-add_metadata
-
-# Hack: copy the .so files inside the package source so that they are installed
-# (in bazel's sandbox as well as on user's system) along with package libs, and
-# use relative rpath.
-if [[ "${C_SO_FILES}" ]]; then
-  mkdir -p "${PKG_SRC_DIR}/src"
-  eval cp "${C_SO_FILES}" "${PKG_SRC_DIR}/src" # Use eval to remove outermost quotes.
-  #shellcheck disable=SC2016
-  # Not all toolchains support $ORIGIN variable in rpath.
-  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
-fi
-
-export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
-export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
-
-# Ensure we have a clean site Makevars file, using user-provided content, if applicable.
-tmp_mkvars="$(mktemp)"
-TMP_FILES+=("${tmp_mkvars}")
-if [[ "${R_MAKEVARS_SITE:-}" ]]; then
-  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_SITE}" > "${tmp_mkvars}"
-fi
-export R_MAKEVARS_SITE="${tmp_mkvars}"
-
-if [[ "${R_MAKEVARS_USER:-}" ]]; then
-  tmp_mkvars="$(mktemp)"
-  TMP_FILES+=("${tmp_mkvars}")
-  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
-  export R_MAKEVARS_USER="${tmp_mkvars}"
-fi
-
-# Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
-# R_LIBS_USER is parameter substituted with a default in .Renviron, which
-# imposes length limits.
-export R_LIBS="${R_LIBS_ROCLETS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export R_LIBS_USER=dummy
-
-if [[ "${ROCLETS}" ]]; then
-  silent "${RSCRIPT}" - <<EOF
-bazel_libs <- .libPaths()
-bazel_libs <- bazel_libs[! bazel_libs %in% c(.Library, .Library.site)]
-if ("devtools" %in% installed.packages(bazel_libs)[, "Package"]) {
-  devtools::document(pkg='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))
-} else {
-  roxygen2::roxygenize(package.dir='${PKG_SRC_DIR}', roclets=c(${ROCLETS}))
-}
-EOF
-fi
-
-mkdir -p "${PKG_LIB_PATH}"
-
-export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-
 # We make builds reproducible by asking R to use a constant timestamp, and by
 # installing the packages to the same destination, from the same source path,
 # to get reproducibility in embedded paths.
@@ -218,11 +141,85 @@ if [[ "${PKG_SRC_DIR}" == "." ]]; then
 fi
 copy_cmd+=("${EXEC_ROOT}/${PKG_SRC_DIR}/" "${TMP_SRC}")
 "${copy_cmd[@]}"
-cp "${stamped_description}" "${TMP_SRC}/DESCRIPTION"
 TMP_FILES+=("${TMP_SRC}")
 
-# Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.
-TZ=UTC find "${TMP_SRC}" -type f -exec touch -t 197001010000 {} \+
+# Make a script file for sed that can substitute status vars enclosed in {}, with their values.
+status_substitution_commands="$(mktemp)"
+TMP_FILES+=("${status_substitution_commands}")
+add_substitute_commands() {
+  local status_file="$1"
+  sed -e 's/@/\\@/' -e 's/^/s@{/' -e 's/ /}@/' -e 's/$/@/' "${status_file}" >> "${status_substitution_commands}"
+}
+
+add_metadata() {
+  local IFS=","
+  for status_file in ${STATUS_FILES}; do
+    add_substitute_commands "${status_file}"
+  done
+  for key_value in ${METADATA_MAP:-}; do
+    IFS=":" read -r key value <<< "${key_value}"
+    value=$(echo "${value}" | sed -f "${status_substitution_commands}")
+    printf "%s: %s\n" "${key}" "${value}" >> "${TMP_SRC}/DESCRIPTION"
+  done
+}
+add_metadata
+
+# Hack: copy the .so files inside the package source so that they are installed
+# (in bazel's sandbox as well as on user's system) along with package libs, and
+# use relative rpath.
+copy_so() {
+  mkdir -p "${TMP_SRC}/src"
+  eval cp "${C_SO_FILES}" "${TMP_SRC}/src" # Use eval to remove outermost quotes.
+  #shellcheck disable=SC2016
+  # Not all toolchains support $ORIGIN variable in rpath.
+  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
+}
+if [[ "${C_SO_FILES}" ]]; then
+  copy_so
+fi
+
+export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
+export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
+
+# Ensure we have a clean site Makevars file, using user-provided content, if applicable.
+tmp_mkvars="$(mktemp)"
+TMP_FILES+=("${tmp_mkvars}")
+if [[ "${R_MAKEVARS_SITE:-}" ]]; then
+  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_SITE}" > "${tmp_mkvars}"
+fi
+export R_MAKEVARS_SITE="${tmp_mkvars}"
+
+# Same for personal Makevars file.
+if [[ "${R_MAKEVARS_USER:-}" ]]; then
+  tmp_mkvars="$(mktemp)"
+  TMP_FILES+=("${tmp_mkvars}")
+  sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
+  export R_MAKEVARS_USER="${tmp_mkvars}"
+fi
+
+# Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
+# R_LIBS_USER is parameter substituted with a default in .Renviron, which
+# imposes length limits.
+export R_LIBS="${R_LIBS_ROCLETS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+export R_LIBS_USER=dummy
+
+if [[ "${ROCLETS}" ]]; then
+  silent "${RSCRIPT}" - <<EOF
+bazel_libs <- .libPaths()
+bazel_libs <- bazel_libs[! bazel_libs %in% c(.Library, .Library.site)]
+if ("devtools" %in% installed.packages(bazel_libs)[, "Package"]) {
+  devtools::document(pkg='${TMP_SRC}', roclets=c(${ROCLETS}))
+} else {
+  roxygen2::roxygenize(package.dir='${TMP_SRC}', roclets=c(${ROCLETS}))
+}
+EOF
+fi
+
+mkdir -p "${PKG_LIB_PATH}"
+
+export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 
 # Override flags to the compiler for reproducible builds.
 repro_flags=(
@@ -238,6 +235,9 @@ echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 
+# Reset mtime for all files. R's help DB is specially sensitive to timestamps of .Rd files in man/.
+TZ=UTC find "${TMP_SRC}" -type f -exec touch -t 197001010000 {} \+
+
 silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC}"
 mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_TAR}"
 TMP_FILES+=("${TMP_SRC_TAR}")
@@ -251,6 +251,10 @@ sed -i'' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
 if "${INSTRUMENTED}"; then
   # .gcno and .gcda files are not cleaned up after R CMD build.
   find "${TMP_SRC}" \( -name '*.gcda' -or -name '*.gcno' \) -delete
+fi
+if [[ "${C_SO_FILES}" ]]; then
+  # Re-copy user-provided .so files that were cleaned up during build.
+  copy_so
 fi
 tar -C "$(dirname "${TMP_SRC}")" -czf "${TMP_SRC_TAR}" "$(basename "${TMP_SRC}")"
 

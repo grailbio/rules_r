@@ -1,4 +1,4 @@
-R Rules for Bazel [![Tests](https://github.com/siddharthab/rules_r/actions/workflows/tests.yml/badge.svg)](https://github.com/siddharthab/rules_r/actions/workflows/tests.yml)
+R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflows/tests.yml/badge.svg)](https://github.com/grailbio/rules_r/actions/workflows/tests.yml)
 =================
 
 #### General Information

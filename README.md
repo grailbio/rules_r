@@ -475,7 +475,7 @@ container_image rule.
 ## r_unit_test
 
 ```python
-r_unit_test(pkg, suggested_deps)
+r_unit_test(pkg, suggested_deps, env_vars, tools, data)
 ```
 
 Rule to keep all deps in the sandbox, and run the provided R test scripts.
@@ -523,6 +523,13 @@ in the package, and C/C++ code in the `src` directory of R packages.
         <p>Executables to be made available to the test.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>data</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Data to be made available to the test.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -531,7 +538,7 @@ in the package, and C/C++ code in the `src` directory of R packages.
 ## r_pkg_test
 
 ```python
-r_pkg_test(pkg, suggested_deps, check_args)
+r_pkg_test(pkg, suggested_deps, check_args, env_vars, tools, data)
 ```
 
 Rule to keep all deps of the package in the sandbox, build a source archive
@@ -586,6 +593,13 @@ sandbox.
       <td>
         <p><code>List of labels; optional</code></p>
         <p>Executables to be made available to the test.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>data</code></td>
+      <td>
+        <p><code>List of labels; optional</code></p>
+        <p>Data to be made available to the test.</p>
       </td>
     </tr>
   </tbody>

@@ -69,7 +69,7 @@ def _test_impl(ctx):
 
     runfiles = ctx.runfiles(
         files = (library_deps.lib_dirs + library_deps.gcno_dirs + test_files +
-                 coverage_files + info.files + [info.state]),
+                 ctx.files.data + coverage_files + info.files + [info.state]),
         transitive_files = tools,
     )
     return struct(
@@ -97,6 +97,10 @@ r_unit_test = rule(
         ),
         "tools": attr.label_list(
             doc = "Executables to be made available to the test",
+        ),
+        "data": attr.label_list(
+            allow_files = True,
+            doc = "Data to be made available to the test",
         ),
         "_test_sh_tpl": attr.label(
             allow_single_file = True,
@@ -143,7 +147,7 @@ def _check_impl(ctx):
     )
 
     all_input_files = ([src_archive] + library_deps.lib_dirs +
-                       tools.to_list() + info.files +
+                       tools.to_list() + ctx.files.data + info.files +
                        cc_deps.files +
                        _makevars_files(info.makevars_site, makevars) + [info.state])
 
@@ -193,6 +197,10 @@ r_pkg_test = rule(
         ),
         "tools": attr.label_list(
             doc = "Executables to be made available to the test",
+        ),
+        "data": attr.label_list(
+            allow_files = True,
+            doc = "Data to be made available to the test",
         ),
         "_check_sh_tpl": attr.label(
             allow_single_file = True,

@@ -134,6 +134,7 @@ r_unit_test = rule(
 def _check_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
+    pkg_name = ctx.attr.pkg[RPackage].pkg_name
     src_archive = ctx.attr.pkg[RPackage].src_archive
     pkg_deps = ctx.attr.pkg[RPackage].pkg_deps
     build_tools = ctx.attr.pkg[RPackage].build_tools
@@ -165,6 +166,7 @@ def _check_impl(ctx):
             "{r_makevars_site}": info.makevars_site.short_path if info.makevars_site else "",
             "{lib_dirs}": ":".join(lib_dirs),
             "{check_args}": _sh_quote_args(ctx.attr.check_args),
+            "{pkg_name}": pkg_name,
             "{pkg_src_archive}": src_archive.short_path,
             "{R}": " ".join(info.r),
         },

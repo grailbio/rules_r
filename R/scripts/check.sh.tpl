@@ -66,4 +66,5 @@ TMP_HOME="/tmp/bazel/R/home"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 
-exec {R} CMD check {check_args} {pkg_src_archive}
+ln -s {pkg_src_archive} {pkg_name}.tar.gz
+exec {R} CMD check {check_args} {pkg_name}.tar.gz

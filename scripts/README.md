@@ -11,7 +11,12 @@ caution.
 ## razel.R
 
 Functions in this script help generate `BUILD` files for your own package and
-for packages from external repositories like CRAN and Bioc.
+for packages from external repositories like CRAN and Bioc. By default, targets
+are created for `r_pkg` and `r_library` rules. If the argument `no_test_rules`
+is `FALSE`, then targets are also made available for `r_unit_test` and
+`r_pkg_test` rules. If the package contains native code, then a `cc_library`
+target is also available that provides a way to depend on just the native code
+in the package.
 
 For your own package, use the function `buildify` directly. For external
 packages, you will have to first create a local repository containing all the

@@ -12,6 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# test cc_deps in the RProtoBuf package.
 test_that("cc_deps", {
   expect_equal(7, proto()$id)
+})
+
+# test cc_import for the .so file in the Rcpp package.
+test_that("cc_import", {
+  expect_equal(c("hello", "world"), exampleC::rcppHello())
+  expect_equal(c("hello", "world", "from", "me", "too"), exampleC::rcppHelloWrapped())
 })

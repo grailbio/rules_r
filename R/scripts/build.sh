@@ -166,16 +166,26 @@ add_metadata
 
 # Hack: copy the .so files inside the package source so that they are installed
 # (in bazel's sandbox as well as on user's system) along with package libs, and
-# use relative rpath.
-copy_so() {
-  mkdir -p "${TMP_SRC}/src"
-  eval cp "${C_SO_FILES}" "${TMP_SRC}/src" # Use eval to remove outermost quotes.
-  #shellcheck disable=SC2016
-  # Not all toolchains support $ORIGIN variable in rpath.
-  C_SO_LD_FLAGS='-Wl,-rpath,'\''$$ORIGIN'\'' '
-}
+# use relative rpath (Linux) or change the install name to use @loader_path
+# (macOS).
 if [[ "${C_SO_FILES}" ]]; then
-  copy_so
+  C_SO_LD_FLAGS=""
+  mkdir -p "${TMP_SRC}/inst/libs"
+  for so_file in ${C_SO_FILES}; do
+    eval so_file="${so_file}" # Use eval to remove outermost quotes.
+    so_file_name="$(basename "${so_file}")"
+    cp "${so_file}" "${TMP_SRC}/inst/libs/${so_file_name}"
+    if [[ "$(uname)" == "Darwin" ]]; then
+      C_SO_LD_FLAGS+="../inst/libs/${so_file_name} "
+      install_name_tool -id "@loader_path/${so_file_name}" "${TMP_SRC}/inst/libs/${so_file_name}"
+    elif [[ "$(uname)" == "Linux" ]]; then
+      C_SO_LD_FLAGS+="-L../inst/libs -l:${so_file_name} "
+    fi
+  done
+  if [[ "$(uname)" == "Linux" ]]; then
+    #shellcheck disable=SC2016
+    C_SO_LD_FLAGS+="-Wl,-rpath,"\''$$ORIGIN'\'" "
+  fi
 fi
 
 export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
@@ -247,14 +257,11 @@ TMP_FILES+=("${TMP_SRC_TAR}")
 rm -r "${TMP_SRC}"
 mkdir -p "${TMP_SRC}"
 tar -C "${TMP_SRC}" --strip-components=1 -xzf "${TMP_SRC_TAR}"
-sed -i'' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
+sed -i'.bak' -e "/^Packaged: /d" "${TMP_SRC}/DESCRIPTION"
+rm "${TMP_SRC}/DESCRIPTION.bak"
 if "${INSTRUMENTED}"; then
   # .gcno and .gcda files are not cleaned up after R CMD build.
   find "${TMP_SRC}" \( -name '*.gcda' -or -name '*.gcno' \) -delete
-fi
-if [[ "${C_SO_FILES}" ]]; then
-  # Re-copy user-provided .so files that were cleaned up during build.
-  copy_so
 fi
 tar -C "$(dirname "${TMP_SRC}")" -czf "${TMP_SRC_TAR}" "$(basename "${TMP_SRC}")"
 

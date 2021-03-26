@@ -828,7 +828,7 @@ r_repository(urls, strip_prefix, type, sha256, build_file)
 
 Repository rule in place of `new_http_archive` that can run razel to generate
 the BUILD file automatically. See section on
-[external packages](#external-packages).
+[external packages](#external-packages) and [Razel scripts][scripts].
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>

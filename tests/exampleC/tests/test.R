@@ -21,5 +21,11 @@
 # //exampleB, and should be absent otherwise.
 stopifnot(identical(c("A", "B"), exampleB::exampleB()))
 
-# Coverage from these proto.R will have 2 hits.
+# Coverage from proto.R will have 2 hits.
 stopifnot(exampleC::proto()$id == 7)
+
+# Coverage from rcpp.R will have 2 hits.
+stopifnot(identical(c("hello", "world"), exampleC::rcppHello()))
+
+# Coverage from rcpp.R will have 2 hits.
+stopifnot(identical(c("hello", "world", "from", "me", "too"), exampleC::rcppHelloWrapped()))

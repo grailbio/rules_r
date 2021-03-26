@@ -282,6 +282,13 @@ with the same R installation.
         Source archive of the package.
       </td>
     </tr>
+    <tr>
+      <td><code><i>name</i>.so</code></td>
+      <td>
+        Shared archive of package native code; empty file if package does not
+        have native code.
+      </td>
+    </tr>
   </tbody>
 </table>
 

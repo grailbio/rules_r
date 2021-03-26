@@ -22,7 +22,7 @@ PKG_SRCS = glob(
     ["**"],
     exclude = [
         "BUILD",
-        "lib/**",  # Handled through cc_library.
+        "src/lib/**",  # Handled through cc_library.
     ],
 )
 

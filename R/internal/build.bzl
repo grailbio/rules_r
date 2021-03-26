@@ -85,6 +85,10 @@ def _link_info(dep, root_path):
     c_libs_flags = []
     c_libs_flags_short = []
 
+    # TODO: In the dependency graph, a static archive might already contain the
+    # symbols from its child dependencies, in which case we don't need to link
+    # the child dependency. For example, we don't need to link Rcpp.so in
+    # tests/exampleC, but bazel still provides Rcpp.so as a linker input here.
     linker_inputs = dep[CcInfo].linking_context.linker_inputs.to_list()
     for linker_input in linker_inputs:
         for library_to_link in linker_input.libraries:
@@ -131,7 +135,7 @@ def _cc_deps(ctx, instrumented):
     root_path = "_EXEC_ROOT_"
 
     # bazel currently instruments all cc libraries if instrumentation is enabled.
-    # TODO: Track this behavior and  when instrumentation filters work as
+    # TODO: Track this behavior and when instrumentation filters work as
     # expected, change default to False, setting to True only if coverage is
     # enabled and any transitive dep is instrumented.
     instrumented_cc_deps = (cc_deps and ctx.configuration.coverage_enabled)
@@ -260,7 +264,7 @@ fi
         command = script,
         mnemonic = "RSharedLib",
         use_default_shell_env = False,
-        progress_message = "Copying .so from R package %s" % pkg_name,
+        progress_message = "Symlinking .so from R package %s" % pkg_name,
     )
 
 def _build_impl(ctx):

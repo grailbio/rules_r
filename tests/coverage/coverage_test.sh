@@ -50,23 +50,34 @@ expect_equal() {
     return 1
   fi
 
-  printf "\n==== PASSED %s =====\n\n" "${expected}"
+  printf "\n==== PASSED %s =====\n" "${expected}"
 }
 
 # For instrumentation of dependencies in the same package.
+echo ""
+echo "=== Testing default instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=exampleC //exampleC:test
 expect_equal "default_instrumented.xml" "${coverage_file}"
+echo "Done!"
 
 # For instrumentation of packages without tests, and of indirect test dependencies.
+echo ""
+echo "=== Testing workspace instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=// //...
 expect_equal "workspace_instrumented.xml" "${coverage_file}"
+echo "Done!"
 
 # Set instrumentation filter to everything.
 # Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
+echo ""
+echo "=== Testing all instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary //...
+echo "Done!"
 
 # There is a problem with the protobuf library in the CI environment; perhaps
 # run a simpler coverage test.
+echo ""
+echo "=== Testing custom toolchain ==="
 if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
   # Check if we can compute coverage using supplied LLVM tools.
   echo "Checking coverage results with the LLVM toolchain:"
@@ -79,3 +90,4 @@ if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
   "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //exampleC:test
   expect_equal "default_instrumented.xml" "${coverage_file}"
 fi
+echo "Done!"

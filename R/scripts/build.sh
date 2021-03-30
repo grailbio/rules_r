@@ -188,11 +188,6 @@ if [[ "${C_SO_FILES}" ]]; then
   fi
 fi
 
-export PKG_LIBS="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_CPPFLAGS="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export PKG_FCFLAGS="${PKG_CPPFLAGS}"  # Fortran 90/95
-export PKG_FFLAGS="${PKG_CPPFLAGS}"   # Fortran 77
-
 # Ensure we have a clean site Makevars file, using user-provided content, if applicable.
 tmp_mkvars="$(mktemp)"
 TMP_FILES+=("${tmp_mkvars}")
@@ -240,6 +235,20 @@ repro_flags=(
 "-fdebug-prefix-map=\"${EXEC_ROOT}/=\""
 )
 echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
+
+# Get any flags from cc_deps for this package and append to site Makevars file.
+# We keep these last in the site Makevars files so that any flags here may take
+# precedence over other conflicting settings specified previously in the file.
+pkg_libs="${C_SO_LD_FLAGS:-}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+pkg_cppflags="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+if [[ "${pkg_libs}" ]] || [[ "${pkg_cppflags}" ]]; then
+  echo "
+PKG_LIBS += ${pkg_libs}
+PKG_CPPFLAGS += ${pkg_cppflags}
+PKG_FCFLAGS += ${pkg_cppflags}  # Fortran 90/95
+PKG_FFLAGS += ${pkg_cppflags}   # Fortran 77
+" >> "${R_MAKEVARS_SITE}"
+fi
 
 # Set HOME for pandoc for building vignettes.
 mkdir -p "${TMP_HOME}"

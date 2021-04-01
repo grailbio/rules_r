@@ -42,23 +42,37 @@ load_script <- file.path(pkg_path, "R", pkg_name)
 loader_lines <- readLines(load_script)
 
 # Add package load hook to insert tracers in package functions.
-hook_lines <-
-  c(paste0("    ", check_line),
-    "        cat(\"Instrumented R package\", info$pkgname, \"\\n\")",
-    "        setHook(packageEvent(pkg, \"onLoad\"), function(...) covr:::trace_environment(ns, clear = FALSE))",
-    "    }")
-loader_lines <- append(loader_lines, hook_lines, length(loader_lines) - 1L)
-
+#
 # Setup covr to save its trace counters on exit to the COVERAGE_DIR directory
 # set up by bazel when collecting coverage.  In the rare case that somebody
 # decides to use the instrumented package directly outside of bazel, substitute
 # COVERAGE_DIR with /tmp.
 # Also fix mcexit to save counters for any forked R sessions from the 'parallel' package.
-trace_lines <-
-  c(check_line,
-    "    covr:::save_trace_on_exit(Sys.getenv(\"COVERAGE_DIR\", \"/tmp\"))",
-    "    covr:::fix_mcexit(Sys.getenv(\"COVERAGE_DIR\", \"/tmp\"))",
-    "}")
-loader_lines <- c(loader_lines, trace_lines)
+hook_lines <-
+  c(paste0("    ", check_line),
+    "        instrument <- function(...) {",
+    "            replacements <- covr:::compact(c(",
+    "                covr:::replacements_S4(ns),",
+    "                covr:::replacements_RC(ns),",
+    "                covr:::replacements_R6(ns),",
+    "                lapply(ls(ns, all.names = TRUE), covr:::replacement, env = ns)))",
+    "            lapply(replacements, covr:::replace)",
+    "            # Maybe we need to save the replacements to prevent their collection in GC?",
+    "            assign('.covr_replacements_", pkg_name, "', replacements, envir = globalenv())",
+    "        }",
+    "        setHook(packageEvent(pkg, 'onLoad'), instrument)",
+    "        covr:::fix_mcexit(\"Sys.getenv('COVERAGE_DIR', '/tmp')\")",
+    "        trace_dir <- Sys.getenv('COVERAGE_DIR', '/tmp')",
+    "        registered_trace_dirs <-",
+    "            get0('.covr_trace_dirs', envir=globalenv(), ifnotfound = character())",
+    "        if (! trace_dir %in% registered_trace_dirs) {",
+    "            finalizer <- function(...) covr:::save_trace(trace_dir)",
+    "            reg.finalizer(globalenv(), finalizer, onexit = TRUE)",
+    "            registered_trace_dirs <- c(registered_trace_dirs, trace_dir)",
+    "            assign('.covr_trace_dirs', registered_trace_dirs, envir = globalenv())",
+    "        }",
+    "        cat('Instrumented R package', info$pkgname, '\\n')",
+    "    }")
+loader_lines <- append(loader_lines, hook_lines, length(loader_lines) - 1L)
 
 writeLines(text = loader_lines, con = load_script)

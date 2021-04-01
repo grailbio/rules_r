@@ -71,7 +71,7 @@ r_repository_list(
     package_list = "@com_grail_rules_r_tests//cran:packages.csv",
     remote_repos = {
         # CRAN does not retain binary archives for macOS.
-        "CRAN": "https://cran.microsoft.com/snapshot/2021-03-20",
+        "CRAN": "https://cran.microsoft.com/snapshot/2021-04-01",
     },
 )
 

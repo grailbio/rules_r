@@ -211,35 +211,35 @@ local({
   }
 
   coverage_xml <- xml2::read_xml(output_file)
-  sources_xml <- xml2::xml_child(coverage_xml, "sources")
   packages_xml <- xml2::xml_child(coverage_xml, "packages")
+
+  # For recent covr versions, the sources list is empty.
+  # So let's always empty it.
+  sources_xml <- xml2::xml_child(coverage_xml, "sources")
+  for (src in xml2::xml_children(sources_xml)) {
+    xml2::xml_remove(src)
+  }
 
   # Remove timestamp
   xml2::xml_attr(coverage_xml, "timestamp") <- "1960-01-01 00:00:00"
 
   # Fix filenames.
-  fixed_filenames <- sapply(xml2::xml_children(sources_xml), function(s) {
-    f <- fix_filename(xml2::xml_text(s))
-    xml2::xml_text(s) <- f
+  classes <- xml2::xml_child(xml2::xml_child(packages_xml, "package"), "classes")
+  classes_list <- xml2::xml_children(classes)
+  fixed_filenames <- sapply(classes_list, function(cl) {
+    f <- fix_filename(xml2::xml_attr(cl, "filename"))
+    xml2::xml_attr(cl, "filename") <- f
     f
   })
   file_order <- order(fixed_filenames)
 
-  classes <- xml2::xml_child(xml2::xml_child(packages_xml, "package"), "classes")
-  for (cl in xml2::xml_children(classes)) {
-    xml2::xml_attr(cl, "filename") <- fix_filename(xml2::xml_attr(cl, "filename"))
-  }
 
   # Sort filenames.
-  sorted_sources <- xml2::xml_add_sibling(sources_xml, sources_xml)
   sorted_classes <- xml2::xml_add_sibling(classes, classes)
   for (i in seq_along(file_order)) {
-    xml2::xml_replace(xml2::xml_child(sorted_sources, i),
-                      xml2::xml_child(sources_xml, file_order[i]))
     xml2::xml_replace(xml2::xml_child(sorted_classes, i),
                       xml2::xml_child(classes, file_order[i]))
   }
-  xml2::xml_remove(sources_xml)
   xml2::xml_remove(classes)
 
   xml2::write_xml(coverage_xml, output_file)

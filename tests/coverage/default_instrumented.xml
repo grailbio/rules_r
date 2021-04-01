@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage line-rate="1" branch-rate="0" version="3.1.0" timestamp="1960-01-01 00:00:00">
-  <sources>
-    <source>exampleC/R/fn.R</source>
-    <source>exampleC/R/proto.R</source>
-    <source>exampleC/R/rcpp.R</source>
-    <source>exampleC/src/fn.c</source>
-    <source>exampleC/src/fn.h</source>
-    <source>exampleC/src/rcpp.cc</source>
-  </sources>
+<coverage line-rate="1" branch-rate="0" lines-covered="20" lines-valid="20" branches-covered="0" branches-valid="0" complexity="0" version="3.5.1" timestamp="1960-01-01 00:00:00">
+  <sources/>
   <packages>
     <package name="NULL" line-rate="1" branch-rate="0" complexity="0">
       <classes>
         <class name="fn.R" filename="exampleC/R/fn.R" line-rate="1" branch-rate="0" complexity="0">
           <methods>
-            <method name="exampleC" signature="NA" line-rate="1" branch-rate="0">
+            <method name="exampleC" signature="" line-rate="1" branch-rate="0">
               <lines>
                 <line number="16" hits="1" branch="false"/>
               </lines>
@@ -25,7 +18,7 @@
         </class>
         <class name="proto.R" filename="exampleC/R/proto.R" line-rate="1" branch-rate="0" complexity="0">
           <methods>
-            <method name="proto" signature="NA" line-rate="1" branch-rate="0">
+            <method name="proto" signature="" line-rate="1" branch-rate="0">
               <lines>
                 <line number="16" hits="2" branch="false"/>
                 <line number="17" hits="2" branch="false"/>
@@ -43,12 +36,12 @@
         </class>
         <class name="rcpp.R" filename="exampleC/R/rcpp.R" line-rate="1" branch-rate="0" complexity="0">
           <methods>
-            <method name="rcppHello" signature="NA" line-rate="1" branch-rate="0">
+            <method name="rcppHello" signature="" line-rate="1" branch-rate="0">
               <lines>
                 <line number="16" hits="2" branch="false"/>
               </lines>
             </method>
-            <method name="rcppHelloWrapped" signature="NA" line-rate="1" branch-rate="0">
+            <method name="rcppHelloWrapped" signature="" line-rate="1" branch-rate="0">
               <lines>
                 <line number="20" hits="2" branch="false"/>
               </lines>
@@ -60,11 +53,7 @@
           </lines>
         </class>
         <class name="fn.c" filename="exampleC/src/fn.c" line-rate="1" branch-rate="0" complexity="0">
-          <methods>
-            <method name="NA" signature="NA" line-rate="NA" branch-rate="0">
-              <lines/>
-            </method>
-          </methods>
+          <methods/>
           <lines>
             <line number="24" hits="1" branch="false"/>
             <line number="25" hits="1" branch="false"/>
@@ -75,21 +64,13 @@
           </lines>
         </class>
         <class name="fn.h" filename="exampleC/src/fn.h" line-rate="1" branch-rate="0" complexity="0">
-          <methods>
-            <method name="NA" signature="NA" line-rate="NA" branch-rate="0">
-              <lines/>
-            </method>
-          </methods>
+          <methods/>
           <lines>
             <line number="22" hits="1" branch="false"/>
           </lines>
         </class>
         <class name="rcpp.cc" filename="exampleC/src/rcpp.cc" line-rate="1" branch-rate="0" complexity="0">
-          <methods>
-            <method name="NA" signature="NA" line-rate="NA" branch-rate="0">
-              <lines/>
-            </method>
-          </methods>
+          <methods/>
           <lines>
             <line number="21" hits="2" branch="false"/>
             <line number="22" hits="2" branch="false"/>

@@ -30,7 +30,8 @@ readonly second="${tmpdir}/second"
 
 run_bazel() {
   base="$1"
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //exampleC
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC:exampleC.tar.gz
   "${bazel}" --bazelrc=/dev/null --output_base="${base}" info bazel-bin
 }
 first_output="$(run_bazel "${first}")"
@@ -56,10 +57,11 @@ echo "second set of outputs in ${second_output}"
 readonly shasums="${tmpdir}/shasums"
 ( cd "${first_output}" && find . -type f -exec shasum -a 256 {} \+ ) >"${shasums}"
 
-# Do not compare packaged binary tars, they are currently not reproducible
-# because of file attributes. They can be made reproducible if we really want.
+# Do not compare packaged source and binary tars, they are currently not
+# reproducible because of file attributes. They can be made reproducible if we
+# really want.
 readonly shasums_mod="${tmpdir}/shasums_mod"
-grep -v ".bin.tar.gz$" "${shasums}" > "${shasums_mod}"
+grep -v ".tar.gz$" "${shasums}" > "${shasums_mod}"
 mv "${shasums_mod}" "${shasums}"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then

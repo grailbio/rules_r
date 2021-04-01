@@ -15,7 +15,7 @@
 load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
 
 r_pkg(
-    name = "exampleA",
+    name = "exampleB",
     srcs = glob(
         ["**"],
         exclude = [
@@ -27,8 +27,10 @@ r_pkg(
         "VAR": "{VAR}",
         "STABLE_VAR": "{STABLE_VAR}",
     },
+    stamp = True,
     visibility = [
-        "//exampleB:__pkg__",
+        "//packages/exampleC:__pkg__",
         "//stamping:__pkg__",
     ],
+    deps = ["//packages/exampleA"],
 )

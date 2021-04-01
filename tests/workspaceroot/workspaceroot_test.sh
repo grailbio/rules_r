@@ -20,3 +20,24 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 source "../setup-bazel.sh"
 
 "${bazel}" test "${bazel_test_opts[@]}" ":all"
+
+# Check that the source filename was fixed correctly in the coverage xml.
+compare_coverage() {
+  local actual
+  actual="$(${bazel} info bazel-testlogs)/test/coverage.dat"
+  local expected="expected_coverage.xml"
+
+  "${bazel}" coverage "${bazel_test_opts[@]}" ":test"
+
+  if ! diff -q "${expected}" "${actual}" >/dev/null; then
+    echo "==="
+    echo "COVERAGE: expected actual"
+    diff "${expected}" "${actual}"
+    echo "==="
+    exit 1
+  fi
+}
+
+echo "=== Testing workspaceroot coverage ==="
+compare_coverage
+echo "Done!"

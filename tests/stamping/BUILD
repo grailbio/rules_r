@@ -29,7 +29,7 @@ r_test(
     name = "pkg_metadata",
     src = "pkg_metadata.R",
     deps = [
-        "//exampleA",
-        "//exampleB",
+        "//packages/exampleA",
+        "//packages/exampleB",
     ],
 )

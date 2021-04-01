@@ -17,7 +17,7 @@ load("@com_grail_rules_r//R:defs.bzl", "r_library")
 r_library(
     name = "library",
     pkgs = [
-        "//exampleC",
+        "//packages/exampleC",
         "@R_bitops//:bitops",
     ],
     visibility = [

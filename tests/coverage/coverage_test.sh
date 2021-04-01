@@ -35,8 +35,10 @@ version_info="$($(R CMD config CC) --version)"
 echo "Checking coverage results with the following system compiler:"
 echo "${version_info}"
 
-coverage_file="$("${bazel}" info bazel-testlogs)/exampleC/test/coverage.dat"
-readonly coverage_file
+testlogs="$("${bazel}" info bazel-testlogs)"
+readonly testlogs
+readonly coverage_file="${testlogs}/packages/exampleC/test/coverage.dat"
+readonly coverage_file_external="${testlogs}/external/workspaceroot/test/coverage.dat"
 
 expect_equal() {
   local expected="$1"
@@ -56,10 +58,16 @@ expect_equal() {
   printf "\n==== PASSED %s =====\n" "${expected}"
 }
 
+# Check that tests pass without instrumentation.
+echo ""
+echo "=== Testing no instrumentation ==="
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter="^$" //...
+echo "Done!"
+
 # For instrumentation of dependencies in the same package.
 echo ""
 echo "=== Testing default instrumentation ==="
-"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=exampleC //exampleC:test
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=exampleC //...
 expect_equal "default_instrumented.xml" "${coverage_file}"
 echo "Done!"
 
@@ -72,9 +80,13 @@ echo "Done!"
 
 # Set instrumentation filter to everything.
 # Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
+# But otherwise packages in external repos (workspaceroot) should be fine.
 echo ""
 echo "=== Testing all instrumentation ==="
-"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary //...
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary \
+  //... @workspaceroot//:all
+expect_equal "workspace_instrumented.xml" "${coverage_file}"
+expect_equal "workspaceroot.xml" "${coverage_file_external}"
 echo "Done!"
 
 # There is a problem with the protobuf library in the CI environment; perhaps
@@ -90,7 +102,7 @@ if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
     "--crosstool_top=@llvm_toolchain//:toolchain"
     "--toolchain_resolution_debug"
   )
-  "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //exampleC:test
+  "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //packages/exampleC:test
   expect_equal "default_instrumented.xml" "${coverage_file}"
 fi
 echo "Done!"

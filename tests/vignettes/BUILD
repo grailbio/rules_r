@@ -17,6 +17,6 @@ sh_test(
     size = "small",
     srcs = ["vignettes_test.sh"],
     data = [
-        "//exampleC:exampleC.bin.tar.gz",
+        "//packages/exampleC:exampleC.bin.tar.gz",
     ],
 )

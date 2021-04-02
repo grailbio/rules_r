@@ -27,7 +27,7 @@ PKG_SRCS = glob(
 )
 
 PKG_DEPS = [
-    "//exampleB",
+    "//packages/exampleB",
 ]
 
 PKG_CHECK_DEPS = [

@@ -25,7 +25,10 @@ if "${BAZEL_R_DEBUG:-"false"}"; then
 fi
 
 readonly PKG_TESTS_DIR="{pkg_tests_dir}"
-test -d "${PKG_TESTS_DIR}"
+if ! [[ -d "${PKG_TESTS_DIR}" ]]; then
+  echo 'No tests dir found.'
+  exit 1
+fi
 
 if ! compgen -G "${PKG_TESTS_DIR}/"'*.[Rr]' >/dev/null; then
   echo 'No test files found.'

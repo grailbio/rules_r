@@ -32,6 +32,8 @@ def package_dir(ctx):
 def tests_dir(pkg_dir):
     # Standard tests directory within a package.
 
+    if pkg_dir == ".":
+        return "tests"
     return pkg_dir + "/tests"
 
 def env_vars(env_vars):

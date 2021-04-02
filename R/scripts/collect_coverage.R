@@ -39,6 +39,10 @@ coverage_dir <- Sys.getenv("COVERAGE_DIR")
 
 coverage <- local({
   trace_files <- list.files(path = coverage_dir, pattern = "^covr_trace_[^/]+$", full.names = TRUE)
+  if (bazel_r_debug) {
+    print("R coverage trace files:")
+    print(trace_files)
+  }
   if (length(trace_files) == 0) {
     return(NULL)
   }
@@ -176,6 +180,11 @@ res <- run_gcov()
 ############
 # Report
 
+if (is.null(coverage)) {
+  # Let the coverage file be empty.
+  quit(save = "no", status = 0)
+}
+
 output_file <- Sys.getenv("COVERAGE_OUTPUT_FILE", NA)
 local({
   coverage <- structure(c(coverage, res),
@@ -200,6 +209,7 @@ local({
   fix_filename <- function(f) {
     if (startsWith(f, tmp_src_path)) {
       f <- sub(paste0(tmp_src_path, "/"), "", f)
+      f <- sub("_WORKSPACE_ROOT_/", "", f) # Placeholder for packages at workspace root.
       f <- sub(test_workspace_pattern, "", f)
       return(f)
     }

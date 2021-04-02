@@ -61,10 +61,8 @@ log() {
 # Function to lock the common temp library directory for this package, until we
 # have moved out of it.
 lock() {
-  local lock_dir="$1"
-  local lock_name="$2"
+  local lock_file="$1"
   # Open the lock file and assign fd 200; file remains open as long as we are alive.
-  local lock_file="${lock_dir}/BZL_LOCK-${lock_name}"
   TMP_FILES+=("${lock_file}")
   # Use fd 200 for the lock; will be released when the fd is closed on process termination.
   exec 200>"${lock_file}"
@@ -117,14 +115,20 @@ copy_inst_files
 # We make builds reproducible by asking R to use a constant timestamp, and by
 # installing the packages to the same destination, from the same source path,
 # to get reproducibility in embedded paths.
-LOCK_DIR="/tmp/bazel/R/locks"
-TMP_LIB="/tmp/bazel/R/lib/${PKG_NAME}"
-TMP_SRC="/tmp/bazel/R/src/${PKG_NAME}"
-TMP_HOME="/tmp/bazel/R/home"
+tmp_path_suffix="${PKG_SRC_DIR}"
+if [[ "${tmp_path_suffix}" == "." ]]; then
+  tmp_path_suffix="_WORKSPACE_ROOT_"
+fi
 
-# Obtain a lock across all builds on this machine for packages with this name.
-mkdir -p "${LOCK_DIR}"
-lock "${LOCK_DIR}" "${PKG_NAME}"
+# Obtain a lock across all builds on this machine for this tmp_path_suffix.
+lock_dir="/tmp/bazel/R/locks"
+mkdir -p "${lock_dir}"
+lock_name="${tmp_path_suffix//\//_}" # Replace all '/' with '_'; will lead to some collision but OK.
+lock "${lock_dir}/BZL_LOCK-${lock_name}"
+
+TMP_LIB="/tmp/bazel/R/lib/${tmp_path_suffix}"
+TMP_SRC="/tmp/bazel/R/src/${tmp_path_suffix}"
+TMP_HOME="/tmp/bazel/R/home"
 
 # Clean any leftover files from previous builds.
 rm -rf "${TMP_LIB}" 2>/dev/null || true
@@ -272,10 +276,19 @@ if "${INSTRUMENTED}"; then
   # .gcno and .gcda files are not cleaned up after R CMD build.
   find "${TMP_SRC}" \( -name '*.gcda' -or -name '*.gcno' \) -delete
 fi
-tar -C "$(dirname "${TMP_SRC}")" -czf "${TMP_SRC_TAR}" "$(basename "${TMP_SRC}")"
+# Repackage tar with package name as root, and without mtime.
+(
+  cd "${TMP_SRC}"
+  if [[ "$(tar --version)" == "bsdtar"* ]]; then
+    flags=("-s" "@^@${PKG_NAME}/@")
+  else
+    flags=("--transform" "s@^@${PKG_NAME}/@")
+  fi
+  tar "${flags[@]}" -czf "${TMP_SRC_TAR}" -- *
+)
 
 # Done building the package source archive.
-cp "${TMP_SRC_TAR}" "${PKG_SRC_ARCHIVE}"
+mv "${TMP_SRC_TAR}" "${PKG_SRC_ARCHIVE}"
 if "${BUILD_SRC_ARCHIVE_ONLY:-"false"}"; then
   trap - EXIT
   cleanup

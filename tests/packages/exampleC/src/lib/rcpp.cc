@@ -19,8 +19,14 @@ limitations under the License.
 // Function meant to be used in R Package C++ code.
 Rcpp::StringVector hello() {
   Rcpp::StringVector v = {"hello", "world"};
-  return v;
-}
+  // Have the closing parenthesis in the same line as the return statement
+  // because coverage profile from gcc and llvm toolchains differ in how they
+  // assign coverage to the closing parenthesis. This enables us to use the
+  // same golden coverage file in our tests for both gcc and llvm, and just
+  // fix this one line. See coverage_test.sh.
+  // clang-format off
+  return v; }
+// clang-format on
 
 // Function meant to be used in R Package R code.
 extern "C" {

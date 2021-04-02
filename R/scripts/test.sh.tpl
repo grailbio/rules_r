@@ -59,17 +59,7 @@ pushd ${TEST_TMPDIR} >/dev/null
 # Set up the code coverage environment
 if "{collect_coverage}"; then
   export R_COVR=true  # As exported by covr
-  gcov_prefix_strip() {
-    # TODO: Find a better way of determining components to strip.
-    {Rscript} - <<EOF
-path <- normalizePath('/tmp/bazel/R/src')
-n <- length(strsplit(path, '/')[[1]]) - 1
-if (startsWith(Sys.getenv('TEST_TARGET'), '@')) n <- n + 2
-cat(n)
-EOF
-  }
-  GCOV_PREFIX_STRIP="$(gcov_prefix_strip)"
-  export GCOV_PREFIX_STRIP
+  export GCOV_PREFIX_STRIP=0  # We strip later depending on the source of the .gcda file.
   export GCOV_EXIT_AT_ERROR=1
 fi
 
@@ -97,6 +87,7 @@ if ls *.[Rr] > /dev/null 2>&1; then
 fi
 
 popd > /dev/null
+
 if "{collect_coverage}"; then
   {Rscript} "${RUNFILES_DIR}/{collect_coverage.R}"
 fi

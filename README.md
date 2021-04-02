@@ -86,7 +86,7 @@ load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
 
 The following software must be installed on your system:
 
-    1. bazel (v3.0.0 or above)
+    1. bazel (v3.5.0 or above)
     2. R (3.4.3 or above; should be locatable using the `PATH` environment variable)
 
 **NOTE**: After re-installing or upgrading R, please reset the registered

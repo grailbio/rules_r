@@ -32,7 +32,7 @@ load(
 r_coverage_dependencies = _r_coverage_dependencies
 
 def r_rules_dependencies():
-    _is_at_least("3.0.0", native.bazel_version)
+    _is_at_least("3.5.0", native.bazel_version)
 
     # TODO: Use bazel-skylib directly instead of replicating functionality when
     # nested workspaces become a reality.  Otherwise, dependencies will need to

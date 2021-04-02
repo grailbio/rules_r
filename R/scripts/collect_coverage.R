@@ -37,7 +37,7 @@ coverage_dir <- Sys.getenv("COVERAGE_DIR")
 ############
 # R coverage
 
-coverage <- local({
+r_coverage <- local({
   trace_files <- list.files(path = coverage_dir, pattern = "^covr_trace_[^/]+$", full.names = TRUE)
   if (bazel_r_debug) {
     print("R coverage trace files:")
@@ -52,33 +52,57 @@ coverage <- local({
 ############
 # Native code coverage
 
-# Copy the gcno files and their corresponding source code to locations within
-# COVERAGE_DIR.
-# e.g. COVERAGE_DIR/workspace_path_to_package/src/init.gcno, etc.
+# Copy the gcda files in coverage_dir to their corresponding
+# source directories.
 local({
-  copy_gcno <- function(gcno) {
-    to_dir <- file.path(coverage_dir, dirname(gcno))
-    if (!dir.exists(to_dir)) {
-      dir.create(to_dir, recursive = TRUE)
-    }
-    filename_sans_ext <- tools::file_path_sans_ext(basename(gcno))
-    filegroup_pattern <- sprintf("^%s\\.?[^.]*$", filename_sans_ext)
-    gcno_filegroup <- list.files(dirname(gcno),
-                                 pattern = filegroup_pattern,
-                                 full.names = TRUE)
-    for (f in gcno_filegroup) {
-      file.copy(from = f, to = file.path(coverage_dir, f))
+  copy_gcda <- function(coverage_dir, strip_components) {
+    files <- list.files(path = coverage_dir, pattern = "\\.gcda$", all.files = TRUE, recursive = TRUE)
+    for (from_path in files) {
+      to_path <- from_path
+      for (i in seq_len(strip_components)) {
+        to_path <- sub("[^/]*/", "", to_path)
+      }
+      to_dir <- dirname(to_path)
+      if (!dir.exists(to_dir)) {
+        dir.create(to_dir, recursive = TRUE)
+      }
+      file.copy(from = file.path(coverage_dir, from_path), to = to_path)
     }
   }
-  gcno_files <- list.files(pattern = "\\.gcno$", all.files = TRUE, recursive = TRUE)
-  invisible(Vectorize(copy_gcno)(gcno_files))
+  # We already set GCOV_PREFIX_STRIP to be 0 before running the tests, so now
+  # we strip components as needed.
+
+  # Files from /tmp/bazel/R/src.
+  # Recreate path if it has been deleted since building the packages.  We
+  # need the path to actually exist so we can resolve symlinks and find out
+  # how many actual components to strip.
+  tmp_src_path <- "/tmp/bazel/R/src"
+  if (!dir.exists(tmp_src_path)) {
+    dir.create(tmp_src_path, recursive = TRUE)
+  }
+  r_coverage_dir <- file.path(coverage_dir, normalizePath(tmp_src_path))
+  copy_gcda(r_coverage_dir, 0)
+
+  # These are compiled in /proc/self/cwd/bazel-out/*/bin in linux, and
+  # EXEC_ROOT/TEST_WORKSPACE/bazel-out/*/bin for macOS.
+  if (grepl("linux", R.version$os)) {
+    prefix <- "proc/self/cwd/bazel-out"
+    strip <- 2 # For stripping the components k8-*/bin
+  } else if (grepl("darwin", R.version$os)) {
+    # Get the path to the sandbox by only retaining current directory path until execroot.
+    sandbox_dir <- sub("/execroot.*$", "", normalizePath(getwd()))
+    # Go one level up to remove sandbox number.
+    prefix <- dirname(sandbox_dir)
+    strip <- 6 # [sandbox_number] + execroot + [test_workspace] + bazel-out + darwin-* + bin
+  }
+  cc_dep_coverage_dir <- file.path(coverage_dir, prefix)
+
+  copy_gcda(cc_dep_coverage_dir, strip)
 })
 
 if (bazel_r_debug) {
-  print("GCOV_PREFIX_STRIP and gcno files paths:")
-  print(Sys.getenv("GCOV_PREFIX_STRIP"))
-  print(list.files(coverage_dir, "\\.gcno$", recursive = TRUE))
-  print(list.files(coverage_dir, "\\.gcda$", recursive = TRUE))
+  message("gcno files paths:")
+  print(list.files(pattern = "(\\.gcno$|\\.gcda)", recursive = TRUE))
 }
 
 # Obtain paths to packages as the compiler was invoked in these directories and so
@@ -93,23 +117,6 @@ pkg_paths <- local({
   pkg_names <- names(pkg_libs)
   dirname(pkg_libs)
 })
-
-# Fix paths in gcov files to be relative to workspace and not to the compiler directory.
-# Returns null if the fixed path is not in the test workspace.
-fix_gcov_file <- function(gcov_file, compiler_dir) {
-  lns <- readLines(gcov_file)
-  source_file <- sub("^.*Source:", "", lns[1])
-
-  if (startsWith(source_file, '/')) {
-    return(NULL)
-  }
-
-  source_file <- file.path(compiler_dir, source_file)
-  lns[1] <- sub("Source:.*", paste0("Source:", source_file), lns[1])
-  writeLines(text = lns, con = gcov_file)
-  gcov_file
-}
-vfix_gcov_file <- Vectorize(fix_gcov_file, "gcov_file", USE.NAMES = FALSE)
 
 # Try the given gcov command, returning TRUE or FALSE indicating success.
 try_gcov <- function(gcov_path, args) {
@@ -126,7 +133,7 @@ try_gcov <- function(gcov_path, args) {
     return(FALSE)
   }
   # gcov from LLVM can return a 0 status code when the file formats don't match.
-  if (any(grepl("Invalid .gcno File", res))) {
+  if (any(grepl("Invalid (\\.gcno)|(\\.gcda) File!", res))) {
     writeLines(res, stderr())
     return(FALSE)
   }
@@ -136,21 +143,53 @@ try_gcov <- function(gcov_path, args) {
   return(TRUE)
 }
 
+# Fix paths in gcov files to be relative to workspace and not to the compiler directory.
+# Returns null if the fixed path is not in the test workspace.
+parse_gcov_file <- function(gcov_file, compiler_dir) {
+  lns <- readLines(gcov_file)
+  source_file <- sub("^.*Source:(\\./)?", "", lns[1])
+
+  # Filter any files with absolute paths; these are most likely system headers.
+  if (startsWith(source_file, '/')) {
+    return(NULL)
+  }
+
+  if (compiler_dir != "") {
+    source_file <- file.path(compiler_dir, source_file)
+    lns[1] <- sub("Source:.*", paste0("Source:", source_file), lns[1])
+    writeLines(text = lns, con = gcov_file)
+  }
+
+  # Filter unavailable files; these are most likely not instrumented.
+  if (!file.exists(source_file)) {
+    return(NULL)
+  }
+
+  parsed <- covr:::parse_gcov(gcov_file)
+
+  # To revert covr normalized path to relative path in the srcref objects, we
+  # have to recreate the srcfile object.
+  # TODO: Maybe just maintain a map of path replacements for fixing the final XML
+  # instead of fixing the paths here.
+  src_file <- srcfilecopy(source_file, readLines(source_file))
+  for (i in seq_along(parsed)) {
+    attr(parsed[[i]][["srcref"]], "srcfile") <- src_file
+  }
+  return(parsed)
+}
+vparse_gcov_file <- Vectorize(parse_gcov_file, "gcov_file", USE.NAMES = FALSE)
+
 run_gcov <- function() {
   gcov_path <- Sys.which("gcov")
   llvm_cov_path <- Sys.which("llvm-cov")
-  gcov_outputs <- sapply(file.path(pkg_paths, "src"), function(compiler_dir) {
-    path <- file.path(coverage_dir, compiler_dir)
 
-    # Collect gcno files from the compiler directory.
-    gcov_inputs <- list.files(path, pattern = "\\.gcno$",
-                              recursive = TRUE, full.names = TRUE)
+  r_pkg_src_dirs <- file.path(pkg_paths, "src")
+  r_pkg_src_dirs <- Filter(dir.exists, r_pkg_src_dirs)
+
+  run_gcov_files <- function(gcov_inputs) {
     if (length(gcov_inputs) == 0)
       return(list())
 
-    # Switch to the compiler directory to run gcov so all embedded relative paths makes sense.
-    orig_dir <- getwd()
-    setwd(path)
     res <- FALSE
     if (nchar(gcov_path) > 0) {
       res <- try_gcov(gcov_path, args = c(gcov_inputs, "-p"))
@@ -161,33 +200,60 @@ run_gcov <- function() {
     if (!isTRUE(res)) {
       stop("unable to process .gcno files")
     }
-    setwd(orig_dir)
 
-    # Collect gcov files and fix the paths they represent.
-    pkg_outputs <- list.files(path, pattern = "\\.gcov$",
-                              recursive = TRUE, full.names = TRUE)
-    Filter(Negate(is.null), vfix_gcov_file(pkg_outputs, compiler_dir))
-  })
-  gcov_outputs <- unlist(gcov_outputs, recursive = FALSE)
+    list.files(pattern = "\\.gcov$", recursive = TRUE, full.names = TRUE)
+  }
+
+  run_gcov_cc_deps <- function() {
+    gcov_inputs <- list.files(pattern = "\\.gcno", recursive = TRUE)
+    gcov_inputs <- Filter(function(path) !any(startsWith(path, r_pkg_src_dirs)), gcov_inputs)
+
+    outputs <- run_gcov_files(gcov_inputs)
+    on.exit(unlink(outputs))
+
+    # Filter any files with absolute paths; these are most likely system headers.
+    Filter(Negate(is.null), vparse_gcov_file(outputs, ""))
+  }
+  cc_dep_line_coverages <- run_gcov_cc_deps()
+
+  run_gcov_r_pkg <- function(compiler_dir) {
+    gcov_inputs <- list.files(compiler_dir, pattern = "\\.gcno$", recursive = TRUE)
+
+    # Switch to the compiler directory to run gcov so all embedded relative paths makes sense.
+    orig_dir <- getwd()
+    setwd(compiler_dir)
+    outputs <- run_gcov_files(gcov_inputs)
+    setwd(orig_dir)
+    outputs <- file.path(compiler_dir, outputs)
+    on.exit(unlink(outputs))
+
+    # Parse the gcov files and fix the paths they represent.
+    Filter(Negate(is.null), vparse_gcov_file(outputs, compiler_dir))
+  }
+  r_pkg_line_coverages <- sapply(r_pkg_src_dirs, run_gcov_r_pkg)
+
+  line_coverages <- c(r_pkg_line_coverages, cc_dep_line_coverages)
+  if (length(line_coverages) == 0) {
+    return(NULL)
+  }
 
   structure(
-    as.list(unlist(recursive = FALSE,
-      lapply(gcov_outputs, covr:::parse_gcov))),
+    as.list(unlist(line_coverages, recursive = FALSE)),
     class = "coverage")
 }
-res <- run_gcov()
+cc_coverage <- run_gcov()
 
 ############
 # Report
 
-if (is.null(coverage)) {
+if (is.null(r_coverage) && is.null(cc_coverage)) {
   # Let the coverage file be empty.
   quit(save = "no", status = 0)
 }
 
 output_file <- Sys.getenv("COVERAGE_OUTPUT_FILE", NA)
 local({
-  coverage <- structure(c(coverage, res),
+  coverage <- structure(c(r_coverage, cc_coverage),
                         class = "coverage",
                         package = NULL,
                         relative = FALSE)
@@ -213,7 +279,7 @@ local({
       f <- sub(test_workspace_pattern, "", f)
       return(f)
     }
-    # C++ file paths will be their absolute paths anyway.
+    # C++ file paths will be their absolute paths.
     f <- sub(execroot_pattern, "", f)
     f <- sub("^bazel-out/[^/]+/bin/", "", f)
     f <- sub(test_workspace_pattern, "", f)
@@ -243,7 +309,6 @@ local({
   })
   file_order <- order(fixed_filenames)
 
-
   # Sort filenames.
   sorted_classes <- xml2::xml_add_sibling(classes, classes)
   for (i in seq_along(file_order)) {
@@ -253,4 +318,5 @@ local({
   xml2::xml_remove(classes)
 
   xml2::write_xml(coverage_xml, output_file)
+  return(invisible(NULL))
 })

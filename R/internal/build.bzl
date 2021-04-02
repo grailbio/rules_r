@@ -24,6 +24,7 @@ load(
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
+    _srcs_dir = "srcs_dir",
     _tests_dir = "tests_dir",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RPackage")
@@ -135,10 +136,14 @@ def _cc_deps(ctx, instrumented):
     root_path = "_EXEC_ROOT_"
 
     # bazel currently instruments all cc libraries if instrumentation is enabled.
-    # TODO: Track this behavior and when instrumentation filters work as
-    # expected, change default to False, setting to True only if coverage is
-    # enabled and any transitive dep is instrumented.
-    instrumented_cc_deps = (cc_deps and ctx.configuration.coverage_enabled)
+    instrumented_cc_deps = False
+    if (ctx.configuration.coverage_enabled and
+        (ctx.coverage_instrumented() or
+         # TODO: Remove cc_deps below when cc_library targets respect
+         # instrumentation_filter.
+         cc_deps or
+         any([ctx.coverage_instrumented(dep) for dep in cc_deps]))):
+        instrumented_cc_deps = True
 
     # Keep the original order of linker flags, and do not remove duplicates.
     # https://stackoverflow.com/a/409470
@@ -179,10 +184,9 @@ def _cc_deps(ctx, instrumented):
         c_cpp_flags_short += ["-I " + root_path + i]
 
     # Note that clang has multiple code coverage implementations. covr can only
-    # use the gcc compatible implementation based on DebugInfo.  This might be
+    # use the gcc compatible implementation based on DebugInfo. This might be
     # different from how your other C++ libraries are being instrumented if you
-    # are using an LLVM toolchain. And so we ignore cc_deps when computing
-    # coverage.
+    # are using an LLVM toolchain.
     # https://cran.r-project.org/web/packages/covr/vignettes/how_it_works.html
     # https://clang.llvm.org/docs/SourceBasedCodeCoverage.html
     if instrumented:
@@ -194,6 +198,7 @@ def _cc_deps(ctx, instrumented):
         ]
         c_cpp_flags_short += ["--coverage"]
 
+    instrumented_files = depset()
     if instrumented or instrumented_cc_deps:
         c_libs_flags += ["--coverage", "-O0"]
         c_libs_flags_short += ["--coverage", "-O0"]
@@ -205,6 +210,7 @@ def _cc_deps(ctx, instrumented):
         c_libs_flags_short = c_libs_flags_short,
         c_so_files = depset(c_so_files).to_list(),
         files = depset(libs, transitive = hdrs_sets).to_list(),
+        instrumented_files = instrumented_files,
     )
 
 def _remove_file(files, path_to_remove):
@@ -289,7 +295,7 @@ def _build_impl(ctx):
     test_files = []
     pkg_tests_dir = _tests_dir(pkg_src_dir)
     for src_file in ctx.files.srcs:
-        if src_file.path.startswith(pkg_tests_dir):
+        if src_file.dirname.startswith(pkg_tests_dir):
             test_files.append(src_file)
         else:
             src_files_sans_tests.append(src_file)
@@ -328,8 +334,8 @@ def _build_impl(ctx):
 
     install_args = list(ctx.attr.install_args)
     output_files = [pkg_lib_dir, pkg_bin_archive]
-    pkg_gcno_dir = None
 
+    pkg_gcno_files = []
     if instrumented:
         # We need to keep the sources for code coverage to work.
         # NOTE: With these options, each installed object in package namespaces gets a
@@ -337,9 +343,17 @@ def _build_impl(ctx):
         # For reproducible builds, these will be /tmp paths.
         install_args.extend(["--with-keep.source"])
 
-        # We also need to collect the instrumented .gcno files from the package.
-        pkg_gcno_dir = ctx.actions.declare_directory("src")
-        output_files.append(pkg_gcno_dir)
+        pkg_srcs_dir = _srcs_dir(pkg_src_dir)
+        for src_file in ctx.files.srcs:
+            if (not src_file.dirname.startswith(pkg_srcs_dir) or
+                not src_file.extension in _NATIVE_SOURCE_EXTS):
+                continue
+            name = src_file.basename.replace(src_file.extension, "gcno")
+            f = ctx.actions.declare_file(name, sibling = src_file)
+            pkg_gcno_files.append(f)
+        pkg_gcno_files = depset(direct = pkg_gcno_files).to_list()
+        output_files.extend(pkg_gcno_files)
+
     build_env = {
         "PKG_LIB_PATH": pkg_lib_dir.path,
         "PKG_SRC_DIR": pkg_src_dir,
@@ -400,38 +414,39 @@ def _build_impl(ctx):
 
     _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
 
-    return struct(
-        instrumented_files = struct(
-            # List the dependencies in which transitive instrumented files can be found.
-            # NOTE: cc_deps and tools could be instrumented in a way that
-            # is incompatible with covr, so we should not include them here.
-            dependency_attributes = ["deps"],
-            extensions = _SOURCE_EXTS,
-            source_attributes = ["srcs"],
-        ),
-        providers = [
-            DefaultInfo(
-                files = depset(output_files),
-                runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
-            ),
-            RPackage(
-                bin_archive = pkg_bin_archive,
-                build_tools = build_tools,
-                cc_deps = cc_deps,
-                external_repo = external_repo,
-                makevars = ctx.file.makevars,
-                pkg_deps = pkg_deps,
-                pkg_gcno_dir = pkg_gcno_dir,
-                pkg_lib_dir = pkg_lib_dir,
-                pkg_name = pkg_name,
-                src_archive = pkg_src_archive,
-                src_files = ctx.files.srcs,
-                test_files = test_files,
-                transitive_pkg_deps = library_deps.transitive_pkg_deps,
-                transitive_tools = transitive_tools,
-            ),
-        ],
+    instrumented_files_info = coverage_common.instrumented_files_info(
+        ctx,
+        # List the dependencies in which transitive instrumented files can be found.
+        dependency_attributes = ["deps", "cc_deps"],
+        # We build instrumented packages with --keep.source, so we don't
+        # need the .R files.
+        extensions = _NATIVE_SOURCE_EXTS,
+        source_attributes = ["srcs"],
     )
+
+    return [
+        DefaultInfo(
+            files = depset(output_files),
+            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+        ),
+        RPackage(
+            bin_archive = pkg_bin_archive,
+            build_tools = build_tools,
+            cc_deps = cc_deps,
+            external_repo = external_repo,
+            makevars = ctx.file.makevars,
+            pkg_deps = pkg_deps,
+            pkg_lib_dir = pkg_lib_dir,
+            pkg_gcno_files = pkg_gcno_files,
+            pkg_name = pkg_name,
+            src_archive = pkg_src_archive,
+            src_files = ctx.files.srcs,
+            test_files = test_files,
+            transitive_pkg_deps = library_deps.transitive_pkg_deps,
+            transitive_tools = transitive_tools,
+        ),
+        instrumented_files_info,
+    ]
 
 def _build_binary_pkg_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
@@ -483,7 +498,7 @@ def _build_binary_pkg_impl(ctx):
             external_repo = _external_repo(ctx),
             makevars = None,
             pkg_deps = ctx.attr.deps,
-            pkg_gcno_dir = None,
+            pkg_gcno_files = None,
             pkg_lib_dir = pkg_lib_dir,
             pkg_name = pkg_name,
             src_archive = None,

@@ -105,6 +105,8 @@ echo ""
 echo "=== Testing custom toolchain ==="
 if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
   # Check if we can compute coverage using supplied LLVM tools.
+  # Note that this toolchain is currently not producing .gcda files, so
+  # coverage from cc_deps is missing.
   echo "Checking coverage results with the LLVM toolchain:"
   toolchain_args=(
     "--extra_toolchains=//:toolchain-linux"
@@ -113,6 +115,6 @@ if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
     "--toolchain_resolution_debug"
   )
   "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //packages/exampleC:test
-  expect_equal "default_instrumented.xml" "${coverage_file}"
+  expect_equal "custom_toolchain.xml" "${coverage_file}"
 fi
 echo "Done!"

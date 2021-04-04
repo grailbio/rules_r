@@ -27,7 +27,8 @@ RPackage = provider(
         "build_tools": "tools needed to build this package",
         "makevars": "User level makevars file for native code compilation",
         "cc_deps": "cc_deps struct for the package",
-        "pkg_gcno_dir": "Directory containing instrumented gcno files",
+        # https://github.com/bazelbuild/bazel/issues/13292
+        "pkg_gcno_files": ".gcno files generated during instrumentation",
         "external_repo": "Boolean indicating if the package is from an external repo",
     },
 )

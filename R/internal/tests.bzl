@@ -36,19 +36,20 @@ def _test_impl(ctx):
     collect_coverage = ctx.configuration.coverage_enabled
     coverage_files = []
     if collect_coverage:
-        pkg_deps.extend(ctx.attr._coverage_deps)
         coverage_files.append(ctx.file._collect_coverage_R)
+        pkg_deps.extend(ctx.attr._coverage_deps)
 
-    pkg_deps.append(ctx.attr.pkg)
+    pkg = ctx.attr.pkg
+    pkg_deps.append(pkg)
 
     library_deps = _library_deps(pkg_deps)
 
     pkg_tests_dir = _tests_dir(_package_dir(ctx))
-    test_files = ctx.attr.pkg[RPackage].test_files
+    test_files = pkg[RPackage].test_files
 
     tools = depset(
         _executables(ctx.attr.tools + info.tools),
-        transitive = [ctx.attr.pkg[RPackage].transitive_tools],
+        transitive = [library_deps.transitive_tools],
     )
 
     lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
@@ -67,19 +68,32 @@ def _test_impl(ctx):
         is_executable = True,
     )
 
-    runfiles = ctx.runfiles(
-        files = (library_deps.lib_dirs + library_deps.gcno_dirs + test_files +
-                 ctx.files.data + coverage_files + info.files + [info.state]),
-        transitive_files = tools,
-    )
-    return struct(
-        instrumented_files = struct(
-            dependency_attributes = ["pkg"],
-        ),
-        providers = [
-            DefaultInfo(runfiles = runfiles),
+    instrumented_files_info = pkg[InstrumentedFilesInfo]
+    instrumented_files = depset(
+        transitive = [
+            instrumented_files_info.instrumented_files,
+            instrumented_files_info.metadata_files,
         ],
     )
+
+    runfiles = ctx.runfiles(
+        files = (library_deps.lib_dirs +
+                 library_deps.gcno_files +
+                 coverage_files +
+                 test_files +
+                 ctx.files.data +
+                 info.files + [info.state]),
+        transitive_files = depset(
+            transitive = [tools, instrumented_files],
+        ),
+    )
+    return [
+        DefaultInfo(runfiles = runfiles),
+        coverage_common.instrumented_files_info(
+            ctx,
+            dependency_attributes = ["pkg"],
+        ),
+    ]
 
 r_unit_test = rule(
     attrs = {

@@ -35,6 +35,9 @@ while getopts "b" opt; do
   esac
 done
 
+# Override the flag value with user-provided env var.
+BREW="${BAZEL_R_HOMEBREW:-"${BREW}"}"
+
 sysroot="$(xcrun --show-sdk-path)"
 
 export HOME=/tmp  # Needed for Homebrew.

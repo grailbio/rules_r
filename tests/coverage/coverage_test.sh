@@ -35,6 +35,16 @@ version_info="$($(R CMD config CC) --version)"
 echo "Checking coverage results with the following system compiler:"
 echo "${version_info}"
 
+# Ensure that we are using the same compiler for both cc_library and for R.
+# This is usually a problem when our default local toolchain for R on macOS
+# picks the homebrew LLVM compiler but bazel's C++ toolchain is using the Apple
+# toolchain. When object files from two different compilers is used in the same
+# run, .gcda files will be generated without version information and will be
+# considered invalid by gcov.
+if [[ "$(uname)" == "Darwin" ]]; then
+  export BAZEL_R_HOMEBREW=false
+fi
+
 testlogs="$("${bazel}" info bazel-testlogs)"
 readonly testlogs
 readonly coverage_file="${testlogs}/packages/exampleC/test/coverage.dat"
@@ -95,6 +105,8 @@ echo ""
 echo "=== Testing custom toolchain ==="
 if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
   # Check if we can compute coverage using supplied LLVM tools.
+  # Note that this toolchain is currently not producing .gcda files, so
+  # coverage from cc_deps is missing.
   echo "Checking coverage results with the LLVM toolchain:"
   toolchain_args=(
     "--extra_toolchains=//:toolchain-linux"
@@ -103,6 +115,6 @@ if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
     "--toolchain_resolution_debug"
   )
   "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //packages/exampleC:test
-  expect_equal "default_instrumented.xml" "${coverage_file}"
+  expect_equal "custom_toolchain.xml" "${coverage_file}"
 fi
 echo "Done!"

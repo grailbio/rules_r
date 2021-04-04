@@ -303,13 +303,10 @@ mv "${PKG_NAME}"*gz "${PKG_BIN_ARCHIVE}"  # .tgz on macOS and .tar.gz on Linux.
 
 if "${INSTRUMENTED}"; then
   add_instrumentation_hook
-  # Copy native code instrumentation files into a separate directory.
-  # Note that we used `--clean` option during `R CMD INSTALL` so typical
-  # intermediate files like .o, .so, etc. have been deleted, but .gcno
-  # and .gcda files have not been deleted.
+  # Copy .gcno files next to the source files.
   if [[ -d "${TMP_SRC}/src" ]]; then
-    find "${TMP_SRC}/src" -name '*.gcda' -delete
-    cp -a -L "${TMP_SRC}/src" "$(dirname "${PKG_LIB_PATH}")"
+    rsync -am --include='*.gcno' --include='*/' --exclude='*' \
+      "${TMP_SRC}/src" "$(dirname "${PKG_LIB_PATH}")"
   fi
 fi
 

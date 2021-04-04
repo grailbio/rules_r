@@ -36,6 +36,13 @@ def tests_dir(pkg_dir):
         return "tests"
     return pkg_dir + "/tests"
 
+def srcs_dir(pkg_dir):
+    # Standard srcs directory within a package.
+
+    if pkg_dir == ".":
+        return "src"
+    return pkg_dir + "/src"
+
 def env_vars(env_vars):
     # Array of commands to export environment variables.
 
@@ -83,18 +90,17 @@ def library_deps(target_deps):
 
     # Individual R library directories.
     lib_dirs = []
-    gcno_dirs = []
-
+    gcno_files = []
     for pkg_dep in transitive_pkg_deps.to_list():
         lib_dirs.append(pkg_dep.pkg_lib_dir)
-        if pkg_dep.pkg_gcno_dir:
-            gcno_dirs.append(pkg_dep.pkg_gcno_dir)
+        if pkg_dep.pkg_gcno_files:
+            gcno_files.extend(pkg_dep.pkg_gcno_files)
 
     return struct(
-        gcno_dirs = gcno_dirs,
         lib_dirs = lib_dirs,
         transitive_pkg_deps = transitive_pkg_deps,
         transitive_tools = transitive_tools,
+        gcno_files = gcno_files,
     )
 
 def layer_library_deps(ctx, library_deps):

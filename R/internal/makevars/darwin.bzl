@@ -48,7 +48,9 @@ local_darwin_makevars = repository_rule(
         ),
         "check_homebrew_llvm": attr.bool(
             default = True,
-            doc = "Use Homebrew LLVM if installed.",
+            doc = ("Use Homebrew LLVM if installed. Can be overridden by " +
+                   "setting the environment variable BAZEL_R_HOMEBREW to " +
+                   "true or false."),
         ),
         "_processor": attr.label(
             default = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.sh",
@@ -63,7 +65,7 @@ local_darwin_makevars = repository_rule(
            "Also symlinks llvm-cov to be used as a tool in the toolchain " +
            "so that it can be used when collecting coverage."),
     configure = True,
-    environ = ["PATH"],
+    environ = ["PATH", "BAZEL_R_HOMEBREW"],
     local = True,
     implementation = _local_darwin_makevars_impl,
 )

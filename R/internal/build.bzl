@@ -273,6 +273,39 @@ fi
         progress_message = "Symlinking .so from R package %s" % pkg_name,
     )
 
+def _merge_tests(ctx, pkg_src_archive_sans_tests, pkg_src_archive, pkg_name, pkg_src_dir, test_files):
+    # Makes an action to merge the given test files into the source archive.
+
+    if not test_files:
+        ctx.actions.symlink(output = pkg_src_archive, target_file = pkg_src_archive_sans_tests)
+        return
+
+    script = """#!/bin/bash
+set -euo pipefail
+dir="$(mktemp -d)"
+tar -C "${{dir}}" -xzf {pkg_src_archive_sans_tests}
+rsync --recursive --copy-links --no-perms --chmod=u+w --executability --specials \
+    "{pkg_src_dir}/tests" "${{dir}}/{pkg_name}"
+# Reset mtime so that tarball is reproducible.
+TZ=UTC find "${{dir}}" -exec touch -amt 197001010000 {{}} \\+
+# Ask gzip to not store the timestamp.
+tar -C "${{dir}}" -cf - {pkg_name} | gzip --no-name -c > {pkg_src_archive}
+rm -rf "${{dir}}"
+""".format(
+        pkg_name = pkg_name,
+        pkg_src_dir = pkg_src_dir,
+        pkg_src_archive_sans_tests = pkg_src_archive_sans_tests.path,
+        pkg_src_archive = pkg_src_archive.path,
+    )
+    ctx.actions.run_shell(
+        outputs = [pkg_src_archive],
+        inputs = [pkg_src_archive_sans_tests] + test_files,
+        command = script,
+        mnemonic = "RMergeTests",
+        use_default_shell_env = False,
+        progress_message = "Building R (source) package %s (with tests)" % pkg_name,
+    )
+
 def _build_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
@@ -299,6 +332,7 @@ def _build_impl(ctx):
             test_files.append(src_file)
         else:
             src_files_sans_tests.append(src_file)
+    pkg_src_archive_sans_tests = ctx.actions.declare_file(ctx.attr.name + ".notests.tar.gz")
 
     library_deps = _library_deps(pkg_deps)
     cc_deps = _cc_deps(ctx, instrumented)
@@ -316,25 +350,80 @@ def _build_impl(ctx):
     if ctx.attr.stamp:
         stamp_files.append(ctx.info_file)
     instrument_files = [ctx.file._instrument_R] if instrumented else []
-    all_input_files = (library_deps.lib_dirs + src_files_sans_tests +
-                       cc_deps.files + inst_files.to_list() +
-                       build_tools.to_list() + info.files +
-                       _makevars_files(info.makevars_site, ctx.file.makevars) +
-                       stamp_files + instrument_files + [info.state])
+
+    common_input_files = ([ctx.file._build_pkg_common_sh] +
+                          library_deps.lib_dirs + cc_deps.files +
+                          _makevars_files(info.makevars_site, ctx.file.makevars) +
+                          build_tools.to_list() +
+                          info.files + [info.state])
+    src_input_files = list(common_input_files)
+    src_input_files.extend(src_files_sans_tests + inst_files.to_list() + stamp_files)
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
         roclets_lib_dirs = _library_deps(ctx.attr.roclets_deps).lib_dirs
-        all_input_files.extend(roclets_lib_dirs)
+        src_input_files.extend(roclets_lib_dirs)
 
     if ctx.file.config_override:
-        all_input_files += [ctx.file.config_override]
+        src_input_files += [ctx.file.config_override]
         orig_config = pkg_src_dir + "/configure"
-        all_input_files = _remove_file(all_input_files, orig_config)
+        src_input_files = _remove_file(src_input_files, orig_config)
 
+    # We first build a source archive with any user-provided inputs, and then
+    # use the source archive to build a binary archive.
+    # This is better than making a binary archive directly because R performs
+    # some standardization (e.g., Authors list in the DESCRIPTION file on macOS)
+    # when doing `R CMD build`.
+
+    common_env = {
+        "PKG_LIB_PATH": pkg_lib_dir.path,
+        "PKG_SRC_DIR": pkg_src_dir,
+        "PKG_NAME": pkg_name,
+        "PKG_SRC_ARCHIVE": pkg_src_archive_sans_tests.path,
+        "R_MAKEVARS_SITE": info.makevars_site.path if info.makevars_site else "",
+        "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
+        "C_LIBS_FLAGS": " ".join(cc_deps.c_libs_flags),
+        "C_CPP_FLAGS": " ".join(cc_deps.c_cpp_flags),
+        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps.c_so_files]),
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
+        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
+        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
+        "FLOCK_PATH": flock.path,
+        "INSTRUMENTED": "true" if instrumented else "false",
+        "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
+        "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
+        "R": " ".join(info.r),
+        "RSCRIPT": " ".join(info.rscript),
+        "REQUIRED_VERSION": info.version,
+    }
+
+    build_src_env = dict(common_env)
+    build_src_env.update({
+        "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
+        "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
+        "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
+        "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
+        "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
+        "METADATA_MAP": ",".join([key + ":" + value for (key, value) in ctx.attr.metadata.items()]),
+        "STATUS_FILES": ",".join([f.path for f in stamp_files]),
+    })
+    ctx.actions.run(
+        outputs = [pkg_src_archive_sans_tests],
+        inputs = src_input_files,
+        tools = [flock],
+        executable = ctx.executable._build_pkg_src_sh,
+        env = build_src_env,
+        mnemonic = "RSrcBuild",
+        use_default_shell_env = False,
+        progress_message = "Building R (source) package %s" % pkg_name,
+    )
+
+    bin_input_files = list(common_input_files)
+    bin_input_files.extend(instrument_files)
+    bin_input_files.append(pkg_src_archive_sans_tests)
+
+    bin_output_files = [pkg_lib_dir, pkg_bin_archive]
     install_args = list(ctx.attr.install_args)
-    output_files = [pkg_lib_dir, pkg_bin_archive]
-
     pkg_gcno_files = []
     if instrumented:
         # We need to keep the sources for code coverage to work.
@@ -352,65 +441,26 @@ def _build_impl(ctx):
             f = ctx.actions.declare_file(name, sibling = src_file)
             pkg_gcno_files.append(f)
         pkg_gcno_files = depset(direct = pkg_gcno_files).to_list()
-        output_files.extend(pkg_gcno_files)
+        bin_output_files.extend(pkg_gcno_files)
 
-    build_env = {
-        "PKG_LIB_PATH": pkg_lib_dir.path,
-        "PKG_SRC_DIR": pkg_src_dir,
-        "PKG_NAME": pkg_name,
-        "PKG_SRC_ARCHIVE": pkg_src_archive.path,
+    build_bin_env = dict(common_env)
+    build_bin_env.update({
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
-        "R_MAKEVARS_SITE": info.makevars_site.path if info.makevars_site else "",
-        "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
-        "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
-        "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
-        "C_LIBS_FLAGS": " ".join(cc_deps.c_libs_flags),
-        "C_CPP_FLAGS": " ".join(cc_deps.c_cpp_flags),
-        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps.c_so_files]),
-        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
-        "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
-        "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INSTALL_ARGS": _sh_quote_args(install_args),
-        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
-        "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
-        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
-        "METADATA_MAP": ",".join([key + ":" + value for (key, value) in ctx.attr.metadata.items()]),
-        "STATUS_FILES": ",".join([f.path for f in stamp_files]),
-        "FLOCK_PATH": flock.path,
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
-        "INSTRUMENTED": "true" if instrumented else "false",
-        "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
-        "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
-        "R": " ".join(info.r),
-        "RSCRIPT": " ".join(info.rscript),
-        "REQUIRED_VERSION": info.version,
-    }
+    })
     ctx.actions.run(
-        outputs = output_files,
-        inputs = all_input_files,
+        outputs = bin_output_files,
+        inputs = bin_input_files,
         tools = [flock],
-        executable = ctx.executable._build_sh,
-        env = build_env,
+        executable = ctx.executable._build_pkg_bin_sh,
+        env = build_bin_env,
         mnemonic = "RBuild",
         use_default_shell_env = False,
         progress_message = "Building R package %s" % pkg_name,
     )
 
-    # Lightweight action to build just the source archive.
-
-    src_build_env = dict(build_env)
-    src_build_env.update({"BUILD_SRC_ARCHIVE_ONLY": "true"})
-
-    ctx.actions.run(
-        outputs = [pkg_src_archive],
-        inputs = all_input_files + test_files,
-        tools = [flock],
-        executable = ctx.executable._build_sh,
-        env = src_build_env,
-        mnemonic = "RSrcBuild",
-        use_default_shell_env = False,
-        progress_message = "Building R (source) package %s" % pkg_name,
-    )
+    _merge_tests(ctx, pkg_src_archive_sans_tests, pkg_src_archive, pkg_name, pkg_src_dir, test_files)
 
     _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
 
@@ -426,7 +476,7 @@ def _build_impl(ctx):
 
     return [
         DefaultInfo(
-            files = depset(output_files),
+            files = depset(direct = bin_output_files),
             runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
         ),
         RPackage(
@@ -585,9 +635,19 @@ _PKG_ATTRS.update({
         doc = ("Include the stable status file when substituting values in the metadata. " +
                "The volatile status file is always included."),
     ),
-    "_build_sh": attr.label(
+    "_build_pkg_common_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build.sh",
+        default = "@com_grail_rules_r//R/scripts:build_pkg_common.sh",
+    ),
+    "_build_pkg_src_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build_pkg_src.sh",
+        executable = True,
+        cfg = "host",
+    ),
+    "_build_pkg_bin_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build_pkg_bin.sh",
         executable = True,
         cfg = "host",
     ),

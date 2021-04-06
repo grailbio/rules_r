@@ -78,10 +78,17 @@ PWD=$(pwd -P)
 # Export path to tool needed for the test.
 {tools_export_cmd}
 
-R_LIBS="{lib_dirs}"
-R_LIBS="${R_LIBS//_EXEC_ROOT_/$PWD/}"
-export R_LIBS
-export R_LIBS_USER=dummy
+export R_LIBS=dummy
+R_LIBS_USER="$(mktemp -d)"
+export R_LIBS_USER
+cleanup() {
+  rm -rf "${R_LIBS_USER}"
+}
+trap 'cleanup; exit 1' INT HUP QUIT TERM EXIT
+
+r_libs="{lib_dirs}"
+r_libs="${r_libs//_EXEC_ROOT_/$PWD/}"
+(IFS=":"; for lib in ${r_libs}; do ln -s "${lib}/"* "${R_LIBS_USER}"; done)
 
 src_path="../{workspace_name}/{src}"
 
@@ -92,3 +99,6 @@ else
 fi
 
 cd "${START_DIR}" || fatal "Could not go back to start directory."
+
+trap - EXIT
+cleanup

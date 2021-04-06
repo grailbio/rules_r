@@ -74,10 +74,17 @@ PKG_FFLAGS += ${pkg_cppflags}   # Fortran 77
 " >> "${R_MAKEVARS_SITE}"
 fi
 
-R_LIBS="{lib_dirs}"
-R_LIBS="${R_LIBS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-export R_LIBS
-export R_LIBS_USER=dummy
+export R_LIBS=dummy
+R_LIBS_USER="$(mktemp -d)"
+export R_LIBS_USER
+cleanup() {
+  rm -rf "${R_LIBS_USER}"
+}
+trap 'cleanup; exit 1' INT HUP QUIT TERM EXIT
+
+r_libs="{lib_dirs}"
+r_libs="${r_libs//_EXEC_ROOT_/$PWD/}"
+(IFS=":"; for lib in ${r_libs}; do ln -s "${lib}/"* "${R_LIBS_USER}"; done)
 
 # Set HOME for pandoc for building vignettes.
 TMP_HOME="/tmp/bazel/R/home"
@@ -87,4 +94,8 @@ export HOME="${TMP_HOME}"
 if [[ "{pkg_src_archive}" != "{pkg_name}.tar.gz" ]]; then
   ln -s "{pkg_src_archive}" "{pkg_name}.tar.gz"
 fi
-exec {R} CMD check {check_args} "{pkg_name}.tar.gz"
+
+{R} CMD check {check_args} "{pkg_name}.tar.gz"
+
+trap - EXIT
+cleanup

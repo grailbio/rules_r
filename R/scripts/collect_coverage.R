@@ -114,14 +114,27 @@ if (bazel_r_debug) {
 # Obtain paths to packages as the compiler was invoked in these directories and so
 # gcno files have embedded paths to source files relative to these directories.
 pkg_paths <- local({
-  lib_paths <- strsplit(Sys.getenv("R_LIBS"), ':')[[1]]
-  pkg_libs <- installed.packages(lib.loc=lib_paths)[, "LibPath"]
-  pkg_libs <- sub(paste0("^", getwd(), "/"), "", pkg_libs)
-  pkg_libs <- sub(paste0("^../", test_workspace, "/"), "", pkg_libs)
-  pkg_libs <- Filter(function(x) !startsWith(x, "../"), pkg_libs)  # Filter external packages.
-
-  pkg_names <- names(pkg_libs)
-  dirname(pkg_libs)
+  pkgs <- list.files(Sys.getenv("R_LIBS_USER"), full.names = TRUE)
+  pkgs <- normalizePath(pkgs) # Resolve symlinks.
+  pkg_libs <- dirname(pkgs) # Individual lib directories of packages.
+  pkg_paths <- dirname(pkg_libs) # Path to bazel packages.
+  # Get paths relative to cwd.
+  wd <- paste0(getwd(), "/")
+  wd_parent <- paste0(dirname(wd), "/")
+  pkg_paths <- sapply(pkg_paths, function(path) {
+    if (startsWith(path, wd)) {
+      # Package belongs to this workspace; do nothing.
+      return(sub(wd, "", path))
+    } else if (startsWith(path, wd_parent)) {
+      # Package belongs to an external workspace; replace path to external/...
+      return(sub(wd_parent, "external/", path))
+    } else {
+      stop("unrecognized R package path: ", path)
+    }
+  })
+  pkg_names <- basename(pkgs)
+  names(pkg_paths) <- pkg_names
+  return(pkg_paths)
 })
 
 # Try the given gcov command, returning TRUE or FALSE indicating success.

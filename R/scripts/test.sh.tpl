@@ -38,11 +38,7 @@ fi
 # Export path to tool needed for the test.
 {tools_export_cmd}
 
-R_LIBS="{lib_dirs}"
-R_LIBS="${R_LIBS//_EXEC_ROOT_/${PWD}/}"
 RUNFILES_DIR="${PWD}"  # Capture before switching to TEST_TMPDIR
-export R_LIBS
-export R_LIBS_USER=dummy
 export RUNFILES_DIR  # For coverage collection
 
 if [[ ${TEST_TMPDIR:-} ]]; then
@@ -51,6 +47,21 @@ else
   readonly IS_TEST_SANDBOX=0
 fi
 (( IS_TEST_SANDBOX )) || TEST_TMPDIR=$(mktemp -d)
+
+cleanup() {
+  popd > /dev/null 2>&1 || true
+  (( IS_TEST_SANDBOX )) || rm -rf "${TEST_TMPDIR}"
+}
+trap 'cleanup; exit 1' INT HUP QUIT TERM EXIT
+
+export R_LIBS=dummy
+R_LIBS_USER="${TEST_TMPDIR}/.bzl_r_lib"
+export R_LIBS_USER
+mkdir "${R_LIBS_USER}"
+
+r_libs="{lib_dirs}"
+r_libs="${r_libs//_EXEC_ROOT_/$PWD/}"
+(IFS=":"; for lib in ${r_libs}; do ln -s "${lib}/"* "${R_LIBS_USER}"; done)
 
 # Copy the tests to a writable directory.
 cp -LR "${PKG_TESTS_DIR}/"* ${TEST_TMPDIR}
@@ -62,11 +73,6 @@ if "{collect_coverage}"; then
   export GCOV_PREFIX_STRIP=0  # We strip later depending on the source of the .gcda file.
   export GCOV_EXIT_AT_ERROR=1
 fi
-
-cleanup() {
-  popd > /dev/null 2>&1 || true
-  (( IS_TEST_SANDBOX )) || rm -rf "${TEST_TMPDIR}"
-}
 
 if ls *.Rin > /dev/null 2>&1; then
   for SCRIPT in *.Rin; do
@@ -92,4 +98,5 @@ if "{collect_coverage}"; then
   {Rscript} "${RUNFILES_DIR}/{collect_coverage.R}"
 fi
 
+trap - EXIT
 cleanup

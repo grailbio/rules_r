@@ -159,10 +159,28 @@ PKG_FFLAGS += ${pkg_cppflags}   # Fortran 77
 " >> "${R_MAKEVARS_SITE}"
 fi
 
-# Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
-# R_LIBS_USER is parameter substituted with a default in .Renviron, which
-# imposes length limits.
-export R_LIBS_USER=dummy
+# Symlink the libraries to a single directory instead of using a search path
+# with their individual directories because on some sytems (e.g., Ubuntu),
+# R_LIBS_USER and R_LIBS are parameter substituted with a default in .Renviron,
+# which imposes length limits.
+
+# Hide R_LIBS from R to prevent packages in here from being picked up, and use
+# R_LIBS_USER to stage our packages.
+export R_LIBS=dummy
+R_LIBS_USER="$(mktemp -d)"
+TMP_SRCS+=("${R_LIBS_USER}")
+export R_LIBS_USER
+
+symlink_r_libs() {
+  local r_libs="${1}"
+  find "${R_LIBS_USER}" -maxdepth 1 -type l -delete
+  (
+  IFS=":"
+  for lib in ${r_libs}; do
+    ln -s "${lib}/"* "${R_LIBS_USER}"
+  done
+  )
+}
 
 # Set HOME for pandoc for building vignettes.
 mkdir -p "${TMP_HOME}"

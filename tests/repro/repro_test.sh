@@ -30,8 +30,7 @@ readonly second="${tmpdir}/second"
 
 run_bazel() {
   base="$1"
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC:exampleC.tar.gz
+  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC:all
   "${bazel}" --bazelrc=/dev/null --output_base="${base}" info bazel-bin
 }
 first_output="$(run_bazel "${first}")"
@@ -57,18 +56,19 @@ echo "second set of outputs in ${second_output}"
 readonly shasums="${tmpdir}/shasums"
 ( cd "${first_output}" && find . -type f -exec shasum -a 256 {} \+ ) >"${shasums}"
 
-# Do not compare packaged source and binary tars, they are currently not
-# reproducible because of file attributes. They can be made reproducible if we
-# really want.
-readonly shasums_mod="${tmpdir}/shasums_mod"
-grep -v ".tar.gz$" "${shasums}" > "${shasums_mod}"
-mv "${shasums_mod}" "${shasums}"
+# Filter out manifest files which may contain absolute paths.
+sed -i'.bak' -e '/manifest$/d' -e '/MANIFEST$/d' "${shasums}"
+
+if [[ "$(uname -s)" == "Linux" ]] && "${CI:-"false"}"; then
+  # Linux on Github Actions CI machines does not produce reproducible .so for RProtoBuf.
+  sed -i'.bak' -e "/RProtoBuf\.so$/d" -e "/RProtoBuf\.bin\.tar\.gz$/d" "${shasums}"
+fi
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   # default Apple clang may not produce reproducible shared libraries; LLVM 7+ should be OK.
   # https://bugs.llvm.org/show_bug.cgi?id=38050
-  grep -v ".so$" "${shasums}" > "${shasums_mod}"
-  mv "${shasums_mod}" "${shasums}"
+  # As a consequence, archives that contain such .so files are also not reproducible.
+  sed -i'.bak' -e "/\.so$/d" -e "/exampleC.*\.tar\.gz$/d" "${shasums}"
 fi
 
 ( cd "${second_output}" && shasum -a 256 -c "${shasums}" ) | ( grep -v "OK$" || true )

@@ -103,7 +103,7 @@ echo "Done!"
 # run a simpler coverage test.
 echo ""
 echo "=== Testing custom toolchain ==="
-if [[ "$(uname)" == "Linux" ]] && ! "${CI:-"false"}"; then
+if [[ "$(uname -s)" == "Linux" ]] && ! "${CI:-"false"}"; then
   # Check if we can compute coverage using supplied LLVM tools.
   # Note that this toolchain is currently not producing .gcda files, so
   # coverage from cc_deps is missing.

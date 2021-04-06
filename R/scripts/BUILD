@@ -14,7 +14,9 @@
 
 exports_files([
     "binary.sh.tpl",
-    "build.sh",
+    "build_pkg_bin.sh",
+    "build_pkg_common.sh",
+    "build_pkg_src.sh",
     "build_binary.sh",
     "check.sh.tpl",
     "collect_coverage.R",

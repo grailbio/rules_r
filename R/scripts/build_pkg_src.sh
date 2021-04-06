@@ -88,9 +88,8 @@ if [[ "${C_SO_FILES}" ]]; then
   fi
 fi
 
-export R_LIBS="${R_LIBS_ROCLETS//_EXEC_ROOT_/${EXEC_ROOT}/}"
-
 if [[ "${ROCLETS}" ]]; then
+  symlink_r_libs "${R_LIBS_ROCLETS//_EXEC_ROOT_/${EXEC_ROOT}/}"
   silent "${RSCRIPT}" - <<EOF
 bazel_libs <- .libPaths()
 bazel_libs <- bazel_libs[! bazel_libs %in% c(.Library, .Library.site)]
@@ -102,9 +101,7 @@ if ("devtools" %in% installed.packages(bazel_libs)[, "Package"]) {
 EOF
 fi
 
-mkdir -p "${PKG_LIB_PATH}"
-
-export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+symlink_r_libs "${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 
 silent "${R}" CMD build "${BUILD_ARGS}" "${TMP_SRC}"
 mv "${PKG_NAME}"*.tar.gz "${TMP_SRC_TAR}"

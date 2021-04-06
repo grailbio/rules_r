@@ -19,7 +19,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/build_pkg_common.sh"
 
 mkdir -p "${PKG_LIB_PATH}"
 
-export R_LIBS="${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+symlink_r_libs "${R_LIBS_DEPS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 
 tar -C "${TMP_SRC}" --strip-components=1 -xzf "${PKG_SRC_ARCHIVE}"
 

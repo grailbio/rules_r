@@ -66,7 +66,7 @@ elif command -v gfortran > /dev/null; then
   GFORTRAN=$(command -v gfortran)
 else
   warn "gfortran not found"
-  exit
+  # OK to let the rest of the Makevars be created.
 fi
 
 # Find the version directory by looking for libgfortran.dylib in subdirectories.
@@ -77,7 +77,7 @@ if [[ -n "${GFORTRAN}" ]]; then
 
   if [[ -z ${LIB} ]]; then
     warn "libgfortran not found"
-    exit
+    # OK to let the rest of the Makevars be created.
   fi
   GCC_LIB_PATH=$(dirname "${LIB}")
 fi

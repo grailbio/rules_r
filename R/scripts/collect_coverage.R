@@ -22,6 +22,8 @@
 
 options(warn=2)
 
+message("Collecting coverage for R tests...")
+
 bazel_r_debug <- (Sys.getenv("BAZEL_R_DEBUG") == "true")
 bazel_r_verbose <- (Sys.getenv("BAZEL_R_VERBOSE") == "true")
 if (bazel_r_debug) {
@@ -46,7 +48,12 @@ r_coverage <- local({
   if (length(trace_files) == 0) {
     return(NULL)
   }
-  covr:::merge_coverage(trace_files)
+  # Merging coverage trace files may need loading the user R packages; which
+  # could result in warnings. Let's log them instead of failing.
+  options(warn=1)
+  res <- covr:::merge_coverage(trace_files)
+  options(warn=2)
+  return(res)
 })
 
 ############
@@ -96,7 +103,6 @@ local({
     strip <- 6 # [sandbox_number] + execroot + [test_workspace] + bazel-out + darwin-* + bin
   }
   cc_dep_coverage_dir <- file.path(coverage_dir, prefix)
-
   copy_gcda(cc_dep_coverage_dir, strip)
 })
 
@@ -320,3 +326,5 @@ local({
   xml2::write_xml(coverage_xml, output_file)
   return(invisible(NULL))
 })
+
+message("Done collecting coverage for R tests.")

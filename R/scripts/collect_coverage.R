@@ -42,7 +42,7 @@ coverage_dir <- Sys.getenv("COVERAGE_DIR")
 r_coverage <- local({
   trace_files <- list.files(path = coverage_dir, pattern = "^covr_trace_[^/]+$", full.names = TRUE)
   if (bazel_r_debug) {
-    print("R coverage trace files:")
+    message("R coverage trace files:")
     print(trace_files)
   }
   if (length(trace_files) == 0) {
@@ -69,6 +69,7 @@ local({
       for (i in seq_len(strip_components)) {
         to_path <- sub("[^/]*/", "", to_path)
       }
+      to_path <- sub("^_WORKSPACE_ROOT_/", "", to_path)
       to_dir <- dirname(to_path)
       if (!dir.exists(to_dir)) {
         dir.create(to_dir, recursive = TRUE)
@@ -119,12 +120,12 @@ pkg_paths <- local({
   pkg_libs <- dirname(pkgs) # Individual lib directories of packages.
   pkg_paths <- dirname(pkg_libs) # Path to bazel packages.
   # Get paths relative to cwd.
-  wd <- paste0(getwd(), "/")
+  wd <- getwd()
   wd_parent <- paste0(dirname(wd), "/")
   pkg_paths <- sapply(pkg_paths, function(path) {
     if (startsWith(path, wd)) {
       # Package belongs to this workspace; do nothing.
-      return(sub(wd, "", path))
+      return(sub(sprintf("%s/?", wd), "", path))
     } else if (startsWith(path, wd_parent)) {
       # Package belongs to an external workspace; replace path to external/...
       return(sub(wd_parent, "external/", path))
@@ -162,6 +163,10 @@ try_gcov <- function(gcov_path, args) {
   return(TRUE)
 }
 
+# covr will store the normalized path of C source files, but we would later
+# need the original path. So let's keep a map of the original paths.
+normalized_path_map <- list()
+
 # Fix paths in gcov files to be relative to workspace and not to the compiler directory.
 # Returns null if the fixed path is not in the test workspace.
 parse_gcov_file <- function(gcov_file, compiler_dir) {
@@ -184,25 +189,17 @@ parse_gcov_file <- function(gcov_file, compiler_dir) {
     return(NULL)
   }
 
-  parsed <- covr:::parse_gcov(gcov_file)
+  normalized_path_map[normalizePath(source_file)] <<- source_file
 
-  # To revert covr normalized path to relative path in the srcref objects, we
-  # have to recreate the srcfile object.
-  # TODO: Maybe just maintain a map of path replacements for fixing the final XML
-  # instead of fixing the paths here.
-  src_file <- srcfilecopy(source_file, readLines(source_file))
-  for (i in seq_along(parsed)) {
-    attr(parsed[[i]][["srcref"]], "srcfile") <- src_file
-  }
-  return(parsed)
+  return(covr:::parse_gcov(gcov_file))
 }
-vparse_gcov_file <- Vectorize(parse_gcov_file, "gcov_file", USE.NAMES = FALSE)
+vparse_gcov_file <- Vectorize(parse_gcov_file, "gcov_file", SIMPLIFY = FALSE, USE.NAMES = FALSE)
 
 run_gcov <- function() {
   gcov_path <- Sys.which("gcov")
   llvm_cov_path <- Sys.which("llvm-cov")
 
-  r_pkg_src_dirs <- file.path(pkg_paths, "src")
+  r_pkg_src_dirs <- ifelse(pkg_paths == "", "src", sprintf("%s/src", pkg_paths))
   r_pkg_src_dirs <- Filter(dir.exists, r_pkg_src_dirs)
 
   run_gcov_files <- function(gcov_inputs) {
@@ -230,10 +227,11 @@ run_gcov <- function() {
     outputs <- run_gcov_files(gcov_inputs)
     on.exit(unlink(outputs))
 
-    # Filter any files with absolute paths; these are most likely system headers.
+    # Parse the gcov files and fix the paths they represent.
     Filter(Negate(is.null), vparse_gcov_file(outputs, ""))
   }
   cc_dep_line_coverages <- run_gcov_cc_deps()
+  stopifnot(all(sapply(cc_dep_line_coverages, class) == "line_coverages"))
 
   run_gcov_r_pkg <- function(compiler_dir) {
     gcov_inputs <- list.files(compiler_dir, pattern = "\\.gcno$", recursive = TRUE)
@@ -249,16 +247,19 @@ run_gcov <- function() {
     # Parse the gcov files and fix the paths they represent.
     Filter(Negate(is.null), vparse_gcov_file(outputs, compiler_dir))
   }
-  r_pkg_line_coverages <- sapply(r_pkg_src_dirs, run_gcov_r_pkg)
+  # Get 'line_coverages' object for all files in each compiler directory.
+  r_pkg_line_coverages <- sapply(r_pkg_src_dirs, run_gcov_r_pkg, simplify = FALSE)
+  r_pkg_line_coverages <- unlist(r_pkg_line_coverages, recursive = FALSE) # One element per file.
+  stopifnot(all(sapply(r_pkg_line_coverages, class) == "line_coverages"))
 
-  line_coverages <- c(r_pkg_line_coverages, cc_dep_line_coverages)
-  if (length(line_coverages) == 0) {
+  line_coverages_list <- c(r_pkg_line_coverages, cc_dep_line_coverages)
+  line_coverage_list <- unlist(line_coverages_list, recursive = FALSE) # One element per line.
+  stopifnot(all(sapply(line_coverage_list, class) == "line_coverage"))
+
+  if (is.null(line_coverage_list)) {
     return(NULL)
   }
-
-  structure(
-    as.list(unlist(line_coverages, recursive = FALSE)),
-    class = "coverage")
+  structure(line_coverage_list, class = "coverage")
 }
 cc_coverage <- run_gcov()
 
@@ -299,6 +300,9 @@ local({
       return(f)
     }
     # C++ file paths will be their absolute paths.
+    if (f %in% names(normalized_path_map)) {
+      f <- normalized_path_map[[f]]
+    }
     f <- sub(execroot_pattern, "", f)
     f <- sub("^bazel-out/[^/]+/bin/", "", f)
     f <- sub(test_workspace_pattern, "", f)

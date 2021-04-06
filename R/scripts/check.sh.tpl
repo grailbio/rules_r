@@ -31,10 +31,10 @@ fi
 # ensure that the compiler can find them at link time. Note that these files
 # still have the patches we made to them (e.g. through install_name_tool) in
 # build.sh.
-c_so_files="{c_so_files}"
-if [[ "${c_so_files}" ]]; then
-  c_so_ld_flags=""
-  for so_file in ${c_so_files}; do
+C_SO_FILES="{c_so_files}"
+C_SO_LD_FLAGS=""
+if [[ "${C_SO_FILES}" ]]; then
+  for so_file in ${C_SO_FILES}; do
     so_file_name="$(basename "${so_file}")"
     if [[ "$(uname)" == "Darwin" ]]; then
       c_so_ld_flags+="../inst/libs/${so_file_name} "
@@ -61,10 +61,10 @@ fi
 
 # Get any flags from cc_deps for this package and append to site Makevars file.
 # Similar behavior as in build.sh.
-c_libs_flags="{c_libs_flags}"
-c_cpp_flags="{c_cpp_flags}"
-pkg_libs="${c_so_ld_flags}${c_libs_flags//_EXEC_ROOT_/${EXEC_ROOT}/}"
-pkg_cppflags="${c_cpp_flags//_EXEC_ROOT_/${EXEC_ROOT}/}"
+C_LIBS_FLAGS="{c_libs_flags}"
+C_CPP_FLAGS="{c_cpp_flags}"
+pkg_libs="${C_SO_LD_FLAGS}${C_LIBS_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
+pkg_cppflags="${C_CPP_FLAGS//_EXEC_ROOT_/${EXEC_ROOT}/}"
 if [[ "${pkg_libs}" ]] || [[ "${pkg_cppflags}" ]]; then
   echo "
 PKG_LIBS += ${pkg_libs}
@@ -91,7 +91,7 @@ TMP_HOME="/tmp/bazel/R/home"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 
-if [[ "{pkg_src_archive}" != "{pkg_name}.tar.gz" ]]; then
+if [[ "$(basename {pkg_src_archive})" != "{pkg_name}.tar.gz" ]]; then
   ln -s "{pkg_src_archive}" "{pkg_name}.tar.gz"
 fi
 

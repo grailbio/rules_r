@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-stopifnot(workspaceroot:::hello() == "hello")
+stopifnot(identical(workspaceroot:::hello(), "hello"))
+
+stopifnot(identical(workspaceroot:::helloC(), "helloC"))
 
 message("SUCCESS!")

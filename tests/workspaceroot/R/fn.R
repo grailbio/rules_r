@@ -15,3 +15,7 @@
 hello <- function() {
   return("hello")
 }
+
+helloC <- function() {
+  return(.Call("hello", PACKAGE="workspaceroot"))
+}

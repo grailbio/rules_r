@@ -556,6 +556,7 @@ def _build_binary_pkg_impl(ctx):
             transitive_pkg_deps = library_deps.transitive_pkg_deps,
             transitive_tools = transitive_tools,
         ),
+        coverage_common.instrumented_files_info(ctx),
     ]
 
 _COMMON_ATTRS = {

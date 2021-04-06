@@ -21,8 +21,10 @@ r_pkg(
         "LICENSE",
         "NAMESPACE",
         "R/fn.R",
+        "src/fn.c",
         "tests/test.R",
     ],
+    visibility = ["//visibility:public"],
 )
 
 r_unit_test(

@@ -42,7 +42,8 @@ if "${INSTRUMENTED}"; then
   silent "${RSCRIPT}" "${INSTRUMENT_SCRIPT}" "${PKG_LIB_PATH}" "${PKG_NAME}"
   # Copy .gcno files next to the source files.
   if [[ -d "${TMP_SRC}/src" ]]; then
-    rsync -am --include='*.gcno' --include='*/' --exclude='*' \
+    rsync "--recursive" "--copy-links" "--no-perms" "--chmod=a+w" "--prune-empty-dirs" \
+      "--include=*.gcno" "--include=*/" "--exclude=*" \
       "${TMP_SRC}/src" "$(dirname "${PKG_LIB_PATH}")"
   fi
 fi

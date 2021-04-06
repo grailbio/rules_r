@@ -31,8 +31,9 @@ PKG_DEPS = [
 ]
 
 PKG_CHECK_DEPS = [
-    "@R_RProtoBuf//:RProtoBuf",
-    "@R_testthat//:testthat",
+    "@R_RProtoBuf",
+    "@R_testthat",
+    "@workspaceroot",
 ]
 
 r_pkg(

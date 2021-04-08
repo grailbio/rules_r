@@ -30,16 +30,18 @@ readonly second="${tmpdir}/second"
 
 run_bazel() {
   base="$1"
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" build //packages/exampleC:all
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" info bazel-bin
+  startup_flags=("--nohome_rc" "--output_base=${base}")
+  "${bazel}" "${startup_flags[@]}" build "--remote_cache=" "--disk_cache=" //packages/exampleC:all
+  "${bazel}" "${startup_flags[@]}" info bazel-bin
 }
 first_output="$(run_bazel "${first}")"
 second_output="$(run_bazel "${second}")"
 
 shutdown_bazel() {
   base="$1"
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" clean --expunge
-  "${bazel}" --bazelrc=/dev/null --output_base="${base}" shutdown
+  startup_flags=("--nohome_rc" "--output_base=${base}")
+  "${bazel}" "${startup_flags[@]}" clean --expunge
+  "${bazel}" "${startup_flags[@]}" shutdown
 }
 
 cleanup() {
@@ -59,11 +61,6 @@ readonly shasums="${tmpdir}/shasums"
 # Filter out manifest files which may contain absolute paths.
 sed -i'.bak' -e '/manifest$/d' -e '/MANIFEST$/d' "${shasums}"
 
-if [[ "$(uname -s)" == "Linux" ]] && "${CI:-"false"}"; then
-  # Linux on Github Actions CI machines does not produce reproducible .so for RProtoBuf.
-  sed -i'.bak' -e "/RProtoBuf\.so$/d" -e "/RProtoBuf\.bin\.tar\.gz$/d" "${shasums}"
-fi
-
 if [[ "$(uname -s)" == "Darwin" ]]; then
   # default Apple clang may not produce reproducible shared libraries; LLVM 7+ should be OK.
   # https://bugs.llvm.org/show_bug.cgi?id=38050
@@ -71,7 +68,23 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   sed -i'.bak' -e "/\.so$/d" -e "/exampleC.*\.tar\.gz$/d" "${shasums}"
 fi
 
-( cd "${second_output}" && shasum -a 256 -c "${shasums}" ) | ( grep -v "OK$" || true )
+# Check shasums match, and if not and running on CI, copy the files to artifacts dir.
+file_list="${tmpdir}/mismatch_files.txt"
+( ( cd "${second_output}" && shasum -a 256 -c "${shasums}" ) || true ) | \
+  ( grep -v "OK$" || true ) | \
+  sed -e 's/: .*$//' > "${file_list}"
+if [[ "${CI:-false}" ]] && [[ "${ARTIFACTS_DIR:-}" ]]; then
+  mkdir -p "${ARTIFACTS_DIR}/repro"
+  cp "${shasums}" "${ARTIFACTS_DIR}/repro/"
+  (cd "${first_output}" && rsync "--files-from=${file_list}" . "${ARTIFACTS_DIR}/repro/first")
+  (cd "${second_output}" && rsync "--files-from=${file_list}" . "${ARTIFACTS_DIR}/repro/second")
+fi
 
-echo "reproducibility test PASSED"
-cleanup
+if [[ -s "${file_list}" ]]; then
+  cat "${file_list}"
+  echo "reproducibility test FAILED"
+  exit 1
+else
+  echo "reproducibility test PASSED"
+  cleanup
+fi

@@ -21,6 +21,10 @@ load(
     _local_darwin_makevars = "local_darwin_makevars",
 )
 load(
+    "@com_grail_rules_r//R/internal/makevars:linux.bzl",
+    _local_linux_makevars = "local_linux_makevars",
+)
+load(
     "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
     _local_r_toolchain = "local_r_toolchain",
 )
@@ -41,6 +45,10 @@ def r_rules_dependencies():
     _maybe(
         _local_darwin_makevars,
         name = "com_grail_rules_r_makevars_darwin",
+    )
+    _maybe(
+        _local_linux_makevars,
+        name = "com_grail_rules_r_makevars_linux",
     )
 
 def r_register_toolchains(**kwargs):

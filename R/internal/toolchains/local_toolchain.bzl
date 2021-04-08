@@ -109,12 +109,14 @@ def _local_r_toolchain_impl(rctx):
 
     makevars_site_str = "None"
     tools = list(rctx.attr.tools)
-    if rctx.attr.makevars_site and detect_os(rctx) == "darwin":
-        makevars_site_str = "\"@com_grail_rules_r_makevars_darwin\""
-        llvm_cov_dir = rctx.path(Label("@com_grail_rules_r_makevars_darwin")).dirname
+    if rctx.attr.makevars_site:
+        os = detect_os(rctx)
+        makevars_repo = "@com_grail_rules_r_makevars_%s" % os
+        makevars_site_str = "\"%s\"" % makevars_repo
+        llvm_cov_dir = rctx.path(Label(makevars_repo)).dirname
         llvm_cov_path = llvm_cov_dir.get_child("llvm-cov")
         if llvm_cov_path.exists:
-            llvm_cov = Label("@com_grail_rules_r_makevars_darwin//:llvm-cov")
+            llvm_cov = Label("%s//:llvm-cov" % makevars_repo)
             tools.append(llvm_cov)
 
     state_file = "system_state.txt"

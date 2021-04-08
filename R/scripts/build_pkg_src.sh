@@ -77,6 +77,7 @@ if [[ "${C_SO_FILES}" ]]; then
     cp "${so_file}" "${TMP_SRC}/inst/libs/${so_file_name}"
     if [[ "$(uname)" == "Darwin" ]]; then
       C_SO_LD_FLAGS+="../inst/libs/${so_file_name} "
+      chmod u+w "${TMP_SRC}/inst/libs/${so_file_name}"
       install_name_tool -id "@loader_path/${so_file_name}" "${TMP_SRC}/inst/libs/${so_file_name}"
     elif [[ "$(uname)" == "Linux" ]]; then
       C_SO_LD_FLAGS+="-L../inst/libs -l:${so_file_name} "

@@ -135,16 +135,6 @@ if [[ "${R_MAKEVARS_USER:-}" ]]; then
   export R_MAKEVARS_USER="${tmp_mkvars}"
 fi
 
-# Override flags to the compiler for reproducible builds.
-repro_flags=(
-"-Wno-builtin-macro-redefined"
-"-D__DATE__=\"redacted\""
-"-D__TIMESTAMP__=\"redacted\""
-"-D__TIME__=\"redacted\""
-"-fdebug-prefix-map=\"${EXEC_ROOT}/=\""
-)
-echo "CPPFLAGS += ${repro_flags[*]}" >> "${R_MAKEVARS_SITE}"
-
 # Get any flags from cc_deps for this package and append to site Makevars file.
 # We keep these last in the site Makevars files so that any flags here may take
 # precedence over other conflicting settings specified previously in the file.
@@ -163,13 +153,14 @@ fi
 # with their individual directories because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER and R_LIBS are parameter substituted with a default in .Renviron,
 # which imposes length limits.
+# For reproducibility of embedded paths in compiled native code when using
+# "Linking To" type dependencies, use a constant path for this library
+# directory.
 
 # Hide R_LIBS from R to prevent packages in here from being picked up, and use
 # R_LIBS_USER to stage our packages.
 export R_LIBS=dummy
-R_LIBS_USER="$(mktemp -d)"
-TMP_SRCS+=("${R_LIBS_USER}")
-export R_LIBS_USER
+export R_LIBS_USER="${TMP_LIB}"
 
 symlink_r_libs() {
   local r_libs="${1}"

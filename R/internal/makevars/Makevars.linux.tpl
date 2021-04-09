@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors.
+# Copyright 2021 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,29 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# macOS specific overrides
-# See https://cran.r-project.org/doc/manuals/R-admin.html#macOS-packages
-
-# gfortran paths when installed as part of `brew install gcc`
-# If F77 is empty, it is because gfortran was not found.
-# If FLIBS search path is empty, it is because libgfortran was not found.
-F77=@GFORTRAN@
-FC=${F77}
-FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
-
-CC = @CC@
-CXX = @CXX@
-CPPFLAGS = @CPPFLAGS@
-LDFLAGS = @LDFLAGS@
-
 # Flags for reproducible builds.
 CPPFLAGS += "-Wno-builtin-macro-redefined" \
   "-D__DATE__=\"redacted\"" \
   "-D__TIMESTAMP__=\"redacted\"" \
   "-D__TIME__=\"redacted\"" \
   "-fdebug-prefix-map=_EXEC_ROOT_=" \
-  "-fmacro-prefix-map=_EXEC_ROOT_=" \
+  "-fmacro-prefix-map=_EXEC_ROOT_="
 
-# Apple's compilers from Command Line Tools do not have OpenMP support
-SHLIB_OPENMP_CFLAGS = @OPENMP_FLAGS@
-SHLIB_OPENMP_CXXFLAGS = @OPENMP_FLAGS@
+CPPFLAGS += @CPPFLAGS@

@@ -94,9 +94,10 @@ toolchain with `bazel sync --configure` to rebuild your packages with the new
 installation.
 
 For each package, you can also specify a different Makevars file that can be
-used to have finer control over native code compilation. For macOS, the
-[Makevars][Makevars] file used as default helps find `gfortran`. The site-wide
-Makevars files are configured by default in the toolchains.
+used to have finer control over native code compilation. The site-wide
+Makevars files are configured by default in the toolchains, and these define
+the compiler toolchain to use and the flags needed for these toolchains for
+reproducible builds.
 
 For _macOS_, this setup will help you cover the requirements for a large number
 of packages:
@@ -257,7 +258,10 @@ Rule to install the package and its transitive dependencies in the Bazel
 sandbox, so it can be depended upon by other package builds.
 
 The builds produced from this rule are tested to be byte-for-byte reproducible
-with the same R installation.
+with the same R installation. For native code compilation, the compiler flags
+for reproducibility are defined in the default site Makevars file in the local
+toolchain. If using your own toolchain, ensure that your site Makevars file has
+the right flags.
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -958,7 +962,7 @@ r_rules_dependencies()
 ```
 
 Repository rule that provides repository definitions for dependencies of the
-BUILD system. One such dependency is the site-wide Makevars file for macOS.
+BUILD system. One such dependency is the site-wide Makevars file.
 
 
 <a name="r_coverage_dependencies"></a>

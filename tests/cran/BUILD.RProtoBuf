@@ -16,6 +16,11 @@ load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_un
 
 package(default_visibility = ["//visibility:public"])
 
+alias(
+    name = "R_RProtoBuf",
+    actual = "RProtoBuf",
+)
+
 genrule(
     name = "genrule_empty",
     outs = ["empty"],

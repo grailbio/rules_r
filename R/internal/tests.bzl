@@ -68,11 +68,13 @@ def _test_impl(ctx):
         is_executable = True,
     )
 
-    instrumented_files_info = pkg[InstrumentedFilesInfo]
     instrumented_files = depset(
         transitive = [
-            instrumented_files_info.instrumented_files,
-            instrumented_files_info.metadata_files,
+            depset(transitive = [
+                pkg[InstrumentedFilesInfo].instrumented_files,
+                pkg[InstrumentedFilesInfo].metadata_files,
+            ])
+            for pkg in pkg_deps
         ],
     )
 

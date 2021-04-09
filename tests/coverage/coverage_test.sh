@@ -84,26 +84,29 @@ echo "Done!"
 # For instrumentation of packages without tests, and of indirect test dependencies.
 echo ""
 echo "=== Testing workspace instrumentation ==="
-"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=// //...
+"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=^// //...
 expect_equal "workspace_instrumented.xml" "${coverage_file}"
 echo "Done!"
 
 # Set instrumentation filter to everything.
-# Packages tagged external-r-repo are never instrumented in rules_r; so we should not fail here.
-# But otherwise packages in external repos (workspaceroot) should be fine.
+# Packages tagged external-r-repo are never instrumented in rules_r; so we
+# should not fail here. But otherwise packages in external repos
+# (workspaceroot) should be fine. The protobuf and zlib libraries can be heavy
+# dependencies to collect through covr, so we omit them explicitly.
 echo ""
 echo "=== Testing all instrumentation ==="
-"${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter='.' --test_output=summary \
+"${bazel}" coverage "${bazel_test_opts[@]}" --test_output=summary \
+  --instrumentation_filter='.,-protobuf,-zlib' \
   //... @workspaceroot//:all
-expect_equal "workspace_instrumented.xml" "${coverage_file}"
+expect_equal "all_instrumented.xml" "${coverage_file}"
 expect_equal "workspaceroot.xml" "${coverage_file_external}"
 echo "Done!"
 
 # There is a problem with the protobuf library in the CI environment; perhaps
 # run a simpler coverage test.
-echo ""
-echo "=== Testing custom toolchain ==="
 if [[ "$(uname -s)" == "Linux" ]] && ! "${CI:-"false"}"; then
+  echo ""
+  echo "=== Testing custom toolchain ==="
   # Check if we can compute coverage using supplied LLVM tools.
   # Note that this toolchain is currently not producing .gcda files, so
   # coverage from cc_deps is missing.
@@ -116,5 +119,5 @@ if [[ "$(uname -s)" == "Linux" ]] && ! "${CI:-"false"}"; then
   )
   "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //packages/exampleC:test
   expect_equal "custom_toolchain.xml" "${coverage_file}"
+  echo "Done!"
 fi
-echo "Done!"

@@ -29,3 +29,9 @@ stopifnot(identical(c("hello", "world"), exampleC::rcppHello()))
 
 # Coverage from rcpp.R will have 2 hits.
 stopifnot(identical(c("hello", "world", "from", "me", "too"), exampleC::rcppHelloWrapped()))
+
+# Coverage from workspaceroot/fn.R will have 1 hit.
+stopifnot(identical("hello", workspaceroot::hello()))
+
+# Coverage from workspaceroot/src/fn.c will have 1 hit.
+stopifnot(identical("helloC", workspaceroot::helloC()))

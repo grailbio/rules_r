@@ -54,6 +54,7 @@ r_toolchain(
     version = {version},
     args = [{args}],
     makevars_site = {makevars_site},
+    env_vars = {env_vars},
     tools = [{tools}],
     system_state_file = "{state_file}",
     visibility = ["//visibility:public"],
@@ -107,10 +108,14 @@ def _local_r_toolchain_impl(rctx):
     if rctx.attr.strict and not r_found:
         fail("R or Rscript is not installed")
 
-    makevars_site_str = "None"
+    os = detect_os(rctx)
+
     tools = list(rctx.attr.tools)
+    if os == "darwin":
+        tools.append(Label("@com_grail_rules_r//tools:install_name_tool"))
+
+    makevars_site_str = "None"
     if rctx.attr.makevars_site:
-        os = detect_os(rctx)
         makevars_repo = "@com_grail_rules_r_makevars_%s" % os
         makevars_site_str = "\"%s\"" % makevars_repo
         llvm_cov_dir = rctx.path(Label(makevars_repo)).dirname
@@ -118,6 +123,11 @@ def _local_r_toolchain_impl(rctx):
         if llvm_cov_path.exists:
             llvm_cov = Label("%s//:llvm-cov" % makevars_repo)
             tools.append(llvm_cov)
+
+    env_vars_str = "None"
+    if os == "darwin":
+        # http://blog.llvm.org/2019/11/deterministic-builds-with-clang-and-lld.html
+        env_vars_str = "{\"ZERO_AR_DATE\": \"1\"}"
 
     state_file = "system_state.txt"
     if not r_found:
@@ -132,6 +142,7 @@ def _local_r_toolchain_impl(rctx):
         version = "\"%s\"" % rctx.attr.version if rctx.attr.version else "None",
         args = ", ".join(["\"%s\"" % arg for arg in rctx.attr.args]),
         makevars_site = makevars_site_str,
+        env_vars = env_vars_str,
         tools = ", ".join(["\"%s\"" % tool for tool in tools]),
         state_file = state_file,
     ))

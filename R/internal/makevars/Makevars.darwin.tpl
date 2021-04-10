@@ -28,12 +28,16 @@ CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 
 # Flags for reproducible builds.
+# See http://blog.llvm.org/2019/11/deterministic-builds-with-clang-and-lld.html
+# Remember to set ZERO_AR_DATE=1 in your environment.
 CPPFLAGS += "-Wno-builtin-macro-redefined" \
   "-D__DATE__=\"redacted\"" \
   "-D__TIMESTAMP__=\"redacted\"" \
   "-D__TIME__=\"redacted\"" \
   "-fdebug-prefix-map=_EXEC_ROOT_=" \
   "-fmacro-prefix-map=_EXEC_ROOT_=" \
+  "-ffile-prefix-map=_EXEC_ROOT_=" \
+  "-no-canonical-prefixes" \
 
 # Apple's compilers from Command Line Tools do not have OpenMP support
 SHLIB_OPENMP_CFLAGS = @OPENMP_FLAGS@

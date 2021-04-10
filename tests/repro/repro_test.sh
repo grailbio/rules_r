@@ -61,14 +61,6 @@ readonly shasums="${tmpdir}/shasums"
 # Filter out manifest files which may contain absolute paths.
 sed -i'.bak' -e '/manifest$/d' -e '/MANIFEST$/d' "${shasums}"
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  # default Apple clang may not produce reproducible shared libraries; LLVM 7+ should be OK.
-  # https://bugs.llvm.org/show_bug.cgi?id=38050
-  # As a consequence, archives that contain such .so files are also not reproducible.
-  sed -i'.bak' -e "/\.so$/d" -e "/exampleC.*\.tar\.gz$/d" -e "/workspaceroot.bin.tar.gz$/d" \
-    "${shasums}"
-fi
-
 # Check shasums match, and if not and running on CI, copy the files to artifacts dir.
 file_list="${tmpdir}/mismatch_files.txt"
 ( ( cd "${second_output}" && shasum -a 256 -c "${shasums}" ) || true ) | \

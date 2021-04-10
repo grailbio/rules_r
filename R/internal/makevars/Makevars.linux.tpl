@@ -18,6 +18,8 @@ CPPFLAGS += "-Wno-builtin-macro-redefined" \
   "-D__TIMESTAMP__=\"redacted\"" \
   "-D__TIME__=\"redacted\"" \
   "-fdebug-prefix-map=_EXEC_ROOT_=" \
-  "-fmacro-prefix-map=_EXEC_ROOT_="
+  "-fmacro-prefix-map=_EXEC_ROOT_=" \
+  "-ffile-prefix-map=_EXEC_ROOT_=" \
+  "-no-canonical-prefixes" \
 
 CPPFLAGS += @CPPFLAGS@

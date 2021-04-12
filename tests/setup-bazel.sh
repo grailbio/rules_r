@@ -20,7 +20,6 @@ os="$(uname -s | tr "[:upper:]" "[:lower:]")"
 readonly os
 
 # Use bazelisk to catch migration problems.
-# Value of BAZELISK_GITHUB_TOKEN is set as a secret on Travis.
 readonly url="https://github.com/bazelbuild/bazelisk/releases/download/v1.7.5/bazelisk-${os}-amd64"
 bazel="${TMPDIR:-/tmp}/bazelisk"
 readonly bazel
@@ -31,10 +30,21 @@ if ! [[ -x "${bazel}" ]]; then
 fi
 
 # Exported for scripts that will source this file.
-bazel_test_opts=(
+bazel_build_opts=(
 "--color=yes"
 "--show_progress_rate_limit=30"
+"--experimental_convenience_symlinks=ignore" # symlinks in nested workspaces may cause infinite loop
+)
+
+# packages/exampleC:cc_lib needs R headers in the system include directories.
+# For Linux, we can provide the path as an env var.
+# For Darwin, /Library/ is already part of cxx_builtin_include_directories from bazel 4.0.0.
+if [[ "$(uname)" == "Linux" ]]; then
+  export CPLUS_INCLUDE_PATH=/usr/share/R/include
+fi
+
+bazel_test_opts=("${bazel_build_opts[@]}")
+bazel_test_opts+=(
 "--keep_going"
 "--test_output=errors"
-"--experimental_convenience_symlinks=ignore" # symlinks in nested workspaces may cause infinite loop
 )

@@ -1,2 +1,4 @@
 build --workspace_status_command=stamping/workspace_status.sh
 build --incompatible_strict_action_env
+
+try-import buildbuddy.bazelrc

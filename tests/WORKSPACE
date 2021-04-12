@@ -120,5 +120,9 @@ load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
 
 llvm_toolchain(
     name = "llvm_toolchain",
+    cxx_builtin_include_directories = {
+        "k8": ["/usr/share/R/include"],
+        "darwin": ["/Library/Frameworks/R.framework/Headers"],
+    },
     llvm_version = "9.0.0",
 )

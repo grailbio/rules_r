@@ -1,0 +1,11 @@
+# Buildbuddy setup
+# https://app.buildbuddy.io/docs/setup/
+# https://docs.buildbuddy.io/docs/rbe-github-actions/
+build --bes_results_url=https://app.buildbuddy.io/invocation/
+build --bes_backend=grpcs://cloud.buildbuddy.io
+build --remote_cache=grpcs://cloud.buildbuddy.io
+build --remote_timeout=3600
+build --remote_download_toplevel
+
+# Use Buildbuddy with auth if this file is present, else unauthenticated.
+try-import auth.bazelrc

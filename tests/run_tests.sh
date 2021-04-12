@@ -21,23 +21,20 @@ echo "::group::Setting up"
 source "./setup-bazel.sh"
 "${bazel}" clean
 "${bazel}" version
-if [[ "$(uname)" == "Linux" ]] && ! [[ -d "/usr/include/R" ]]; then
-  # exampleC:cc_lib needs a symlink for R include directory.
-  sudo ln -s "$(Rscript -e 'cat(R.home("include"))')" "/usr/include/R"
-fi
 echo "::endgroup::"
 
 echo "::group::Binary tests"
+bazel_bin="$("${bazel}" info bazel-bin)"
 set -x
 # r_binary related tests.  Run these individually most layered target first,
 # before building everything so we don't have runfiles built for wrapped
 # targets. The alternative is to clean the workspace before each test.
-"${bazel}" run //binary:binary_sh_test
-bazel-bin/binary/binary_sh_test
-"${bazel}" run //binary:binary_r_test
-bazel-bin/binary/binary_r_test
-"${bazel}" run //binary
-bazel-bin/binary/binary
+"${bazel}" run "${bazel_build_opts[@]}" //binary:binary_sh_test
+"${bazel_bin}/binary/binary_sh_test"
+"${bazel}" run "${bazel_build_opts[@]}" //binary:binary_r_test
+"${bazel_bin}/binary/binary_r_test"
+"${bazel}" run "${bazel_build_opts[@]}" //binary
+"${bazel_bin}/binary/binary"
 set +x
 echo "::endgroup::"
 

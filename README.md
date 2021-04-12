@@ -429,7 +429,8 @@ the right flags.
       <td>
         <p><code>Bool; default False</code></p>
         <p>Include the stable status file when substituting values in the metadata.
-           The volatile status file is always included.</p>
+           The volatile status file is always included if there is at least one
+           occurrence of `{` that is not followed by `STABLE_`.
       </td>
     </tr>
   </tbody>

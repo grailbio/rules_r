@@ -273,34 +273,66 @@ fi
         progress_message = "Symlinking .so from R package %s" % pkg_name,
     )
 
-def _merge_tests(ctx, pkg_src_archive_sans_tests, pkg_src_archive, pkg_name, pkg_src_dir, test_files):
+def _stamp_description(ctx, in_tar, out_tar, pkg_name):
+    # Makes an action to stamp the DESCRIPTION file in the given archive.
+
+    # This stamp step is separate because bazel remote cache treats volatile
+    # status file as part of the action key, and so we want to keep this step
+    # as small as possible and as late as possible.
+
+    if not ctx.attr.metadata:
+        ctx.actions.symlink(output = out_tar, target_file = in_tar)
+        return
+
+    # Variables from the volatile status file can not have the prefix STABLE_
+    # because those get routed to the stable status file.
+    include_volatile_status_file = False
+    for value in ctx.attr.metadata.values():
+        if value.count("{") != value.count("{STABLE_"):
+            include_volatile_status_file = True
+            break
+
+    stamp_files = [ctx.version_file] if include_volatile_status_file else []
+    if ctx.attr.stamp:
+        stamp_files.append(ctx.info_file)
+
+    env = {
+        "PKG_NAME": pkg_name,
+        "IN_TAR": in_tar.path,
+        "OUT_TAR": out_tar.path,
+        "METADATA_MAP": ",".join([key + ":" + value for (key, value) in ctx.attr.metadata.items()]),
+        "STATUS_FILES": ",".join([f.path for f in stamp_files]),
+    }
+
+    ctx.actions.run(
+        outputs = [out_tar],
+        inputs = [in_tar] + stamp_files,
+        executable = ctx.executable._stamp_description_sh,
+        env = env,
+        mnemonic = "RStampDescription",
+        use_default_shell_env = False,
+        progress_message = "Stamping DESCRIPTION file in R package %s" % pkg_name,
+    )
+
+def _merge_tests(ctx, in_tar, out_tar, pkg_name, pkg_src_dir, test_files):
     # Makes an action to merge the given test files into the source archive.
 
     if not test_files:
-        ctx.actions.symlink(output = pkg_src_archive, target_file = pkg_src_archive_sans_tests)
+        ctx.actions.symlink(output = out_tar, target_file = in_tar)
         return
 
-    script = """#!/bin/bash
-set -euo pipefail
-dir="$(mktemp -d)"
-tar -C "${{dir}}" -xzf {pkg_src_archive_sans_tests}
-rsync --recursive --copy-links --no-perms --chmod=u+w --executability --specials \
-    "{pkg_src_dir}/tests" "${{dir}}/{pkg_name}"
-# Reset mtime so that tarball is reproducible.
-TZ=UTC find "${{dir}}" -exec touch -amt 197001010000 {{}} \\+
-# Ask gzip to not store the timestamp.
-tar -C "${{dir}}" -cf - {pkg_name} | gzip --no-name -c > {pkg_src_archive}
-rm -rf "${{dir}}"
-""".format(
-        pkg_name = pkg_name,
-        pkg_src_dir = pkg_src_dir,
-        pkg_src_archive_sans_tests = pkg_src_archive_sans_tests.path,
-        pkg_src_archive = pkg_src_archive.path,
-    )
-    ctx.actions.run_shell(
-        outputs = [pkg_src_archive],
-        inputs = [pkg_src_archive_sans_tests] + test_files,
-        command = script,
+    env = {
+        "PKG_NAME": pkg_name,
+        "PKG_SRC_DIR": pkg_src_dir,
+        "IN_TAR": in_tar.path,
+        "OUT_TAR": out_tar.path,
+    }
+
+    ctx.actions.run(
+        outputs = [out_tar],
+        inputs = [in_tar] + test_files,
+        executable = ctx.executable._merge_test_files_sh,
+        env = env,
         mnemonic = "RMergeTests",
         use_default_shell_env = False,
         progress_message = "Building R (source) package %s (with tests)" % pkg_name,
@@ -332,7 +364,6 @@ def _build_impl(ctx):
             test_files.append(src_file)
         else:
             src_files_sans_tests.append(src_file)
-    pkg_src_archive_sans_tests = ctx.actions.declare_file(ctx.attr.name + ".notests.tar.gz")
 
     library_deps = _library_deps(pkg_deps)
     cc_deps = _cc_deps(ctx, instrumented)
@@ -346,9 +377,6 @@ def _build_impl(ctx):
         _executables(ctx.attr.build_tools + info.tools),
         transitive = [transitive_tools],
     )
-    stamp_files = [ctx.version_file]
-    if ctx.attr.stamp:
-        stamp_files.append(ctx.info_file)
     instrument_files = [ctx.file._instrument_R] if instrumented else []
 
     common_input_files = ([ctx.file._build_pkg_common_sh] +
@@ -357,7 +385,7 @@ def _build_impl(ctx):
                           build_tools.to_list() +
                           info.files + [info.state])
     src_input_files = list(common_input_files)
-    src_input_files.extend(src_files_sans_tests + inst_files.to_list() + stamp_files)
+    src_input_files.extend(src_files_sans_tests + inst_files.to_list())
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
@@ -379,7 +407,6 @@ def _build_impl(ctx):
         "PKG_LIB_PATH": pkg_lib_dir.path,
         "PKG_SRC_DIR": pkg_src_dir,
         "PKG_NAME": pkg_name,
-        "PKG_SRC_ARCHIVE": pkg_src_archive_sans_tests.path,
         "R_MAKEVARS_SITE": info.makevars_site.path if info.makevars_site else "",
         "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
         "C_LIBS_FLAGS": " ".join(cc_deps.c_libs_flags),
@@ -397,18 +424,19 @@ def _build_impl(ctx):
         "REQUIRED_VERSION": info.version,
     }
 
+    pkg_src_archive_stage1 = ctx.actions.declare_file(ctx.attr.name + ".nostamp.notests.tar.gz")
+    pkg_src_archive_stage2 = ctx.actions.declare_file(ctx.attr.name + ".notests.tar.gz")
     build_src_env = dict(common_env)
     build_src_env.update({
         "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
+        "PKG_SRC_ARCHIVE": pkg_src_archive_stage1.path,
         "ROCLETS": ", ".join(["'%s'" % r for r in ctx.attr.roclets]),
         "R_LIBS_ROCLETS": ":".join(["_EXEC_ROOT_" + d.path for d in roclets_lib_dirs]),
         "BUILD_ARGS": _sh_quote_args(ctx.attr.build_args),
         "INST_FILES_MAP": ",".join([dst + ":" + src for (dst, src) in inst_files_map.items()]),
-        "METADATA_MAP": ",".join([key + ":" + value for (key, value) in ctx.attr.metadata.items()]),
-        "STATUS_FILES": ",".join([f.path for f in stamp_files]),
     })
     ctx.actions.run(
-        outputs = [pkg_src_archive_sans_tests],
+        outputs = [pkg_src_archive_stage1],
         inputs = src_input_files,
         tools = [flock],
         executable = ctx.executable._build_pkg_src_sh,
@@ -417,10 +445,11 @@ def _build_impl(ctx):
         use_default_shell_env = False,
         progress_message = "Building R (source) package %s" % pkg_name,
     )
+    _stamp_description(ctx, pkg_src_archive_stage1, pkg_src_archive_stage2, pkg_name)
 
     bin_input_files = list(common_input_files)
     bin_input_files.extend(instrument_files)
-    bin_input_files.append(pkg_src_archive_sans_tests)
+    bin_input_files.append(pkg_src_archive_stage2)
 
     bin_output_files = [pkg_lib_dir, pkg_bin_archive]
     install_args = list(ctx.attr.install_args)
@@ -446,6 +475,7 @@ def _build_impl(ctx):
     build_bin_env = dict(common_env)
     build_bin_env.update({
         "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
+        "PKG_SRC_ARCHIVE": pkg_src_archive_stage2.path,
         "INSTALL_ARGS": _sh_quote_args(install_args),
         "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
     })
@@ -460,7 +490,7 @@ def _build_impl(ctx):
         progress_message = "Building R package %s" % pkg_name,
     )
 
-    _merge_tests(ctx, pkg_src_archive_sans_tests, pkg_src_archive, pkg_name, pkg_src_dir, test_files)
+    _merge_tests(ctx, pkg_src_archive_stage2, pkg_src_archive, pkg_name, pkg_src_dir, test_files)
 
     _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
 
@@ -634,7 +664,8 @@ _PKG_ATTRS.update({
     "stamp": attr.bool(
         default = False,
         doc = ("Include the stable status file when substituting values in the metadata. " +
-               "The volatile status file is always included."),
+               "The volatile status file is always included if there is at least one " +
+               "occurrence of `{` that is not followed by `STABLE_`."),
     ),
     "_build_pkg_common_sh": attr.label(
         allow_single_file = True,
@@ -652,6 +683,12 @@ _PKG_ATTRS.update({
         executable = True,
         cfg = "host",
     ),
+    "_merge_test_files_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:merge_test_files.sh",
+        executable = True,
+        cfg = "host",
+    ),
     "_flock": attr.label(
         default = "@com_grail_rules_r//R/scripts:flock",
         executable = True,
@@ -660,6 +697,12 @@ _PKG_ATTRS.update({
     "_instrument_R": attr.label(
         allow_single_file = True,
         default = "@com_grail_rules_r//R/scripts:instrument.R",
+    ),
+    "_stamp_description_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:stamp_description.sh",
+        executable = True,
+        cfg = "host",
     ),
 })
 

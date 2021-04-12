@@ -1,4 +1,5 @@
-# Copyright 2018 The Bazel Authors.
+#!/bin/bash
+# Copyright 2021 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-exports_files([
-    "binary.sh.tpl",
-    "build_pkg_bin.sh",
-    "build_pkg_common.sh",
-    "build_pkg_src.sh",
-    "build_binary.sh",
-    "check.sh.tpl",
-    "collect_coverage.R",
-    "instrument.R",
-    "lcov_merger.sh",
-    "library.sh.tpl",
-    "merge_test_files.sh",
-    "render.R.tpl",
-    "stamp_description.sh",
-    "system_state.sh",
-    "test.sh.tpl",
-])
+set -euo pipefail
 
-cc_binary(
-    name = "flock",
-    srcs = ["flock.c"],
-    visibility = ["//visibility:public"],
-)
+dir="$(mktemp -d)"
+tar -C "${dir}" -xzf "${IN_TAR}"
+rsync --recursive --copy-links --no-perms --chmod=u+w --executability --specials \
+    "${PKG_SRC_DIR}/tests" "${dir}/${PKG_NAME}"
+# Reset mtime so that tarball is reproducible.
+TZ=UTC find "${dir}" -exec touch -amt 197001010000 {} \+
+# Ask gzip to not store the timestamp.
+tar -C "${dir}" -cf - "${PKG_NAME}" | gzip --no-name -c > "${OUT_TAR}"
+rm -rf "${dir}"
+

@@ -43,27 +43,6 @@ copy_cmd+=("${EXEC_ROOT}/${PKG_SRC_DIR}/" "${TMP_SRC}")
 "${copy_cmd[@]}"
 TMP_FILES+=("${TMP_SRC}")
 
-# Make a script file for sed that can substitute status vars enclosed in {}, with their values.
-status_substitution_commands="$(mktemp)"
-TMP_FILES+=("${status_substitution_commands}")
-add_substitute_commands() {
-  local status_file="$1"
-  sed -e 's/@/\\@/' -e 's/^/s@{/' -e 's/ /}@/' -e 's/$/@/' "${status_file}" >> "${status_substitution_commands}"
-}
-
-add_metadata() {
-  local IFS=","
-  for status_file in ${STATUS_FILES}; do
-    add_substitute_commands "${status_file}"
-  done
-  for key_value in ${METADATA_MAP:-}; do
-    IFS=":" read -r key value <<< "${key_value}"
-    value=$(echo "${value}" | sed -f "${status_substitution_commands}")
-    printf "%s: %s\n" "${key}" "${value}" >> "${TMP_SRC}/DESCRIPTION"
-  done
-}
-add_metadata
-
 # Hack: copy the .so files inside the package source so that they are installed
 # (in bazel's sandbox as well as on user's system) along with package libs, and
 # use relative rpath (Linux) or change the install name to use @loader_path

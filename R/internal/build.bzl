@@ -285,10 +285,14 @@ def _stamp_description(ctx, in_tar, out_tar, pkg_name):
         return
 
     # Variables from the volatile status file can not have the prefix STABLE_
-    # because those get routed to the stable status file.
+    # because those get routed to the stable status file. And there are two
+    # special variables that also get routed to the stable status file.
     include_volatile_status_file = False
     for value in ctx.attr.metadata.values():
-        if value.count("{") != value.count("{STABLE_"):
+        stable_vars_count = (value.count("{STABLE_") +
+                             value.count("{BUILD_USER}") +
+                             value.count("{BUILD_HOST}"))
+        if value.count("{") != stable_vars_count:
             include_volatile_status_file = True
             break
 

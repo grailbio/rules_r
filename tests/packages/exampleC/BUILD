@@ -73,10 +73,13 @@ cc_library(
         "src/lib/rcpp.cc",
     ],
     hdrs = ["src/lib/rcpp.h"],
+    # NOTE: @platforms//os:... targets work in select statement from bazel 4.0.0+.
     copts = select({
+        # NOTE: /Library include paths work in macOS from bazel 4.0.0+.
         "@platforms//os:macos": ["-isystem /Library/Frameworks/R.framework/Headers"],
-        # symlinked from /usr/share/R/include to work with default cxx_builtin_include_directories
-        "@platforms//os:linux": ["-isystem /usr/include/R"],
+        # Relies on the following in the environment.
+        # CPLUS_INCLUDE_PATH=/usr/share/R/include
+        "@platforms//os:linux": ["-isystem /usr/share/R/include"],
     }) + ["-Wno-unused-variable"],
     strip_include_prefix = "src",
     deps = ["@R_Rcpp//:Rcpp.cc"],

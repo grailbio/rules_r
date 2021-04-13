@@ -1,2 +1,4 @@
 bazel-*
 *.bak
+tests/*.pem
+tests/auth.bazelrc

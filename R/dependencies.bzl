@@ -36,6 +36,7 @@ load(
 r_coverage_dependencies = _r_coverage_dependencies
 
 def r_rules_dependencies():
+    # Keep in sync with README.md and tests.yml.
     _is_at_least("3.5.0", native.bazel_version)
 
     # TODO: Use bazel-skylib directly instead of replicating functionality when

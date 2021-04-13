@@ -31,7 +31,7 @@ readonly second="${tmpdir}/second"
 run_bazel() {
   base="$1"
   startup_flags=("--nohome_rc" "--output_base=${base}")
-  "${bazel}" "${startup_flags[@]}" build "--remote_cache=" "--disk_cache=" //packages/exampleC:all
+  "${bazel}" "${startup_flags[@]}" build "${bazel_build_opts[@]}" "--remote_cache=" "--disk_cache=" //packages/exampleC:all
   "${bazel}" "${startup_flags[@]}" info bazel-bin
 }
 first_output="$(run_bazel "${first}")"

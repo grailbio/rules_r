@@ -15,3 +15,10 @@
 
 echo "VAR foo"
 echo "STABLE_VAR bar"
+
+# Replace volatile status variables with constants so that changes to volatile
+# status file do not affect remote cache.
+# https://github.com/bazelbuild/bazel/issues/10075
+echo "BUILD_USER foo"
+echo "BUILD_HOST foo"
+echo "BUILD_TIMESTAMP foo"

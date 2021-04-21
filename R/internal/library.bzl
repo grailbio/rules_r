@@ -61,7 +61,6 @@ r_library = rule(
     attrs = {
         "pkgs": attr.label_list(
             providers = [RPackage],
-            mandatory = True,
             doc = "Package (and dependencies) to install",
         ),
         "library_path": attr.string(

@@ -16,7 +16,7 @@ load(
     "@com_grail_rules_r//internal:shell.bzl",
     _sh_quote = "sh_quote",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RPackage")
+load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
 def package_dir(ctx):
     # Relative path to target directory.
@@ -62,6 +62,22 @@ def build_path_export(executables):
     else:
         # This is required because bazel does not export the variable.
         return "export PATH"
+
+def flatten_pkg_deps_list(pkg_deps):
+    # Returns a ilst of all package dependencies captured in this
+    # list of different providers.
+
+    flattened = []
+    for dep in pkg_deps:
+        if RPackage in dep:
+            flattened.append(dep)
+        elif RLibrary in dep:
+            flattened.extend(dep[RLibrary].pkgs)
+        elif RBinary in dep:
+            flattened.extend(dep[RBinary].pkg_deps)
+        else:
+            fail("Unknown dependency: %s" % str(dep))
+    return flattened
 
 def library_deps(target_deps):
     # Returns information about all dependencies of this package.

@@ -21,6 +21,7 @@ load(
     _dict_to_r_vec = "dict_to_r_vec",
     _env_vars = "env_vars",
     _executables = "executables",
+    _flatten_pkg_deps_list = "flatten_pkg_deps_list",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
     _runtime_path_export = "runtime_path_export",
@@ -58,17 +59,7 @@ def _r_binary_impl(ctx):
         srcs = [src]
         ignore_execute_permissions = False
 
-    pkg_deps = []
-    for dep in ctx.attr.deps:
-        if RPackage in dep:
-            pkg_deps.append(dep)
-        elif RLibrary in dep:
-            pkg_deps.extend(dep[RLibrary].pkgs)
-        elif RBinary in dep:
-            pkg_deps.extend(dep[RBinary].pkg_deps)
-        else:
-            fail("Unknown dependency for %s: %s" % (str(ctx.label), str(dep)))
-
+    pkg_deps = _flatten_pkg_deps_list(ctx.attr.deps)
     library_deps = _library_deps(pkg_deps)
 
     srcs = depset(

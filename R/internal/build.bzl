@@ -21,12 +21,13 @@ load(
     _build_path_export = "build_path_export",
     _env_vars = "env_vars",
     _executables = "executables",
+    _flatten_pkg_deps_list = "flatten_pkg_deps_list",
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
     _tests_dir = "tests_dir",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RPackage")
+load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 # From the global R Makeconf.
 _NATIVE_SOURCE_EXTS = [
@@ -266,7 +267,7 @@ def _build_impl(ctx):
                     not external_repo and
                     not "no-instrument" in ctx.attr.tags)
 
-    pkg_deps = list(ctx.attr.deps)
+    pkg_deps = _flatten_pkg_deps_list(ctx.attr.deps)
 
     src_files_sans_tests = []
     test_files = []
@@ -301,7 +302,8 @@ def _build_impl(ctx):
 
     roclets_lib_dirs = []
     if ctx.attr.roclets:
-        roclets_lib_dirs = _library_deps(ctx.attr.roclets_deps).lib_dirs
+        roclets_deps = _flatten_pkg_deps_list(ctx.attr.roclets_deps)
+        roclets_lib_dirs = _library_deps(roclets_deps).lib_dirs
         all_input_files.extend(roclets_lib_dirs)
 
     if ctx.file.config_override:
@@ -420,7 +422,8 @@ def _build_binary_pkg_impl(ctx):
     pkg_name = _package_name(ctx)
     pkg_lib_dir = ctx.actions.declare_directory("lib")
     pkg_bin_archive = ctx.file.src
-    library_deps = _library_deps(ctx.attr.deps)
+    pkg_deps = _flatten_pkg_deps_list(ctx.attr.deps)
+    library_deps = _library_deps(pkg_deps)
     transitive_tools = depset(
         _executables(ctx.attr.tools),
         transitive = [library_deps.transitive_tools],
@@ -459,7 +462,7 @@ def _build_binary_pkg_impl(ctx):
             cc_deps = None,
             external_repo = _external_repo(ctx),
             makevars = None,
-            pkg_deps = ctx.attr.deps,
+            pkg_deps = pkg_deps,
             pkg_gcno_dir = None,
             pkg_lib_dir = pkg_lib_dir,
             pkg_name = pkg_name,
@@ -475,8 +478,11 @@ _COMMON_ATTRS = {
         doc = "Name of the package if different from the target name",
     ),
     "deps": attr.label_list(
-        providers = [RPackage],
-        doc = "R package dependencies of type r_pkg",
+        providers = [
+            [RPackage],
+            [RLibrary],
+        ],
+        doc = "R package dependencies of type r_pkg or r_library",
     ),
     "tools": attr.label_list(
         allow_files = True,
@@ -520,6 +526,10 @@ _PKG_ATTRS.update({
                "check if roxygen2 is available and use `roxygen2::roxygenize`"),
     ),
     "roclets_deps": attr.label_list(
+        providers = [
+            [RPackage],
+            [RLibrary],
+        ],
         doc = "roxygen2 or devtools dependency for running roclets",
     ),
     "makevars": attr.label(

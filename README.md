@@ -317,7 +317,7 @@ with the same R installation.
       <td><code>deps</code></td>
       <td>
         <p><code>List of labels; optional</code></p>
-        <p>R package dependencies of type `r_pkg`.</p>
+        <p>R package dependencies of type `r_pkg` or `r_library`.</p>
       </td>
     </tr>
     <tr>
@@ -509,7 +509,7 @@ in the package, and C/C++ code in the `src` directory of R packages.
       <td><code>suggested_deps</code></td>
       <td>
         <p><code>List of labels; optional</code></p>
-        <p>R package dependencies of type `r_pkg`.</p>
+        <p>R package dependencies of type `r_pkg` or `r_library`.</p>
       </td>
     </tr>
     <tr>
@@ -563,7 +563,7 @@ sandbox.
       <td><code>suggested_deps</code></td>
       <td>
         <p><code>List of labels; optional</code></p>
-        <p>R package dependencies of type `r_pkg`.</p>
+        <p>R package dependencies of type `r_pkg` or `r_library`.</p>
       </td>
     </tr>
     <tr>

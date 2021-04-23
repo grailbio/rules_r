@@ -25,14 +25,18 @@ PKG_SRCS = glob(
     ],
 )
 
-PKG_DEPS = [
-    "//exampleB",
-]
+r_library(
+    name = "deps",
+    pkgs = ["//exampleB"],
+)
 
-PKG_CHECK_DEPS = [
-    "@R_RProtoBuf//:RProtoBuf",
-    "@R_testthat//:testthat",
-]
+r_library(
+    name = "suggested_deps",
+    pkgs = [
+        "@R_RProtoBuf",
+        "@R_testthat",
+    ],
+)
 
 r_pkg(
     name = PKG_NAME,
@@ -40,7 +44,7 @@ r_pkg(
     # Override default to build package vignettes and manuals.
     # Note that we have a custom Makefile to create dummy HTMLs as vignettes.
     build_args = [],
-    deps = PKG_DEPS,
+    deps = [":deps"],
 )
 
 r_library(
@@ -53,12 +57,12 @@ r_unit_test(
     name = "test",
     timeout = "short",
     pkg = PKG_NAME,
-    suggested_deps = PKG_CHECK_DEPS,
+    suggested_deps = [":suggested_deps"],
 )
 
 r_pkg_test(
     name = "check",
     timeout = "short",
     pkg = PKG_NAME,
-    suggested_deps = PKG_CHECK_DEPS,
+    suggested_deps = [":suggested_deps"],
 )

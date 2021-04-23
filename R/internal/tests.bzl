@@ -20,27 +20,27 @@ load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _env_vars = "env_vars",
     _executables = "executables",
+    _flatten_pkg_deps_list = "flatten_pkg_deps_list",
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
     _runtime_path_export = "runtime_path_export",
     _tests_dir = "tests_dir",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RPackage")
+load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 def _test_impl(ctx):
     info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
 
-    pkg_deps = list(ctx.attr.suggested_deps)
+    pkg = ctx.attr.pkg
+    pkg_deps = _flatten_pkg_deps_list(ctx.attr.suggested_deps)
+    pkg_deps.append(pkg)
 
     collect_coverage = ctx.configuration.coverage_enabled
     coverage_files = []
     if collect_coverage:
         coverage_files.append(ctx.file._collect_coverage_R)
         pkg_deps.extend(ctx.attr._coverage_deps)
-
-    pkg = ctx.attr.pkg
-    pkg_deps.append(pkg)
 
     library_deps = _library_deps(pkg_deps)
 
@@ -105,8 +105,11 @@ r_unit_test = rule(
             doc = "R package (of type r_pkg) to test",
         ),
         "suggested_deps": attr.label_list(
-            providers = [RPackage],
-            doc = "R package dependencies of type r_pkg",
+            providers = [
+                [RPackage],
+                [RLibrary],
+            ],
+            doc = "R package dependencies of type r_pkg or r_library",
         ),
         "env_vars": attr.string_dict(
             doc = "Extra environment variables to define before running the test",
@@ -157,7 +160,7 @@ def _check_impl(ctx):
     cc_deps = ctx.attr.pkg[RPackage].cc_deps
     makevars = ctx.attr.pkg[RPackage].makevars
 
-    library_deps = _library_deps(ctx.attr.suggested_deps + pkg_deps)
+    library_deps = _library_deps(_flatten_pkg_deps_list(ctx.attr.suggested_deps) + pkg_deps)
     tools = depset(
         _executables(ctx.attr.tools + info.tools),
         transitive = [build_tools],
@@ -200,8 +203,11 @@ r_pkg_test = rule(
             doc = "R package (of type r_pkg) to test",
         ),
         "suggested_deps": attr.label_list(
-            providers = [RPackage],
-            doc = "R package dependencies of type r_pkg",
+            providers = [
+                [RPackage],
+                [RLibrary],
+            ],
+            doc = "R package dependencies of type r_pkg or r_library",
         ),
         "check_args": attr.string_list(
             default = [

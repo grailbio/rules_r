@@ -26,15 +26,19 @@ PKG_SRCS = glob(
     ],
 )
 
-PKG_DEPS = [
-    "//packages/exampleB",
-]
+r_library(
+    name = "deps",
+    pkgs = ["//packages/exampleB"],
+)
 
-PKG_CHECK_DEPS = [
-    "@R_RProtoBuf",
-    "@R_testthat",
-    "@workspaceroot",
-]
+r_library(
+    name = "suggested_deps",
+    pkgs = [
+        "@R_RProtoBuf",
+        "@R_testthat",
+        "@workspaceroot",
+    ],
+)
 
 r_pkg(
     name = PKG_NAME,
@@ -43,7 +47,7 @@ r_pkg(
     # Note that we have a custom Makefile to create dummy HTMLs as vignettes.
     build_args = [],
     cc_deps = [":cc_lib"],
-    deps = PKG_DEPS,
+    deps = [":deps"],
 )
 
 r_library(
@@ -56,14 +60,14 @@ r_unit_test(
     name = "test",
     timeout = "short",
     pkg = PKG_NAME,
-    suggested_deps = PKG_CHECK_DEPS,
+    suggested_deps = [":suggested_deps"],
 )
 
 r_pkg_test(
     name = "check",
     timeout = "short",
     pkg = PKG_NAME,
-    suggested_deps = PKG_CHECK_DEPS,
+    suggested_deps = [":suggested_deps"],
 )
 
 cc_library(

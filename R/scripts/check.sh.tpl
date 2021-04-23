@@ -91,7 +91,7 @@ TMP_HOME="/tmp/bazel/R/home"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 
-if [[ "$(basename {pkg_src_archive})" != "{pkg_name}.tar.gz" ]]; then
+if [[ "{pkg_src_archive}" != "{pkg_name}.tar.gz" ]]; then
   ln -s "{pkg_src_archive}" "{pkg_name}.tar.gz"
 fi
 

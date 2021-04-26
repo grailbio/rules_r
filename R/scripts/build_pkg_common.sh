@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Copyright 2018 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -133,6 +134,28 @@ if [[ "${R_MAKEVARS_USER:-}" ]]; then
   TMP_FILES+=("${tmp_mkvars}")
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
   export R_MAKEVARS_USER="${tmp_mkvars}"
+fi
+
+# Hack: set flags for the .so files that have been provided by the user through
+# cc_deps. When we build the package source archive, the files are copied to
+# inst/libs. When we are building the package binary archive, the files should
+# already be in inst/libs (copied in the previous step).
+# See corresponding logic to copy the files in build_pkg_src.sh.
+if [[ "${C_SO_FILES}" ]]; then
+  C_SO_LD_FLAGS=""
+  for so_file in ${C_SO_FILES}; do
+    eval so_file="${so_file}" # Use eval to remove outermost quotes.
+    so_file_name="$(basename "${so_file}")"
+    if [[ "$(uname)" == "Darwin" ]]; then
+      C_SO_LD_FLAGS+="../inst/libs/${so_file_name} "
+    elif [[ "$(uname)" == "Linux" ]]; then
+      C_SO_LD_FLAGS+="-L../inst/libs -l:${so_file_name} "
+    fi
+  done
+  if [[ "$(uname)" == "Linux" ]]; then
+    #shellcheck disable=SC2016
+    C_SO_LD_FLAGS+="-Wl,-rpath,"\''$$ORIGIN'\'" "
+  fi
 fi
 
 # Get any flags from cc_deps for this package and append to site Makevars file.

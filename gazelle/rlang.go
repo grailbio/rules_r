@@ -20,6 +20,7 @@ import (
 	"log"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -203,6 +204,7 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 
 	// Package source files.
 	// Source file lists that are excluded from package builds and installs.
+	// See https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs
 	var ignoreFileLists []string
 	if _, ok := files[buildIgnoreFname]; ok {
 		ignoreFileLists = append(ignoreFileLists, path.Join(args.Dir, buildIgnoreFname))
@@ -214,7 +216,22 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if err != nil {
 		log.Print(err)
 	}
+	excludePatterns = append(excludePatterns, defaultExcludePatterns...)
+	// Ignore any source or binary archives for the package.
+	if tarExp, err := regexp.Compile("^" + pkgName + "_[0-9.-]+\\.(tar\\.gz|tar|tar\\.bz2|tar\\.xz|tgz|zip)$"); err != nil {
+		log.Print(err)
+	} else {
+		excludePatterns = append(excludePatterns, tarExp)
+	}
+
 	shouldExclude := func(file string) bool {
+		// Always retain the original ignore files.
+		for _, ignoreF := range ignoreFileLists {
+			if ignoreF == file {
+				return false
+			}
+		}
+		// Match with the exclude patterns.
 		for _, pattern := range excludePatterns {
 			if pattern.MatchString(file) {
 				return true
@@ -388,4 +405,22 @@ func pkgName(r *rule.Rule, f *rule.File) string {
 	}
 	log.Printf("%s: unable to obtain R package name", f.Path)
 	return ""
+}
+
+// See get_exclude_patterns() in src/library/tools/R/build.R.
+var defaultExcludePatterns = []*regexp.Regexp{
+	regexp.MustCompile("(^|/)(CVS|\\.svn|\\.arch-ids|\\.bzr|\\.git|\\.hg|_darcs|\\.metadata)(/|$)"),
+	regexp.MustCompile("(^|/)\\.DS_Store$"),
+	regexp.MustCompile("^\\.(RData|Rhistory)$"),
+	regexp.MustCompile("~$"),
+	regexp.MustCompile("\\.bak$"),
+	regexp.MustCompile("\\.swp$"),
+	regexp.MustCompile("(^|/)\\.#[^/]*$"),
+	regexp.MustCompile("(^|/)#[^/]*#$"),
+	regexp.MustCompile("\\.swp$"),
+	regexp.MustCompile("^config\\.(cache|log|status)$"),
+	regexp.MustCompile("(^|/)autom4te\\.cache$"),
+	regexp.MustCompile("^src/.*\\.d$"),
+	regexp.MustCompile("^src/Makedeps$"),
+	regexp.MustCompile("^inst/doc/Rplots\\.(ps|pdf)$"),
 }

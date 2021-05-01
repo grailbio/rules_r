@@ -121,7 +121,7 @@ func readExcludePatterns(paths []string) ([]*regexp.Regexp, error) {
 			if pat == "" {
 				continue
 			}
-			r, err := regexp.Compile(pat)
+			r, err := regexp.Compile(`(?i)` + pat)
 			if err != nil {
 				return nil, fmt.Errorf("in %q, can not compile regular expression %q", path, pat)
 			}

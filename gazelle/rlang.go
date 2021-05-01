@@ -98,6 +98,13 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	}
 	pkgName := strings.TrimSpace(fields["Package"])
 
+	var hasTestsDir bool
+	for _, d := range args.Subdirs {
+		if d == "tests" {
+			hasTestsDir = true
+		}
+	}
+
 	var pkgRule, depsRule, suggestedDepsRule, libRule *rule.Rule
 	var testRules, checkRules []*rule.Rule
 	var labelName string
@@ -123,7 +130,7 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 				depsRule = rule.NewRule("r_library", "deps")
 			} else if r.Name() == "suggested_deps" {
 				suggestedDepsRule = rule.NewRule("r_library", "suggested_deps")
-			} else if r.Kind() == "r_unit_test" {
+			} else if r.Kind() == "r_unit_test" && hasTestsDir {
 				testRules = append(testRules, rule.NewRule("r_unit_test", r.Name()))
 			} else if r.Kind() == "r_pkg_test" {
 				checkRules = append(checkRules, rule.NewRule("r_pkg_test", r.Name()))
@@ -155,7 +162,7 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 		libRule = rule.NewRule("r_library", "library")
 		libRule.SetAttr("tags", []string{"manual"})
 	}
-	if len(testRules) == 0 {
+	if len(testRules) == 0 && hasTestsDir {
 		r := rule.NewRule("r_unit_test", "test")
 		testRules = []*rule.Rule{r}
 	}

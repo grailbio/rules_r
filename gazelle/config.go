@@ -73,20 +73,20 @@ func (rLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 		fs.StringVar(&rc.externalDepPrefix,
 			"r_external_dep_prefix", "R_", "Prefix to append to repo names of external packages.")
 		fs.BoolVar(&rc.addTestRules,
-			"r_add_test_rules", true, "Whether to add test rules for this package.")
+			"r_add_test_rules", true, "Whether to add r_unit_test and r_pkg_test rules.")
 		fs.Var(&rc.installedPkgs,
-			"r_installed_pkgs", "R packages that are to be assumed installed on the build machine.")
+			"r_installed_pkgs", "R packages that are to be assumed installed on the build machine (comma-separated).")
 		fs.BoolVar(&rc.srcsUseGlobs,
 			"r_srcs_use_globs", false, "Whether to use glob expressions for the srcs attribute.")
 		fs.Var(&rc.roclets,
-			"r_roclets", "The roclets to run for building the source archive.")
+			"r_roclets", "The roclets to run for building the source archive (comma-separated).")
 		fs.Var(&rc.rocletsDeps,
 			"r_roclets_deps", "Additional dependencies for running roclets (comma-separated).")
 		fs.BoolVar(&rc.rocletsIncludePkgDeps,
 			"r_roclets_include_pkg_deps", true, "Whether to also include pkg deps when running roclets.")
 		fallthrough
 	case cmd == "fix":
-		fs.Var(&rc.deleteAsgnmts, "r_delete_assignments", "Delete these variable assignments in the BUILD files.")
+		fs.Var(&rc.deleteAsgnmts, "r_delete_assignments", "Delete these variable assignments in the BUILD files (comma-separated).")
 	}
 	c.Exts[rName] = rc
 }

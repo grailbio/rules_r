@@ -71,15 +71,8 @@ load("@com_grail_rules_r//R:defs.bzl",
      "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
 ```
 
-There are also convenience macros available which create multiple implicit
-targets:
-```python
-load("@com_grail_rules_r//R:defs.bzl", "r_package")
-```
-and
-```python
-load("@com_grail_rules_r//R:defs.bzl", "r_package_with_test")
-```
+Advanced users can also set up [Gazelle][gazelle] to maintain the BUILD files
+for the R packages in their repo automatically.
 
 <a name="configuration"></a>
 ## Configuration
@@ -1068,6 +1061,7 @@ bazel sync --configure
 
 
 [r]: https://cran.r-project.org
+[gazelle]: gazelle
 [exampleA]: tests/exampleA/BUILD
 [exampleB]: tests/exampleB/BUILD
 [exampleC]: tests/exampleC/BUILD

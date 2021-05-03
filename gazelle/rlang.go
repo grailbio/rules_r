@@ -18,6 +18,7 @@ package razel
 
 import (
 	"log"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -32,7 +33,11 @@ import (
 const (
 	descFname        = "DESCRIPTION"
 	buildIgnoreFname = ".Rbuildignore"
-	instIgnoreFname  = ".Rinstignore"
+)
+
+var (
+	namespaceExpr = regexp.MustCompile("^NAMESPACE$")
+	rdExpr        = regexp.MustCompile("^man$")
 )
 
 type rLang struct{}
@@ -212,64 +217,16 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	// Package source files.
 	// Source file lists that are excluded from package builds and installs.
 	// See https://cran.r-project.org/doc/manuals/R-exts.html#Building-package-tarballs
-	var ignoreFileLists []string
-	if _, ok := files[buildIgnoreFname]; ok {
-		ignoreFileLists = append(ignoreFileLists, path.Join(args.Dir, buildIgnoreFname))
-	}
-	if _, ok := files[instIgnoreFname]; ok {
-		ignoreFileLists = append(ignoreFileLists, path.Join(args.Dir, instIgnoreFname))
-	}
-	excludePatterns, err := readExcludePatterns(ignoreFileLists)
-	if err != nil {
-		log.Print(err)
-	}
-	excludePatterns = append(excludePatterns, defaultExcludePatterns...)
-	// Ignore any source or binary archives for the package.
-	if tarExp, err := regexp.Compile("^" + pkgName + "_[0-9.-]+\\.(tar\\.gz|tar|tar\\.bz2|tar\\.xz|tgz|zip)$"); err != nil {
-		log.Print(err)
-	} else {
-		excludePatterns = append(excludePatterns, tarExp)
-	}
-
-	shouldExclude := func(file string) bool {
-		// Always retain the original ignore files.
-		for _, ignoreF := range ignoreFileLists {
-			if ignoreF == file {
-				return false
-			}
-		}
-		// Match with the exclude patterns.
-		for _, pattern := range excludePatterns {
-			if pattern.MatchString(file) {
-				return true
-			}
-		}
-		return false
-	}
-	allFiles, err := listFiles(args.Dir)
-	if err != nil {
-		log.Printf("could not list files in %q: %v", args.Dir, err)
-		return res
-	}
-	var srcFiles, excludeGlobs []string
-	for _, file := range allFiles {
-		if args.Config.IsValidBuildFileName(file) {
-			excludeGlobs = append(excludeGlobs, file)
-			continue
-		}
-		if _, ok := roclets["namespace"]; ok && file == "NAMESPACE" {
-			continue
-		}
-		if _, ok := roclets["rd"]; ok && strings.HasPrefix(file, "man"+string(filepath.Separator)) {
-			continue
-		}
-		if shouldExclude(file) {
-			excludeGlobs = append(excludeGlobs, file)
-			continue
-		}
-		srcFiles = append(srcFiles, file)
-	}
 	if rCfg.srcsUseGlobs {
+		// For globs, we will have to rely on people manually syncing their
+		// .Rbuildignore files with their glob expression, because converting
+		// regular expression to glob is non-trivial.
+		excludeGlobs := []string{}
+		for _, buildFname := range args.Config.ValidBuildFileNames {
+			if _, ok := files[buildFname]; ok {
+				excludeGlobs = append(excludeGlobs, buildFname)
+			}
+		}
 		if _, ok := rCfg.roclets["namespace"]; ok {
 			excludeGlobs = append(excludeGlobs, "NAMESPACE")
 		}
@@ -278,6 +235,15 @@ func (rLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 		}
 		pkgRule.SetAttr("srcs", rule.GlobValue{Patterns: []string{"**"}, Excludes: excludeGlobs})
 	} else {
+		var ignoreFnames []string
+		if _, ok := files[buildIgnoreFname]; ok {
+			ignoreFnames = append(ignoreFnames, buildIgnoreFname)
+		}
+		srcFiles, err := listFiles(args.Dir, pkgName, ignoreFnames, args.Config.ValidBuildFileNames, roclets)
+		if err != nil {
+			log.Printf("could not list files in %q: %v", args.Dir, err)
+			return res
+		}
 		pkgRule.SetAttr("srcs", srcFiles)
 	}
 
@@ -430,4 +396,75 @@ var defaultExcludePatterns = []*regexp.Regexp{
 	regexp.MustCompile("^src/.*\\.d$"),
 	regexp.MustCompile("^src/Makedeps$"),
 	regexp.MustCompile("^inst/doc/Rplots\\.(ps|pdf)$"),
+}
+
+// List all files to be included in the srcs attribute. ignoreFnames are the
+// files to use for reading regular expressions of files to ignore, buildFnames
+// are valid BUILD file names, and roclets are active roclets for this package.
+func listFiles(dirPath, pkgName string, ignoreFnames, buildFnames []string, roclets map[string]struct{}) (
+	srcFiles []string, err error) {
+
+	dirPath = filepath.Clean(dirPath)
+	var excludePatterns []*regexp.Regexp
+	for _, ignoreFname := range ignoreFnames {
+		pats, err := readExcludePatterns(filepath.Join(dirPath, ignoreFname))
+		if err != nil {
+			log.Print(err)
+		}
+		excludePatterns = append(excludePatterns, pats...)
+	}
+	// Ignore any source or binary archives for the package.
+	if tarExp, err := regexp.Compile("^" + pkgName + "_[0-9.-]+\\.(tar\\.gz|tar|tar\\.bz2|tar\\.xz|tgz|zip)$"); err != nil {
+		log.Print(err)
+	} else {
+		excludePatterns = append(excludePatterns, tarExp)
+	}
+	if _, ok := roclets["namespace"]; ok {
+		excludePatterns = append(excludePatterns, namespaceExpr)
+	}
+	if _, ok := roclets["rd"]; ok {
+		excludePatterns = append(excludePatterns, rdExpr)
+	}
+	excludePatterns = append(excludePatterns, defaultExcludePatterns...)
+
+	shouldExclude := func(path string) bool {
+		// Always retain the original ignore file.
+		for _, ignoreFname := range ignoreFnames {
+			if path == ignoreFname {
+				return false
+			}
+		}
+		for _, buildFname := range buildFnames {
+			if path == buildFname {
+				return true
+			}
+		}
+		// Match with the exclude patterns.
+		for _, pattern := range excludePatterns {
+			if pattern.MatchString(path) {
+				return true
+			}
+		}
+		return false
+	}
+	err = filepath.Walk(dirPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.HasPrefix(path, dirPath+string(filepath.Separator)) {
+				path = path[(len(dirPath) + 1):]
+			}
+			if shouldExclude(path) {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !info.IsDir() {
+				srcFiles = append(srcFiles, path)
+			}
+			return nil
+		})
+	return srcFiles, err
 }

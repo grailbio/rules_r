@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -109,24 +108,22 @@ func parseDeps(depsLine string) ([]string, error) {
 	return deps, nil
 }
 
-func readExcludePatterns(paths []string) ([]*regexp.Regexp, error) {
+func readExcludePatterns(path string) ([]*regexp.Regexp, error) {
 	var patterns []*regexp.Regexp
-	for _, path := range paths {
-		pats, err := readLinesFromPath(path)
+	pats, err := readLinesFromPath(path)
+	if err != nil {
+		return nil, err
+	}
+	for _, pat := range pats {
+		pat = strings.TrimSpace(pat)
+		if pat == "" {
+			continue
+		}
+		r, err := regexp.Compile(`(?i)` + pat)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("in %q, can not compile regular expression %q", path, pat)
 		}
-		for _, pat := range pats {
-			pat = strings.TrimSpace(pat)
-			if pat == "" {
-				continue
-			}
-			r, err := regexp.Compile(`(?i)` + pat)
-			if err != nil {
-				return nil, fmt.Errorf("in %q, can not compile regular expression %q", path, pat)
-			}
-			patterns = append(patterns, r)
-		}
+		patterns = append(patterns, r)
 	}
 	return patterns, nil
 }
@@ -151,24 +148,4 @@ func readLines(r io.Reader) ([]string, error) {
 		lines = append(lines, s.Text())
 	}
 	return lines, s.Err()
-}
-
-func listFiles(dirPath string) ([]string, error) {
-	dirPath = filepath.Clean(dirPath)
-	var paths []string
-	err := filepath.Walk(dirPath,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() {
-				return nil
-			}
-			if strings.HasPrefix(path, dirPath+string(filepath.Separator)) {
-				path = path[(len(dirPath) + 1):]
-			}
-			paths = append(paths, path)
-			return nil
-		})
-	return paths, err
 }

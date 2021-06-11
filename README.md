@@ -216,9 +216,9 @@ EOF
 ## Examples
 
 Some examples are available in the tests directory of this repo.
-- See [tests/exampleA][exampleA] for a barebones R package.
-- See [tests/exampleB][exampleB] for a barebones R package that depends on another package.
-- See [tests/exampleC][exampleC] for an R package that depends on external R packages.
+- See [tests/packages/exampleA][exampleA] for a barebones R package.
+- See [tests/packages/exampleB][exampleB] for a barebones R package that depends on another package.
+- See [tests/packages/exampleC][exampleC] for an R package that depends on external R packages.
 
 Also see [Razel scripts][scripts] that provide utility functions to generate `BUILD` files
 and `WORKSPACE` rules.
@@ -1062,9 +1062,6 @@ bazel sync --configure
 
 [r]: https://cran.r-project.org
 [gazelle]: gazelle
-[exampleA]: tests/exampleA/BUILD
-[exampleB]: tests/exampleB/BUILD
-[exampleC]: tests/exampleC/BUILD
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
 [Makevars]: makevars/Makevars.darwin.tpl

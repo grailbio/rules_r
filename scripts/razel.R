@@ -449,7 +449,6 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       pkg_urls <- c()
     }
 
-    pkg_build_file_format <- ifelse(is.na(pkg$build_file), build_file_format, pkg$build_file)
     bzl_repo_name <- paste0(repo_name_prefix, gsub("\\.", "_", pkg$Package))
     c("",
       sprintf("if not native.existing_rule(\"%s\"):", bzl_repo_name)) -> preamble
@@ -461,11 +460,17 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       pkg_type_attr <- character()
     }
 
+    if (!is.na(pkg$build_file)) {
+      build_file <- sprintf('"%s"', pkg$build_file)
+    } else if (!is.na(build_file_format)) {
+      build_file <- sprintf('"%s"', sprintf(build_file_format, pkg$Package))
+    } else {
+      build_file <- "None"
+    }
+
     c(sprintf("%s(", rule_type),
       sprintf('    name = "%s",', bzl_repo_name),
-      ifelse(!is.na(pkg_build_file_format),
-             sprintf('    build_file = "%s",', sprintf(pkg_build_file_format, pkg$Package)),
-             "    build_file = None,"),
+      sprintf('    build_file = %s,', build_file),
       pkg_type_attr,
       ifelse(sha256 && nchar(pkg$sha256) > 0,
              sprintf('    sha256 = "%s",', pkg$sha256),

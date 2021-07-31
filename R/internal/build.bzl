@@ -35,14 +35,17 @@ _NATIVE_SOURCE_EXTS = [
     "c",
     "cc",
     "cpp",
-    "h",
-    "hpp",
     "m",
     "mm",
     "M",
     "f",
     "f95",
     "f90",
+]
+
+_NATIVE_HDR_EXTS = [
+    "h",
+    "hpp",
 ]
 
 # From https://cran.r-project.org/doc/manuals/r-release/R-exts.html#DOCF13.
@@ -506,7 +509,7 @@ def _build_impl(ctx):
         dependency_attributes = ["deps", "cc_deps"],
         # We build instrumented packages with --keep.source, so we don't
         # need the .R files.
-        extensions = _NATIVE_SOURCE_EXTS,
+        extensions = _NATIVE_SOURCE_EXTS + _NATIVE_HDR_EXTS,
         source_attributes = ["srcs"],
     )
 

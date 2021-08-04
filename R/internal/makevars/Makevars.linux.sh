@@ -27,17 +27,17 @@ error() {
   >&2 echo "ERROR: $*"
 }
 
-# Allow user to specify where to find R.
-if ! [[ "${BAZEL_R_HOME:-}" ]]; then
-  BAZEL_R_HOME="$(R RHOME)"
-fi
-
-# Determine if the default compiler is gcc.
+# Determine if the default compiler used by R is gcc.
 is_gcc=0
-cc="$("${BAZEL_R_HOME}/bin/R" CMD config CC)"
-cc_version="$(${cc} --version | head -n1)"
-if [[ "${cc_version}" == "gcc"* ]]; then
-  is_gcc=1
+if command -v R >/dev/null; then
+  cc="$("${BAZEL_R_HOME:-"$(R RHOME)"}/bin/R" CMD config CC)"
+  cc_version="$(${cc} --version | head -n1)"
+  if [[ "${cc_version}" == "gcc"* ]]; then
+    is_gcc=1
+  fi
+else
+  # If R is not installed, do not assume that gcc special behavior is OK.
+  warn "R installation not found; assuming compiler is not gcc"
 fi
 
 cppflags=""

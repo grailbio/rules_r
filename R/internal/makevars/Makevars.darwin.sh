@@ -81,9 +81,11 @@ fi
 GCC_LIB_PATH=""
 if [[ -n "${GFORTRAN}" ]]; then
   GCC_LIB_PATH=${GFORTRAN/%\/bin\/gfortran/}/lib/gcc
-  LIB=$(find -L "${GCC_LIB_PATH}" -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
+  if [[ -d "${GCC_LIB_PATH}" ]]; then
+    LIB=$(find -L "${GCC_LIB_PATH}" -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
+  fi
 
-  if [[ -z ${LIB} ]]; then
+  if [[ -z ${LIB:-} ]]; then
     warn "libgfortran not found"
     # OK to let the rest of the Makevars be created.
   fi

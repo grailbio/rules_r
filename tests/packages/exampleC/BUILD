@@ -79,7 +79,10 @@ cc_library(
     hdrs = ["src/lib/rcpp.h"],
     # NOTE: @platforms//os:... targets work in select statement from bazel 4.0.0+.
     copts = select({
-        # NOTE: /Library include paths work in macOS from bazel 4.0.0+.
+        # NOTE: The include path requirements here are met through setup-bazel.sh.
+        # When using Xcode toolchains, /Library include paths work out of the box from bazel 4.0.0+.
+        # When not using Xcode, relies on the following in the environment.
+        # CPLUS_INCLUDE_PATH=/Library/Frameworks/R.framework/Headers
         "@platforms//os:macos": ["-isystem /Library/Frameworks/R.framework/Headers"],
         # Relies on the following in the environment.
         # CPLUS_INCLUDE_PATH=/usr/share/R/include

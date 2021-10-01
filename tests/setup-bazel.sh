@@ -37,9 +37,12 @@ bazel_build_opts=(
 )
 
 # packages/exampleC:cc_lib needs R headers in the system include directories.
-# For Linux, we can provide the path as an env var.
-# For Darwin, /Library/ is already part of cxx_builtin_include_directories from bazel 4.0.0.
-if [[ "$(uname)" == "Linux" ]]; then
+# For Unix toolchains in general, we can provide the path as an env var.
+# For Xcode toolchains, /Library/ is part of cxx_builtin_include_directories from bazel 4.0.0.
+# https://cs.opensource.google/bazel/bazel/+/master:tools/cpp/osx_cc_configure.bzl;l=43;drc=b4b0c321910bc968736ef48e8140528ea7d323cd
+if [[ "$(uname)" == "Darwin" ]]; then
+  export CPLUS_INCLUDE_PATH=/Library/Frameworks/R.framework/Headers
+elif [[ "$(uname)" == "Linux" ]]; then
   export CPLUS_INCLUDE_PATH=/usr/share/R/include
 fi
 

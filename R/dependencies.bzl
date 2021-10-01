@@ -17,11 +17,11 @@ load(
     _is_at_least = "is_at_least",
 )
 load(
-    "@com_grail_rules_r//R/internal/makevars:darwin.bzl",
+    "@com_grail_rules_r//R/makevars:darwin.bzl",
     _local_darwin_makevars = "local_darwin_makevars",
 )
 load(
-    "@com_grail_rules_r//R/internal/makevars:linux.bzl",
+    "@com_grail_rules_r//R/makevars:linux.bzl",
     _local_linux_makevars = "local_linux_makevars",
 )
 load(

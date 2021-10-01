@@ -28,9 +28,11 @@ error() {
 }
 
 brew=false
-while getopts "b" opt; do
+clang_installed_dir=""
+while getopts "bc:" opt; do
   case "$opt" in
     "b") brew=true;;
+    "c") clang_installed_dir="$OPTARG";;
     "?") error "invalid option: -$OPTARG"; exit 1;;
   esac
 done
@@ -47,17 +49,20 @@ CXX=""
 CPPFLAGS="-isysroot ${sysroot} "
 LDFLAGS="-isysroot ${sysroot} "
 OPENMP_FLAGS=""
-if ${brew} && brew ls --versions llvm > /dev/null 2>/dev/null; then
-  LLVM_PREFIX="$(brew --prefix llvm)"
-  CC="${LLVM_PREFIX}/bin/clang"
-  CXX="${LLVM_PREFIX}/bin/clang++"
-  CPPFLAGS+="-I${LLVM_PREFIX}/include"
-  LDFLAGS+="-L${LLVM_PREFIX}/lib"
+if [[ "${clang_installed_dir}" ]]; then
+  CC="${clang_installed_dir}/clang"
+  CXX="${clang_installed_dir}/clang++"
+elif ${brew} && brew ls --versions llvm > /dev/null 2>/dev/null; then
+  llvm_prefix="$(brew --prefix llvm)"
+  CC="${llvm_prefix}/bin/clang"
+  CXX="${llvm_prefix}/bin/clang++"
+  CPPFLAGS+="-I${llvm_prefix}/include"
+  LDFLAGS+="-L${llvm_prefix}/lib"
   OPENMP_FLAGS+="-fopenmp"
   # Symlink llvm-cov from Homebrew next to the Makevars file so we can
   # reference as an additional tool in the local toolchain later.
-  if [[ -x "${LLVM_PREFIX}/bin/llvm-cov" ]]; then
-    ln -s -f "${LLVM_PREFIX}/bin/llvm-cov" "llvm-cov"
+  if [[ -x "${llvm_prefix}/bin/llvm-cov" ]]; then
+    ln -s -f "${llvm_prefix}/bin/llvm-cov" "llvm-cov"
   fi
 elif command -v clang > /dev/null; then
   CC=$(command -v clang)

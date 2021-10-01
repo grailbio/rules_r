@@ -39,14 +39,14 @@ local_linux_makevars = repository_rule(
     attrs = {
         "src": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/internal/makevars:Makevars.linux.tpl",
+            default = "@com_grail_rules_r//R/makevars:Makevars.linux.tpl",
             doc = "Template Makevars file.",
         ),
         "env": attr.string_dict(
             doc = "Environment variables to provide to processor.",
         ),
         "_processor": attr.label(
-            default = "@com_grail_rules_r//R/internal/makevars:Makevars.linux.sh",
+            default = "@com_grail_rules_r//R/makevars:Makevars.linux.sh",
             doc = ("Processor script to perform template substitution. " +
                    "Takes input file as STDIN and returns the processed " +
                    "file as STDOUT. May perform side actions in the " +

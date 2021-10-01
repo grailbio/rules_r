@@ -18,9 +18,15 @@ load(
 )
 
 def _local_darwin_makevars_impl(rctx):
+    processor_args = []
+    if rctx.attr.check_homebrew_llvm:
+        processor_args.append("-b")
+    if rctx.attr.clang_installed_dir_path:
+        processor_args.append("-c " + rctx.attr.clang_installed_dir_path)
+
     process_script = "exec {processor} {processor_args} < {src} > {out}".format(
         processor = _sh_quote(rctx.path(rctx.attr._processor)),
-        processor_args = "-b" if rctx.attr.check_homebrew_llvm else "",
+        processor_args = " ".join(processor_args),
         src = _sh_quote(rctx.path(rctx.attr.src)),
         out = _sh_quote(rctx.name),
     )
@@ -40,20 +46,25 @@ local_darwin_makevars = repository_rule(
     attrs = {
         "src": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.tpl",
+            default = "@com_grail_rules_r//R/makevars:Makevars.darwin.tpl",
             doc = "Template Makevars file.",
         ),
         "env": attr.string_dict(
             doc = "Environment variables to provide to processor.",
         ),
+        "clang_installed_dir_path": attr.string(
+            default = "",
+            doc = ("Use this path as the directory where clang is installed. " +
+                   "Overrides check_homebrew_llvm if not empty."),
+        ),
         "check_homebrew_llvm": attr.bool(
             default = True,
             doc = ("Use Homebrew LLVM if installed. Can be overridden by " +
                    "setting the environment variable BAZEL_R_HOMEBREW to " +
-                   "true or false."),
+                   "true or false. Also used to check gcc to find gfortran."),
         ),
         "_processor": attr.label(
-            default = "@com_grail_rules_r//R/internal/makevars:Makevars.darwin.sh",
+            default = "@com_grail_rules_r//R/makevars:Makevars.darwin.sh",
             doc = ("Processor script to perform template substitution. " +
                    "Takes input file as STDIN and returns the processed " +
                    "file as STDOUT. May perform side actions in the " +

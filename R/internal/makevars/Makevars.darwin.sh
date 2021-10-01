@@ -27,16 +27,16 @@ error() {
   >&2 echo "ERROR: $*"
 }
 
-BREW=false
+brew=false
 while getopts "b" opt; do
   case "$opt" in
-    "b") BREW=true;;
+    "b") brew=true;;
     "?") error "invalid option: -$OPTARG"; exit 1;;
   esac
 done
 
 # Override the flag value with user-provided env var.
-BREW="${BAZEL_R_HOMEBREW:-"${BREW}"}"
+brew="${BAZEL_R_HOMEBREW:-"${brew}"}"
 
 sysroot="$(xcrun --show-sdk-path)"
 
@@ -47,7 +47,7 @@ CXX=""
 CPPFLAGS="-isysroot ${sysroot} "
 LDFLAGS="-isysroot ${sysroot} "
 OPENMP_FLAGS=""
-if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
+if ${brew} && brew ls --versions llvm > /dev/null 2>/dev/null; then
   LLVM_PREFIX="$(brew --prefix llvm)"
   CC="${LLVM_PREFIX}/bin/clang"
   CXX="${LLVM_PREFIX}/bin/clang++"
@@ -57,7 +57,7 @@ if $BREW && brew ls --versions llvm > /dev/null 2>/dev/null; then
   # Symlink llvm-cov from Homebrew next to the Makevars file so we can
   # reference as an additional tool in the local toolchain later.
   if [[ -x "${LLVM_PREFIX}/bin/llvm-cov" ]]; then
-    ln -s "${LLVM_PREFIX}/bin/llvm-cov" "llvm-cov"
+    ln -s -f "${LLVM_PREFIX}/bin/llvm-cov" "llvm-cov"
   fi
 elif command -v clang > /dev/null; then
   CC=$(command -v clang)
@@ -67,29 +67,17 @@ else
   exit
 fi
 
-GFORTRAN=""
-if $BREW && brew ls --versions gcc > /dev/null 2>/dev/null; then
-  GFORTRAN="$(brew --prefix gcc)/bin/gfortran"
-elif command -v gfortran > /dev/null; then
-  GFORTRAN=$(command -v gfortran)
-else
-  warn "gfortran not found"
-  # OK to let the rest of the Makevars be created.
-fi
-
-# Find the version directory by looking for libgfortran.dylib in subdirectories.
-GCC_LIB_PATH=""
-if [[ -n "${GFORTRAN}" ]]; then
-  GCC_LIB_PATH=${GFORTRAN/%\/bin\/gfortran/}/lib/gcc
-  if [[ -d "${GCC_LIB_PATH}" ]]; then
-    LIB=$(find -L "${GCC_LIB_PATH}" -name 'libgfortran.dylib' -maxdepth 2 | tail -n1)
+# gfortran paths when installed as part of `brew install gcc`
+HOMEBREW_GFORTRAN="# gfortran not found"
+if ${brew} && brew ls --versions gcc > /dev/null 2>/dev/null; then
+  gfortran="$(brew --prefix gcc)/bin/gfortran"
+  gcc_lib_path="$(brew --prefix gcc)/lib/gcc"
+  if [[ -d "${gcc_lib_path}" ]]; then
+    libgfortran_dir=$(find -L "${gcc_lib_path}" -name 'libgfortran.dylib' -maxdepth 2 -exec dirname {} \; | tail -n1)
   fi
-
-  if [[ -z ${LIB:-} ]]; then
-    warn "libgfortran not found"
-    # OK to let the rest of the Makevars be created.
+  if [[ "${libgfortran_dir:-}" ]]; then
+    HOMEBREW_GFORTRAN="F77=${gfortran}\nFC=\${F77}\nFLIBS=-L${libgfortran_dir} -lgfortran -lquadmath -lm"
   fi
-  GCC_LIB_PATH=$(dirname "${LIB}")
 fi
 
 subst=(
@@ -97,8 +85,7 @@ subst=(
 's|@CXX@|'"${CXX}"'|g;'
 's|@CPPFLAGS@|'"${CPPFLAGS}"'|g;'
 's|@LDFLAGS@|'"${LDFLAGS}"'|g;'
-'s|@GFORTRAN@|'"${GFORTRAN}"'|g;'
-'s|@GCC_LIB_PATH@|'"${GCC_LIB_PATH}"'|g;'
+'s|@HOMEBREW_GFORTRAN@|'"${HOMEBREW_GFORTRAN}"'|g;'
 's|@OPENMP_FLAGS@|'"${OPENMP_FLAGS}"'|g;'
 )
 sed -e "${subst[*]}"

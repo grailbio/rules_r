@@ -15,12 +15,8 @@
 # macOS specific overrides
 # See https://cran.r-project.org/doc/manuals/R-admin.html#macOS-packages
 
-# gfortran paths when installed as part of `brew install gcc`
-# If F77 is empty, it is because gfortran was not found.
-# If FLIBS search path is empty, it is because libgfortran was not found.
-F77=@GFORTRAN@
-FC=${F77}
-FLIBS=-L@GCC_LIB_PATH@ -lgfortran -lquadmath -lm
+# Placeholder block for gfortran when installed as part of `brew install gcc`.
+@HOMEBREW_GFORTRAN@
 
 CC = @CC@
 CXX = @CXX@

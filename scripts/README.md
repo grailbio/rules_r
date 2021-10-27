@@ -128,7 +128,7 @@ you want to use this local repo as a functional mirror for macOS and windows.
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.4", "3.5", "3.6", "4.0"))  # Binaries for these R versions.
+options("RVersions" = c("3.6", "4.0", "4.1"))  # Binaries for these R versions.
 
 
 #' Already downloaded source archive packages in the repo.

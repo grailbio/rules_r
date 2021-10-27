@@ -23,7 +23,7 @@
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.4", "3.5", "3.6", "4.0"))  # Binaries for these R versions.
+options("RVersions" = c("3.6", "4.0", "4.1"))  # Binaries for these R versions.
 options("ForceDownload" = FALSE)  # Download packages even if src package already present in repo.
 
 # Factors in unexpected places create problems.

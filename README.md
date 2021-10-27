@@ -79,8 +79,8 @@ for the R packages in their repo automatically.
 
 The following software must be installed on your system:
 
-    1. bazel (v3.5.0 or above)
-    2. R (3.4.3 or above; should be locatable using the `PATH` environment variable)
+    1. bazel (v4.0.0 or above)
+    2. R (3.6.3 or above; should be locatable using the `PATH` environment variable)
 
 **NOTE**: After re-installing or upgrading R, please reset the registered
 toolchain with `bazel sync --configure` to rebuild your packages with the new

@@ -9,13 +9,17 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
-        # Latest version, and min required version as hard-coded in r_rules_dependencies.
-        # TODO: Some of our tests currently require bazel 4.0.0+; reset when not so.
-        # bazel_version: [latest, 3.5.0]
-        bazel_version: [latest]
+        # Latest version of required software, and a minimum version as specified in the README.
+        bazel_version: [latest, 4.0.0] # Also hard-coded in r_rules_dependencies.
+        r_version: [release, 3.6.3] # Also hard-coded in system_state.sh.
     steps:
     - name: Check out repo
       uses: actions/checkout@v2
+
+    - name: Setup R
+      uses: r-lib/actions/setup-r@v1
+      with:
+        r-version: ${{ matrix.r_version }}
 
     - name: Install additional packages
       if: matrix.os == 'ubuntu-latest'

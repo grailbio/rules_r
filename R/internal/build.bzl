@@ -67,20 +67,22 @@ def _package_name(ctx):
         pkg_name = ctx.label.name
     return pkg_name
 
-def _strip_path_prefixes(iterable, p1, p2):
-    # Given an iterable of paths and two path prefixes, removes the prefixes and
-    # filter empty paths.
+def _strip_path_prefixes(iterable, prefixes):
+    # Given an iterable of paths and an iterable of prefixes, removes the
+    # prefixes. Matching stops at the first non-empty prefix match.
 
     res = []
     for s in iterable:
-        if not s or s == p1 or s == p2:
-            res.append(".")
-        elif s.startswith(p1 + "/"):
-            res.append(s[(len(p1) + 1):])
-        elif s.startswith(p2 + "/"):
-            res.append(s[(len(p2) + 1):])
-        else:
-            res.append(s)
+        for p in prefixes:
+            if not p:
+                continue
+            if not s or s == p:
+                s = "."
+                break
+            elif s.startswith(p + "/"):
+                s = s[(len(p) + 1):]
+                break
+        res.append(s)
     return res
 
 def _link_info(dep, root_path):
@@ -133,8 +135,6 @@ def _cc_deps(ctx, instrumented):
     # Returns information for native code compilation.
 
     cc_deps = ctx.attr.cc_deps
-    bin_dir = ctx.bin_dir.path
-    gen_dir = ctx.genfiles_dir.path
 
     # Give absolute paths to R.
     root_path = "_EXEC_ROOT_"
@@ -162,7 +162,8 @@ def _cc_deps(ctx, instrumented):
         c_libs_flags.extend(link_info.c_libs_flags)
         c_libs_flags_short.extend(link_info.c_libs_flags_short)
 
-    hdrs_sets = [d[CcInfo].compilation_context.headers for d in cc_deps]
+    hdrs = depset(transitive = [d[CcInfo].compilation_context.headers for d in cc_deps])
+    hdrs_roots = depset([hdr.root.path for hdr in hdrs.to_list()]).to_list()
     defines = depset(transitive = [d[CcInfo].compilation_context.defines for d in cc_deps]).to_list()
     quote_includes = depset(transitive = [d[CcInfo].compilation_context.quote_includes for d in cc_deps]).to_list()
     system_includes = depset(transitive = [d[CcInfo].compilation_context.system_includes for d in cc_deps]).to_list()
@@ -180,11 +181,11 @@ def _cc_deps(ctx, instrumented):
     for i in includes:
         c_cpp_flags += ["-I " + root_path + i]
 
-    for i in _strip_path_prefixes(quote_includes, bin_dir, gen_dir):
+    for i in _strip_path_prefixes(quote_includes, hdrs_roots):
         c_cpp_flags_short += ["-iquote " + root_path + i]
-    for i in _strip_path_prefixes(system_includes, bin_dir, gen_dir):
+    for i in _strip_path_prefixes(system_includes, hdrs_roots):
         c_cpp_flags_short += ["-isystem " + root_path + i]
-    for i in _strip_path_prefixes(includes, bin_dir, gen_dir):
+    for i in _strip_path_prefixes(includes, hdrs_roots):
         c_cpp_flags_short += ["-I " + root_path + i]
 
     # Note that clang has multiple code coverage implementations. covr can only
@@ -213,7 +214,7 @@ def _cc_deps(ctx, instrumented):
         c_libs_flags = c_libs_flags,
         c_libs_flags_short = c_libs_flags_short,
         c_so_files = depset(c_so_files).to_list(),
-        files = depset(libs, transitive = hdrs_sets).to_list(),
+        files = depset(libs, transitive = [hdrs]).to_list(),
         instrumented_files = instrumented_files,
     )
 
@@ -236,13 +237,12 @@ def _inst_files_copy_map(ctx):
     # Returns a dictionary of destination paths to source paths for copying.
 
     pkg_src_dir = _package_dir(ctx)
-    bin_dir = ctx.bin_dir.path
-    gen_dir = ctx.genfiles_dir.path
 
     copy_map = dict()
     for (t, d) in ctx.attr.inst_files.items():
         file_paths = [f.path for f in t.files.to_list()]
-        stripped_paths = _strip_path_prefixes(file_paths, bin_dir, gen_dir)
+        file_roots = [f.root.path for f in t.files.to_list()]
+        stripped_paths = _strip_path_prefixes(file_paths, file_roots)
         copy_map.update({
             "%s/inst/%s/%s" % (pkg_src_dir, d, stripped_path): path
             for stripped_path, path in zip(stripped_paths, file_paths)

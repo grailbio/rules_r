@@ -9,9 +9,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
-        # Latest version of required software, and a minimum version as specified in the README.
+        # Latest version of required software, and a minimum version as
+        # specified in the README.
         bazel_version: [latest, 4.0.0] # Also hard-coded in r_rules_dependencies.
-        r_version: [release, 3.6.3] # Also hard-coded in system_state.sh.
+        # Our minimum required version is 3.6.3 but there is some issue with
+        # installation on the runners using the below action provider, so let's
+        # use 4.0.5 instead.
+        r_version: [release, 4.0.5] # Also hard-coded in system_state.sh.
     steps:
     - name: Check out repo
       uses: actions/checkout@v2

@@ -51,6 +51,8 @@ The following assumes that you are familiar with how to use Bazel in general.
 To begin, you can add the following or equivalent to your WORKSPACE file:
 
 ```python
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 # Change master to the git tag you want.
 http_archive(
     name = "com_grail_rules_r",

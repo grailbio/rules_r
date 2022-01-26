@@ -61,7 +61,10 @@ isValidBinRepo <- function(repo, r_version) {
   }
 
   bioc_version <- gsub("(.*packages/|/bioc)", "", repo)
-  return((bioc_version == "3.11" && r_version == "4.0") ||
+  return((bioc_version == "3.14" && r_version == "4.1") ||
+         (bioc_version == "3.13" && r_version == "4.1") ||
+         (bioc_version == "3.12" && r_version == "4.0") ||
+         (bioc_version == "3.11" && r_version == "4.0") ||
          (bioc_version == "3.10" && r_version == "3.6") ||
          (bioc_version == "3.9" && r_version == "3.6") ||
          (bioc_version == "3.8" && r_version == "3.5") ||

@@ -46,10 +46,10 @@ def srcs_dir(pkg_dir):
 def env_vars(env_vars):
     # Array of commands to export environment variables.
 
-    return ["export %s=%s" % (name, _sh_quote(value)) for name, value in env_vars.items()]
+    return ["export %s=%s" % (name, _sh_quote(value)) for name, value in sorted(env_vars.items())]
 
 def executables(labels):
-    # depset of executable files for this list of labels.
+    # list of executable files for this list of labels.
 
     return [label.files_to_run.executable for label in labels]
 
@@ -57,7 +57,7 @@ def runtime_path_export(executables):
     # ":" separated path to directories of desired tools, for use in executables.
 
     exe_dirs = ["$(cd $(dirname %s); echo \"${PWD}\")" %
-                exe.short_path for exe in executables.to_list()]
+                exe.short_path for exe in sorted(executables.to_list())]
     if exe_dirs:
         return "export PATH=\"" + ":".join(exe_dirs + ["${PATH}"]) + "\""
     else:
@@ -67,7 +67,7 @@ def build_path_export(executables):
     # ":" separated path to directories of desired tools, for use in build actions.
 
     exe_dirs = ["$(cd $(dirname %s); echo \"${PWD}\")" %
-                exe.path for exe in executables.to_list()]
+                exe.path for exe in sorted(executables.to_list())]
     if exe_dirs:
         return "export PATH=\"" + ":".join(exe_dirs + ["${PATH}"]) + "\""
     else:
@@ -113,7 +113,8 @@ def library_deps(target_deps):
             gcno_files.extend(pkg_dep.pkg_gcno_files)
 
     return struct(
-        lib_dirs = lib_dirs,
+        # A reproducible iteration order creates reproducible env vars or args listing the lib_dirs.
+        lib_dirs = sorted(lib_dirs),
         transitive_pkg_deps = transitive_pkg_deps,
         transitive_tools = transitive_tools,
         gcno_files = gcno_files,

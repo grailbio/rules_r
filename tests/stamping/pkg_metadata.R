@@ -23,7 +23,7 @@ assertEqual <- function(got, want) {
 }
 
 assertEqual(descA[["VAR"]], "foo")
-assertEqual(descA[["STABLE_VAR"]], "{STABLE_VAR}") # stable status file is not available.
+assertEqual(descA[["STABLE_VAR"]], "STABLE_VAR") # not enclosed in {}.
 
 assertEqual(descB[["VAR"]], "foo")
 assertEqual(descB[["STABLE_VAR"]], "bar")

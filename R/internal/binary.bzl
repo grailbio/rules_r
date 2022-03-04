@@ -95,15 +95,18 @@ def _r_binary_impl(ctx):
         is_executable = True,
     )
 
-    layered_lib_files = _layer_library_deps(ctx, library_deps)
-    stamp_files = [ctx.version_file]
-    if ctx.attr.stamp:
-        stamp_files.append(ctx.info_file)
     runfiles = ctx.runfiles(
-        files = library_deps.lib_dirs + stamp_files,
+        files = library_deps.lib_dirs,
         transitive_files = depset(transitive = [srcs, exe, tools]),
-        collect_data = True,
     )
+
+    deps = list(ctx.attr.deps)
+    deps.extend(ctx.attr.data)
+    for data_dep in deps:
+        runfiles = runfiles.merge(ctx.runfiles(transitive_files = data_dep[DefaultInfo].files))
+        runfiles = runfiles.merge(data_dep[DefaultInfo].default_runfiles)
+
+    layered_lib_files = _layer_library_deps(ctx, library_deps)
     return [
         DefaultInfo(runfiles = runfiles),
         RBinary(
@@ -153,11 +156,6 @@ _R_BINARY_ATTRS = {
     ),
     "script_args": attr.string_list(
         doc = "A list of arguments to pass to the src script",
-    ),
-    "stamp": attr.bool(
-        default = False,
-        doc = ("Include the stable status file in the runfiles of the binary. " +
-               "The volatile status file is always included."),
     ),
     "_binary_sh_tpl": attr.label(
         allow_single_file = True,

@@ -19,6 +19,7 @@ load(
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _build_path_export = "build_path_export",
+    _count_group_matches = "count_group_matches",
     _env_vars = "env_vars",
     _executables = "executables",
     _flatten_pkg_deps_list = "flatten_pkg_deps_list",
@@ -277,7 +278,7 @@ fi
         progress_message = "Symlinking .so from R package %s" % pkg_name,
     )
 
-def _stamp_description(ctx, in_tar, out_tar, pkg_name):
+def _stamp_description(ctx, in_tar, out_tar, pkg_name, toolchain_stamp_flag):
     # Makes an action to stamp the DESCRIPTION file in the given archive.
 
     # This stamp step is separate because bazel remote cache treats volatile
@@ -288,21 +289,29 @@ def _stamp_description(ctx, in_tar, out_tar, pkg_name):
         ctx.actions.symlink(output = out_tar, target_file = in_tar)
         return
 
-    # Variables from the volatile status file can not have the prefix STABLE_
-    # because those get routed to the stable status file. And there are two
-    # special variables that also get routed to the stable status file.
-    include_volatile_status_file = False
-    for value in ctx.attr.metadata.values():
-        stable_vars_count = (value.count("{STABLE_") +
-                             value.count("{BUILD_USER}") +
-                             value.count("{BUILD_HOST}"))
-        if value.count("{") != stable_vars_count:
-            include_volatile_status_file = True
-            break
-
-    stamp_files = [ctx.version_file] if include_volatile_status_file else []
-    if ctx.attr.stamp:
-        stamp_files.append(ctx.info_file)
+    stamp_files = []
+    if (ctx.attr.stamp == -1 and toolchain_stamp_flag) or (ctx.attr.stamp == 1):
+        # Variables from the volatile status file can not have the prefix STABLE_
+        # because those get routed to the stable status file. And there are three
+        # special variables that also get routed to the stable status file.
+        include_volatile_status_file = False
+        include_stable_status_file = False
+        for v in ctx.attr.metadata.values():
+            stable_vars_count = (_count_group_matches(v, "{STABLE_", "}") +
+                                 v.count("{BUILD_EMBED_LABEL}") +
+                                 v.count("{BUILD_USER}") +
+                                 v.count("{BUILD_HOST}"))
+            volatile_vars_count = _count_group_matches(v, "{", "}") - stable_vars_count
+            if volatile_vars_count < 0:
+                fail("could not parse metadata to deduce volatile and stable status vars")
+            if stable_vars_count > 0:
+                include_stable_status_file = True
+            if volatile_vars_count > 0:
+                include_volatile_status_file = True
+        if include_volatile_status_file:
+            stamp_files.append(ctx.version_file)
+        if include_stable_status_file:
+            stamp_files.append(ctx.info_file)
 
     env = {
         "PKG_NAME": pkg_name,
@@ -454,7 +463,7 @@ def _build_impl(ctx):
         use_default_shell_env = False,
         progress_message = "Building R (source) package %s" % pkg_name,
     )
-    _stamp_description(ctx, pkg_src_archive_stage1, pkg_src_archive_stage2, pkg_name)
+    _stamp_description(ctx, pkg_src_archive_stage1, pkg_src_archive_stage2, pkg_name, info.stamp)
 
     bin_input_files = list(common_input_files)
     bin_input_files.extend(instrument_files)
@@ -676,13 +685,13 @@ _PKG_ATTRS.update({
     ),
     "metadata": attr.string_dict(
         doc = ("Metadata key-value pairs to add to the DESCRIPTION file before building. " +
-               "Build status variables can be substituted when enclosed within `{}`"),
+               "When text is enclosed within `{}`, bazel volatile and stable status " +
+               "files will be used to substitute the text. Inclusion of these files in " +
+               "the build has consequences on local and remote caching. Also see `stamp`."),
     ),
-    "stamp": attr.bool(
-        default = False,
-        doc = ("Include the stable status file when substituting values in the metadata. " +
-               "The volatile status file is always included if there is at least one " +
-               "occurrence of `{` that is not followed by `STABLE_`."),
+    "stamp": attr.int(
+        default = -1,
+        doc = "Same behavior as the stamp attribute in cc_binary rule.",
     ),
     "_build_pkg_common_sh": attr.label(
         allow_single_file = True,

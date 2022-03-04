@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors.
+# Copyright 2022 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
+load(":defs.bzl", "bazel_status")
 
-r_pkg(
-    name = "exampleA",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            "BUILD",
-        ],
-    ),
-    # Package metadata test in //stamping:pkg_metadata
-    metadata = {
-        "VAR": "{VAR}",
-        "STABLE_VAR": "STABLE_VAR",
-    },
-    visibility = [
-        "//packages/exampleB:__pkg__",
-        "//stamping:__pkg__",
-    ],
+package(default_visibility = ["//visibility:public"])
+
+bazel_status(
+    name = "volatile",
+    include_volatile = True,
+)
+
+bazel_status(
+    name = "stable",
+    include_stable = True,
 )

@@ -1,4 +1,4 @@
-# Copyright 2018 The Bazel Authors.
+# Copyright 2022 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_pkg")
+def _bazel_status_impl(ctx):
+    files = []
+    if ctx.attr.include_volatile:
+        files.append(ctx.version_file)
+    if ctx.attr.include_stable:
+        files.append(ctx.info_file)
+    return DefaultInfo(runfiles = ctx.runfiles(files = files))
 
-r_pkg(
-    name = "exampleA",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            "BUILD",
-        ],
-    ),
-    # Package metadata test in //stamping:pkg_metadata
-    metadata = {
-        "VAR": "{VAR}",
-        "STABLE_VAR": "STABLE_VAR",
+bazel_status = rule(
+    attrs = {
+        "include_stable": attr.bool(),
+        "include_volatile": attr.bool(),
     },
-    visibility = [
-        "//packages/exampleB:__pkg__",
-        "//stamping:__pkg__",
-    ],
+    doc = "Provide bazel status files as a runfiles dep.",
+    implementation = _bazel_status_impl,
 )

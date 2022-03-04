@@ -112,7 +112,7 @@ def _r_library_tar_impl(ctx):
         mnemonic = "RLibraryTar",
     )
 
-    return [DefaultInfo(data_runfiles = ctx.runfiles([ctx.outputs.out]))]
+    return [DefaultInfo(runfiles = ctx.runfiles([ctx.outputs.out]))]
 
 r_library_tar = rule(
     attrs = {

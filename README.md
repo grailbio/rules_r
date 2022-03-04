@@ -244,7 +244,7 @@ Please check open issues at the github repo.
 ```python
 r_pkg(srcs, pkg_name, deps, cc_deps, build_args, install_args, config_override,
       roclets, roclets_deps, makevars, env_vars, inst_files, tools, build_tools,
-      metadata, stamp)
+      metadata)
 ```
 
 Rule to install the package and its transitive dependencies in the Bazel
@@ -414,16 +414,16 @@ the right flags.
       <td>
         <p><code>String keyed Dictionary; optional</code></p>
         <p>Metadata key-value pairs to add to the DESCRIPTION file before building.
-           Build status variables can be substituted when enclosed within `{}`.</p>
+           When text is enclosed within `{}`, bazel volatile and stable status
+           files will be used to substitute the text. Inclusion of these files in
+           the build has consequences on local and remote caching. Also see `stamp`.</p>
       </td>
     </tr>
     <tr>
       <td><code>stamp</code></td>
       <td>
-        <p><code>Bool; default False</code></p>
-        <p>Include the stable status file when substituting values in the metadata.
-           The volatile status file is always included if there is at least one
-           occurrence of `{` that is not followed by `STABLE_`.
+        <p><code>Integer; default -1</code></p>
+        <p>Same behavior as the stamp attribute in cc_binary rule.</p>
       </td>
     </tr>
   </tbody>
@@ -480,7 +480,7 @@ container_image rule.
 ## r_unit_test
 
 ```python
-r_unit_test(pkg, suggested_deps, env_vars, tools, data, stamp)
+r_unit_test(pkg, suggested_deps, env_vars, tools, data)
 ```
 
 Rule to keep all deps in the sandbox, and run the provided R test scripts.
@@ -533,14 +533,6 @@ in the package, and C/C++ code in the `src` directory of R packages.
       <td>
         <p><code>List of labels; optional</code></p>
         <p>Data to be made available to the test.</p>
-      </td>
-    </tr>
-    <tr>
-      <td><code>stamp</code></td>
-      <td>
-        <p><code>Bool; default False</code></p>
-        <p>Include the stable status file in the runfiles of the test.
-           The volatile status file is always included.</p>
       </td>
     </tr>
   </tbody>
@@ -623,7 +615,7 @@ sandbox.
 ## r_binary
 
 ```python
-r_binary(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp)
+r_binary(name, src, deps, data, env_vars, tools, rscript_args, script_args)
 ```
 
 Build a wrapper shell script for running an executable which will have all the
@@ -696,14 +688,6 @@ the runfiles of the root executable.
         <p>A list of arguments to pass to the src script.</p>
       </td>
     </tr>
-    <tr>
-      <td><code>stamp</code></td>
-      <td>
-        <p><code>Bool; default False</code></p>
-        <p>Include the stable status file in the runfiles of the binary.
-           The volatile status file is always included.</p>
-      </td>
-    </tr>
   </tbody>
 </table>
 
@@ -711,7 +695,7 @@ the runfiles of the root executable.
 ## r_test
 
 ```python
-r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp)
+r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args)
 ```
 
 This is identical to [r_binary](#r_binary) but is run as a test.
@@ -720,7 +704,7 @@ This is identical to [r_binary](#r_binary) but is run as a test.
 ## r_markdown
 
 ```python
-r_markdown(name, src, deps, data, env_vars, tools, rscript_args, script_args, stamp,
+r_markdown(name, src, deps, data, env_vars, tools, rscript_args, script_args,
 render_function="rmarkdown::render", input_argument="input", output_dir_argument="output_dir",
 render_args)
 ```

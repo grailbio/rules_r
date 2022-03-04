@@ -29,10 +29,10 @@ r_register_toolchains()
 
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "59d5b42ac315e7eadffa944e86e90c2990110a1c8075f1cd145f487e999d22b3",
-    strip_prefix = "rules_docker-0.17.0",
+    sha256 = "59536e6ae64359b716ba9c46c39183403b01eabfbd57578e84398b4829ca499a",
+    strip_prefix = "rules_docker-0.22.0",
     urls = [
-        "https://github.com/bazelbuild/rules_docker/releases/download/v0.17.0/rules_docker-v0.17.0.tar.gz",
+        "https://github.com/bazelbuild/rules_docker/releases/download/v0.22.0/rules_docker-v0.22.0.tar.gz",
     ],
 )
 
@@ -54,10 +54,10 @@ load(
 
 container_pull(
     name = "r_base",
-    digest = "sha256:483647d32211b3a61a9a329f0e4f834a44f6b81de8c05c8df2981fc532b170f7",
+    digest = "sha256:7d5243aa3c5010a0978a30eba38089f140ce9efd509aafe2267d794be94ccf44",
     registry = "index.docker.io",
     repository = "rocker/r-ver",
-    tag = "3.6.2",
+    tag = "4.1.2",
 )
 
 load("@com_grail_rules_r//R:repositories.bzl", "r_repository_list")
@@ -71,7 +71,7 @@ r_repository_list(
     package_list = "@com_grail_rules_r_tests//cran:packages.csv",
     remote_repos = {
         # CRAN does not retain binary archives for macOS.
-        "CRAN": "https://cran.microsoft.com/snapshot/2021-04-01",
+        "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",
     },
 )
 
@@ -89,10 +89,10 @@ coverage_deps()
 
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "65e020a42bdab44a66664d34421995829e9e79c60e5adaa08282fd14ca552f57",
-    strip_prefix = "protobuf-3.15.6",
+    sha256 = "3bd7828aa5af4b13b99c191e8b1e884ebfa9ad371b0ce264605d347f135d2568",
+    strip_prefix = "protobuf-3.19.4",
     urls = [
-        "https://github.com/protocolbuffers/protobuf/archive/v3.15.6.tar.gz",
+        "https://github.com/protocolbuffers/protobuf/archive/v3.19.4.tar.gz",
     ],
 )
 
@@ -109,10 +109,10 @@ local_repository(
 # See BUILD for actual definition of the R toolchains.
 http_archive(
     name = "com_grail_bazel_toolchain",
-    sha256 = "b924b102adc0c3368d38a19bd971cb4fa75362a27bc363d0084b90ca6877d3f0",
-    strip_prefix = "bazel-toolchain-0.5.7",
+    sha256 = "148e871e785ae699e6adfbb07afea241ee668dbc0c530e72a47356885fce0cb7",
+    strip_prefix = "bazel-toolchain-0.7",
     urls = [
-        "https://github.com/grailbio/bazel-toolchain/archive/0.5.7.tar.gz",
+        "https://github.com/grailbio/bazel-toolchain/archive/0.7.tar.gz",
     ],
 )
 
@@ -121,8 +121,11 @@ load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
 llvm_toolchain(
     name = "llvm_toolchain",
     cxx_builtin_include_directories = {
-        "k8": ["/usr/share/R/include"],
-        "darwin": ["/Library/Frameworks/R.framework/Headers"],
+        "linux-x86_64": ["/usr/share/R/include"],
+        "darwin-x86_64": ["/Library/Frameworks/R.framework/Headers"],
     },
-    llvm_version = "9.0.0",
+    llvm_version = "13.0.0",
+    stdlib = {
+        "linux-x86_64": "stdc++",
+    },
 )

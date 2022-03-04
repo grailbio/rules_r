@@ -27,6 +27,7 @@ r_pkg(
         "VAR": "{VAR}",
         "STABLE_VAR": "STABLE_VAR",
     },
+    stamp = 1,
     visibility = [
         "//packages/exampleB:__pkg__",
         "//stamping:__pkg__",

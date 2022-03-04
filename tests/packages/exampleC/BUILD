@@ -28,13 +28,15 @@ PKG_SRCS = glob(
 
 r_library(
     name = "deps",
-    pkgs = ["//packages/exampleB"],
+    pkgs = [
+        "//packages/exampleB",
+        "@R_Rcpp",
+    ],
 )
 
 r_library(
     name = "suggested_deps",
     pkgs = [
-        "@R_RProtoBuf",
         "@R_testthat",
         "@workspaceroot",
     ],

@@ -1,6 +1,7 @@
 build --workspace_status_command=stamping/workspace_status.sh
 build --incompatible_strict_action_env
+build --java_runtime_version=remotejdk_11
 
-build --stamp
+build --action_env=ZERO_AR_DATE=1 # https://github.com/bazelbuild/bazel/issues/10886
 
 try-import buildbuddy.bazelrc

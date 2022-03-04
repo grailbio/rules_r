@@ -37,7 +37,7 @@ r_coverage_dependencies = _r_coverage_dependencies
 
 def r_rules_dependencies():
     # Keep in sync with README.md and tests.yml.
-    _is_at_least("4.0.0", native.bazel_version)
+    _is_at_least("5.0.0", native.bazel_version)
 
     # TODO: Use bazel-skylib directly instead of replicating functionality when
     # nested workspaces become a reality.  Otherwise, dependencies will need to

@@ -20,7 +20,7 @@ os="$(uname -s | tr "[:upper:]" "[:lower:]")"
 readonly os
 
 # Use bazelisk to catch migration problems.
-readonly url="https://github.com/bazelbuild/bazelisk/releases/download/v1.7.5/bazelisk-${os}-amd64"
+readonly url="https://github.com/bazelbuild/bazelisk/releases/download/v1.11.0/bazelisk-${os}-amd64"
 bazel="${TMPDIR:-/tmp}/bazelisk"
 readonly bazel
 

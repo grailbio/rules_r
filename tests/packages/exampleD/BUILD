@@ -1,4 +1,4 @@
-# Copyright 2021 The Bazel Authors.
+# Copyright 2022 The Bazel Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,29 +16,49 @@ load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_un
 
 package(default_visibility = ["//visibility:public"])
 
-alias(
-    name = "R_processx",
-    actual = "processx",
-)
+PKG_NAME = "exampleD"
 
-r_pkg(
-    name = "processx",
-    srcs = glob(
-        ["**"],
-        exclude = [
-            "BUILD.bazel",
-        ],
-    ),
-    makevars = "@com_grail_rules_r_tests//cran:Makevars.gnu",
-    tags = ["external-r-repo"],
-    deps = [
-        "@R_R6",
-        "@R_ps",
+PKG_SRCS = glob(
+    ["**"],
+    exclude = [
+        "BUILD",
     ],
 )
 
 r_library(
+    name = "deps",
+    pkgs = [
+        "@R_RProtoBuf",
+    ],
+)
+
+r_library(
+    name = "suggested_deps",
+    pkgs = [],
+)
+
+r_pkg(
+    name = PKG_NAME,
+    srcs = PKG_SRCS,
+    deps = [":deps"],
+)
+
+r_library(
     name = "library",
-    pkgs = [":processx"],
+    pkgs = [PKG_NAME],
     tags = ["manual"],
+)
+
+r_unit_test(
+    name = "test",
+    timeout = "short",
+    pkg = PKG_NAME,
+    suggested_deps = [":suggested_deps"],
+)
+
+r_pkg_test(
+    name = "check",
+    timeout = "short",
+    pkg = PKG_NAME,
+    suggested_deps = [":suggested_deps"],
 )

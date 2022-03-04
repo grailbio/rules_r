@@ -11,11 +11,17 @@ jobs:
         os: [macos-latest, ubuntu-latest]
         # Latest version of required software, and a minimum version as
         # specified in the README.
-        bazel_version: [latest, 4.0.0] # Also hard-coded in r_rules_dependencies.
-        # Our minimum required version is 3.6.3 but there is some issue with
-        # installation on the runners using the below action provider, so let's
-        # use 4.0.5 instead.
-        r_version: [release, 4.0.5] # Also hard-coded in system_state.sh.
+        bazel_version: [latest]
+        r_version: [release]
+        # Temporarily disable minimum supported version tests to reduce load on
+        # test runners, and protect ourselves from flakiness.
+        #include:
+        #  - r_version: 4.1.2 # Also hard-coded in system_state.sh.
+        #    os: macos-latest
+        #    bazel_version: latest
+        #  - bazel_version: 5.0.0 # Also hard-coded in r_rules_dependencies.
+        #    os: macos-latest
+        #    r_version: release
     steps:
     - name: Check out repo
       uses: actions/checkout@v2

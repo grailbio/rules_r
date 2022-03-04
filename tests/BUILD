@@ -35,21 +35,51 @@ r_toolchain(
         "--no-site-file",
         "--no-environ",
     ],
-    files = [
-        "@llvm_toolchain//:compiler_components",
-        "@llvm_toolchain//:linker_components",
-    ],
-    makevars_site = "@llvm_toolchain//:Makevars",
+    files = select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "@llvm_toolchain//:compiler-components-x86_64-linux",
+            "@llvm_toolchain//:linker-components-x86_64-linux",
+        ],
+        "//conditions:default": None,
+    }),
+    makevars_site = "//cran:Makevars.gnu",
     r = "/usr/bin/R",
     rscript = "/usr/bin/Rscript",
     system_state_file = "@com_grail_rules_r_toolchains//:system_state.txt",
     tools = [
-        "@llvm_toolchain//:bin/clang",
-        "@llvm_toolchain//:bin/clang++",
-        "@llvm_toolchain//:bin/ld",
-        "@llvm_toolchain//:bin/ld.lld",
-        "@llvm_toolchain//:bin/llvm-cov",
+        "@llvm_toolchain_llvm//:bin/clang",
+        "@llvm_toolchain_llvm//:bin/clang++",
+        "@llvm_toolchain_llvm//:bin/ld.lld",
+        "@llvm_toolchain_llvm//:bin/llvm-cov",
     ],
+    visibility = ["//visibility:public"],
+)
+
+r_toolchain(
+    name = "r-toolchain-darwin",
+    args = [
+        "--no-save",
+        "--no-site-file",
+        "--no-environ",
+    ],
+    env_vars = {
+        "ZERO_AR_DATE": "1",  # For reproducible builds.
+    },
+    files = select({
+        "@bazel_tools//src/conditions:darwin_x86_64": [
+            "@llvm_toolchain//:compiler-components-x86_64-darwin",
+            "@llvm_toolchain//:linker-components-x86_64-darwin",
+        ],
+        "//conditions:default": None,
+    }),
+    makevars_site = "@com_grail_rules_r_makevars_darwin",
+    system_state_file = "@com_grail_rules_r_toolchains//:system_state.txt",
+    tools = [
+        "@llvm_toolchain_llvm//:bin/clang",
+        "@llvm_toolchain_llvm//:bin/clang++",
+        "@llvm_toolchain_llvm//:bin/llvm-cov",
+    ],
+    version = "4.1",
     visibility = ["//visibility:public"],
 )
 
@@ -64,6 +94,21 @@ toolchain(
         "@bazel_tools//platforms:x86_64",
     ],
     toolchain = ":r-toolchain-linux",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+toolchain(
+    name = "toolchain-darwin",
+    exec_compatible_with = [
+        "@bazel_tools//platforms:osx",
+        "@bazel_tools//platforms:x86_64",
+    ],
+    target_compatible_with = [
+        "@bazel_tools//platforms:osx",
+        "@bazel_tools//platforms:x86_64",
+    ],
+    toolchain = ":r-toolchain-darwin",
     toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )

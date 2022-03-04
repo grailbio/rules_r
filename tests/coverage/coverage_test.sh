@@ -47,16 +47,14 @@ fi
 
 testlogs="$("${bazel}" info bazel-testlogs)"
 readonly testlogs
-readonly coverage_file="${testlogs}/packages/exampleC/test/coverage.dat"
+readonly coverage_file_C="${testlogs}/packages/exampleC/test/coverage.dat"
+readonly coverage_file_D="${testlogs}/packages/exampleD/test/coverage.dat"
 readonly coverage_file_external="${testlogs}/external/workspaceroot/test/coverage.dat"
 
 expect_equal() {
   local expected="$1"
   local actual="$2"
 
-  # coverage profiling in gcc counts the return statement twice in rcpp.cc:32.
-  # Let's standardize it to 2 hits for all toolchains.
-  sed -i'.bak' 's@<line number="32" hits="4"@<line number="32" hits="2"@' "${actual}"
   if ! diff -q "${expected}" "${actual}" >/dev/null; then
     echo "==="
     echo "COVERAGE: ${expected} actual"
@@ -78,14 +76,15 @@ echo "Done!"
 echo ""
 echo "=== Testing default instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=exampleC //...
-expect_equal "default_instrumented.xml" "${coverage_file}"
+expect_equal "default_instrumented.xml" "${coverage_file_C}"
 echo "Done!"
 
 # For instrumentation of packages without tests, and of indirect test dependencies.
 echo ""
 echo "=== Testing workspace instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --instrumentation_filter=^// //...
-expect_equal "workspace_instrumented.xml" "${coverage_file}"
+expect_equal "workspace_instrumented_C.xml" "${coverage_file_C}"
+expect_equal "workspace_instrumented_D.xml" "${coverage_file_D}"
 echo "Done!"
 
 # Set instrumentation filter to everything.
@@ -98,26 +97,26 @@ echo "=== Testing all instrumentation ==="
 "${bazel}" coverage "${bazel_test_opts[@]}" --test_output=summary \
   --instrumentation_filter='.,-protobuf,-zlib' \
   //... @workspaceroot//:all
-expect_equal "all_instrumented.xml" "${coverage_file}"
+expect_equal "all_instrumented_C.xml" "${coverage_file_C}"
+expect_equal "all_instrumented_D.xml" "${coverage_file_D}"
 expect_equal "workspaceroot.xml" "${coverage_file_external}"
 echo "Done!"
 
 # There is a problem with the protobuf library in the CI environment; perhaps
 # run a simpler coverage test.
-if [[ "$(uname -s)" == "Linux" ]] && ! "${CI:-"false"}"; then
-  echo ""
-  echo "=== Testing custom toolchain ==="
-  # Check if we can compute coverage using supplied LLVM tools.
-  # Note that this toolchain is currently not producing .gcda files, so
-  # coverage from cc_deps is missing.
-  echo "Checking coverage results with the LLVM toolchain:"
-  toolchain_args=(
-    "--extra_toolchains=//:toolchain-linux"
-    "--extra_toolchains=@llvm_toolchain//:cc-toolchain-linux"
-    "--crosstool_top=@llvm_toolchain//:toolchain"
-    "--toolchain_resolution_debug"
-  )
-  "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //packages/exampleC:test
-  expect_equal "custom_toolchain.xml" "${coverage_file}"
-  echo "Done!"
-fi
+echo ""
+echo "=== Testing custom toolchain ==="
+# Check if we can compute coverage using supplied LLVM tools.
+# Note that this toolchain is currently not producing .gcda files, so
+# coverage from cc_deps is missing.
+echo "Checking coverage results with the LLVM toolchain:"
+toolchain_args=(
+  "--extra_toolchains=//:toolchain-${os}"
+  "--extra_toolchains=@llvm_toolchain//:cc-toolchain-x86_64-${os}"
+  "--incompatible_enable_cc_toolchain_resolution"
+  "--toolchain_resolution_debug=com_grail_rules_r"
+)
+"${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //...
+expect_equal "custom_toolchain_C.xml" "${coverage_file_C}"
+expect_equal "custom_toolchain_D.xml" "${coverage_file_D}"
+echo "Done!"

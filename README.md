@@ -79,8 +79,8 @@ for the R packages in their repo automatically.
 
 The following software must be installed on your system:
 
-    1. bazel (v4.0.0 or above)
-    2. R (3.6.3 or above; should be locatable using the `PATH` environment variable)
+    1. bazel (v5.0.0 or above)
+    2. R (4.1.2 or above; should be locatable using the `PATH` environment variable)
 
 **NOTE**: After re-installing or upgrading R, please reset the registered
 toolchain with `bazel sync --configure` to rebuild your packages with the new
@@ -159,9 +159,9 @@ r_repository_list(
     build_file_overrides = "@myrepo//third-party/R:build_file_overrides.csv",
     package_list = "@myrepo//third-party/R:packages.csv",
     remote_repos = {
-        "BioCsoft": "https://bioconductor.org/packages/3.11/bioc",
-        "BioCann": "https://bioconductor.org/packages/3.11/data/annotation",
-        "BioCexp": "https://bioconductor.org/packages/3.11/data/experiment",
+        "BioCsoft": "https://bioconductor.org/packages/3.14/bioc",
+        "BioCann": "https://bioconductor.org/packages/3.14/data/annotation",
+        "BioCexp": "https://bioconductor.org/packages/3.14/data/experiment",
         "CRAN": "https://cloud.r-project.org",
     },
 )

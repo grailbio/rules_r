@@ -50,9 +50,15 @@ echo "::group::Default tests"
 "${bazel}" test "${bazel_test_opts[@]}" //... @workspaceroot//:all
 echo "::endgroup::"
 
-echo "::group::Coverage tests"
-coverage/coverage_test.sh
-echo "::endgroup::"
+# Run coverage tests only on linux because coverage expectations can vary
+# slightly on macOS from linux, and from version to version of macOS. It
+# becomes a little tenuous to maintain all that on CI. For major changes to
+# coverage related features, we can run the tests manually.
+if [[ "${os}" == "linux" ]]; then
+  echo "::group::Coverage tests"
+  coverage/coverage_test.sh
+  echo "::endgroup::"
+fi
 
 echo "::group::Repro tests"
 repro/repro_test.sh

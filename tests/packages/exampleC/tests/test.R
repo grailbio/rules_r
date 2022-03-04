@@ -21,8 +21,8 @@
 # //exampleB, and should be absent otherwise.
 stopifnot(identical(c("A", "B"), exampleB::exampleB()))
 
-# Coverage from proto.R will have 2 hits.
-stopifnot(exampleC::proto()$id == 7)
+# See comment in rcpp.cc:init()
+loadNamespace("Rcpp")
 
 # Coverage from rcpp.R will have 2 hits.
 stopifnot(identical(c("hello", "world"), exampleC::rcppHello()))

@@ -12,4 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# See comment in rcpp.cc:init()
+loadNamespace("Rcpp")
+
 testthat::test_check("exampleC")

@@ -32,3 +32,13 @@ Rcpp::StringVector hello() {
 extern "C" {
 SEXP rcppHello() { return Rcpp::wrap(hello()); }
 }  // "C"
+
+// This is hacky but needed to initialize the loaded DLL to a bare minimum
+// level. In addition to this, we also have to ensure that the Rcpp package is
+// loaded in R, so that its functions are registered, because some functions in
+// libRcpp call through the R package namespace.
+bool init() {
+  Rcpp::Rcpp_precious_init();
+  return true;
+}
+static bool doInit = init();

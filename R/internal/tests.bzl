@@ -78,12 +78,17 @@ def _test_impl(ctx):
         ],
     )
 
+    stamp_files = [ctx.version_file]
+    if ctx.attr.stamp:
+        stamp_files.append(ctx.info_file)
+
     runfiles = ctx.runfiles(
         files = (library_deps.lib_dirs +
                  library_deps.gcno_files +
                  coverage_files +
                  test_files +
                  ctx.files.data +
+                 stamp_files +
                  info.files + [info.state]),
         transitive_files = depset(
             transitive = [tools, instrumented_files],
@@ -120,6 +125,11 @@ r_unit_test = rule(
         "data": attr.label_list(
             allow_files = True,
             doc = "Data to be made available to the test",
+        ),
+        "stamp": attr.bool(
+            default = False,
+            doc = ("Include the stable status file in the runfiles of the test. " +
+                   "The volatile status file is always included."),
         ),
         "_test_sh_tpl": attr.label(
             allow_single_file = True,

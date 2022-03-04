@@ -480,7 +480,7 @@ container_image rule.
 ## r_unit_test
 
 ```python
-r_unit_test(pkg, suggested_deps, env_vars, tools, data)
+r_unit_test(pkg, suggested_deps, env_vars, tools, data, stamp)
 ```
 
 Rule to keep all deps in the sandbox, and run the provided R test scripts.
@@ -533,6 +533,14 @@ in the package, and C/C++ code in the `src` directory of R packages.
       <td>
         <p><code>List of labels; optional</code></p>
         <p>Data to be made available to the test.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>stamp</code></td>
+      <td>
+        <p><code>Bool; default False</code></p>
+        <p>Include the stable status file in the runfiles of the test.
+           The volatile status file is always included.</p>
       </td>
     </tr>
   </tbody>

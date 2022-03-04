@@ -111,8 +111,6 @@ def _local_r_toolchain_impl(rctx):
     os = detect_os(rctx)
 
     tools = list(rctx.attr.tools)
-    if os == "darwin":
-        tools.append(Label("@com_grail_rules_r//tools:install_name_tool"))
 
     makevars_site_str = "None"
     if rctx.attr.makevars_site:

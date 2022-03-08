@@ -16,6 +16,7 @@ load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
+    _runfiles = "runfiles",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
@@ -41,6 +42,8 @@ def _library_impl(ctx):
     container_file_map.update({"tools": files_tools})
 
     runfiles = ctx.runfiles(files = library_deps.lib_dirs + [info.state])
+    runfiles = runfiles.merge(_runfiles(ctx, ctx.attr.pkgs))
+
     return [
         DefaultInfo(
             files = depset([ctx.outputs.executable]),

@@ -74,6 +74,11 @@ def build_path_export(executables):
         # This is required because bazel does not export the variable.
         return "export PATH"
 
+def runfiles(ctx, labels):
+    # Extract default runfiles from the targets with the given labels.
+
+    return ctx.runfiles().merge_all([dep[DefaultInfo].default_runfiles for dep in labels])
+
 def flatten_pkg_deps_list(pkg_deps):
     # Returns a ilst of all package dependencies captured in this
     # list of different providers.

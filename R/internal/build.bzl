@@ -26,6 +26,7 @@ load(
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
+    _runfiles = "runfiles",
     _srcs_dir = "srcs_dir",
     _tests_dir = "tests_dir",
 )
@@ -394,6 +395,9 @@ def _build_impl(ctx):
         _executables(ctx.attr.build_tools + info.tools),
         transitive = [transitive_tools],
     )
+    data = depset(
+        transitive = [d[DefaultInfo].files for d in ctx.attr.data],
+    )
     instrument_files = [ctx.file._instrument_R] if instrumented else []
 
     common_input_files = ([ctx.file._build_pkg_common_sh] +
@@ -522,10 +526,19 @@ def _build_impl(ctx):
         source_attributes = ["srcs"],
     )
 
+    # Should we include runfiles from cc_deps? Maybe not, because those are
+    # supposed to be part of a bazel independent installation. For special
+    # cases, we can include the runfiles manually.
+    runfiles = ctx.runfiles(
+        files = [pkg_lib_dir],
+        transitive_files = depset(transitive = [transitive_tools, data]),
+    )
+    runfiles = runfiles.merge(_runfiles(ctx, ctx.attr.deps + ctx.attr.data + ctx.attr.tools))
+
     return [
         DefaultInfo(
             files = depset(direct = bin_output_files),
-            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+            runfiles = runfiles,
         ),
         RPackage(
             bin_archive = pkg_bin_archive,
@@ -572,6 +585,9 @@ def _build_source_pkg_impl(ctx):
     build_tools = depset(
         _executables(ctx.attr.build_tools + info.tools),
         transitive = [transitive_tools],
+    )
+    data = depset(
+        transitive = [d[DefaultInfo].files for d in ctx.attr.data],
     )
     instrument_files = [ctx.file._instrument_R] if instrumented else []
 
@@ -645,10 +661,16 @@ def _build_source_pkg_impl(ctx):
         # need the .R files.
     )
 
+    runfiles = ctx.runfiles(
+        files = [pkg_lib_dir],
+        transitive_files = depset(transitive = [transitive_tools, data]),
+    )
+    runfiles = runfiles.merge(_runfiles(ctx, ctx.attr.deps + ctx.attr.data + ctx.attr.tools))
+
     return [
         DefaultInfo(
             files = depset([pkg_lib_dir]),
-            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+            runfiles = runfiles,
         ),
         RPackage(
             bin_archive = pkg_bin_archive,
@@ -681,6 +703,9 @@ def _build_binary_pkg_impl(ctx):
         _executables(ctx.attr.tools),
         transitive = [library_deps.transitive_tools],
     )
+    data = depset(
+        transitive = [d[DefaultInfo].files for d in ctx.attr.data],
+    )
 
     build_env = {
         "PKG_LIB_PATH": pkg_lib_dir.path,
@@ -708,10 +733,16 @@ def _build_binary_pkg_impl(ctx):
 
     _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
 
+    runfiles = ctx.runfiles(
+        files = [pkg_lib_dir],
+        transitive_files = depset(transitive = [transitive_tools, data]),
+    )
+    runfiles = runfiles.merge(_runfiles(ctx, ctx.attr.deps + ctx.attr.data + ctx.attr.tools))
+
     return [
         DefaultInfo(
             files = depset([pkg_lib_dir]),
-            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+            runfiles = runfiles,
         ),
         RPackage(
             bin_archive = pkg_bin_archive,
@@ -741,6 +772,10 @@ _COMMON_ATTRS = {
             [RLibrary],
         ],
         doc = "R package dependencies of type r_pkg or r_library",
+    ),
+    "data": attr.label_list(
+        allow_files = True,
+        doc = "Runtime dependencies for the package, when running under bazel",
     ),
     "tools": attr.label_list(
         allow_files = True,

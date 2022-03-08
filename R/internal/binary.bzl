@@ -24,6 +24,7 @@ load(
     _flatten_pkg_deps_list = "flatten_pkg_deps_list",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
+    _runfiles = "runfiles",
     _runtime_path_export = "runtime_path_export",
 )
 load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
@@ -74,6 +75,9 @@ def _r_binary_impl(ctx):
         _executables(ctx.attr.tools),
         transitive = ([d[RBinary].tools for d in ctx.attr.deps if RBinary in d] + [library_deps.transitive_tools]),
     )
+    data = depset(
+        transitive = [d[DefaultInfo].files for d in ctx.attr.data],
+    )
 
     lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
     ctx.actions.expand_template(
@@ -97,14 +101,9 @@ def _r_binary_impl(ctx):
 
     runfiles = ctx.runfiles(
         files = library_deps.lib_dirs,
-        transitive_files = depset(transitive = [srcs, exe, tools]),
+        transitive_files = depset(transitive = [srcs, exe, tools, data]),
     )
-
-    deps = list(ctx.attr.deps)
-    deps.extend(ctx.attr.data)
-    for data_dep in deps:
-        runfiles = runfiles.merge(ctx.runfiles(transitive_files = data_dep[DefaultInfo].files))
-        runfiles = runfiles.merge(data_dep[DefaultInfo].default_runfiles)
+    runfiles = runfiles.merge(_runfiles(ctx, ctx.attr.deps + ctx.attr.data + ctx.attr.tools))
 
     layered_lib_files = _layer_library_deps(ctx, library_deps)
     return [

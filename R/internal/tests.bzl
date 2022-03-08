@@ -24,6 +24,7 @@ load(
     _library_deps = "library_deps",
     _makevars_files = "makevars_files",
     _package_dir = "package_dir",
+    _runfiles = "runfiles",
     _runtime_path_export = "runtime_path_export",
     _tests_dir = "tests_dir",
 )
@@ -50,6 +51,9 @@ def _test_impl(ctx):
     tools = depset(
         _executables(ctx.attr.tools + info.tools),
         transitive = [library_deps.transitive_tools],
+    )
+    data = depset(
+        transitive = [d[DefaultInfo].files for d in ctx.attr.data],
     )
 
     lib_dirs = ["_EXEC_ROOT_" + d.short_path for d in library_deps.lib_dirs]
@@ -83,12 +87,15 @@ def _test_impl(ctx):
                  library_deps.gcno_files +
                  coverage_files +
                  test_files +
-                 ctx.files.data +
                  info.files + [info.state]),
         transitive_files = depset(
-            transitive = [tools, instrumented_files],
+            transitive = [tools, data, instrumented_files],
         ),
     )
+    runfiles = runfiles.merge(
+        _runfiles(ctx, [ctx.attr.pkg] + ctx.attr.suggested_deps + ctx.attr.tools + ctx.attr.data),
+    )
+
     return [
         DefaultInfo(runfiles = runfiles),
         coverage_common.instrumented_files_info(

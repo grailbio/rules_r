@@ -40,7 +40,7 @@ def _r_repository_impl(rctx):
     archive_basename = rctx.attr.urls[0].rsplit("/", 1)[1]
 
     extracted = False
-    if rctx.attr.pkg_type == "source" and rctx.attr.build_file:
+    if rctx.attr.pkg_type == "source":
         extracted = True
         rctx.download_and_extract(
             rctx.attr.urls,
@@ -56,9 +56,11 @@ def _r_repository_impl(rctx):
         return
 
     args = dict(rctx.attr.razel_args)
-    if rctx.attr.pkg_type == "source" and not extracted:
+    if rctx.attr.pkg_type == "source_archive":
+        args["pkg_directory"] = rctx.attr.strip_prefix
         args["pkg_src_archive"] = archive_basename
-    elif rctx.attr.pkg_type == "binary":
+    elif rctx.attr.pkg_type == "binary_archive":
+        args["pkg_directory"] = rctx.attr.strip_prefix
         args["pkg_bin_archive"] = archive_basename
 
     script_content = """
@@ -99,7 +101,8 @@ r_repository = repository_rule(
             doc = "Type of package archive (source or binary).",
             values = [
                 "source",
-                "binary",
+                "source_archive",
+                "binary_archive",
             ],
         ),
         "razel_args": attr.string_dict(

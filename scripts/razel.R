@@ -22,7 +22,7 @@
 #' elsewhere you must manually edit the file later.
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
-#' @param pkg_directory
+#' @param pkg_directory Path to package on the filesystem, or in the archive.
 #' @param pkg_src_archive If set, uses the relative path provided here to
 #'        specify a source archive of the package.
 #' @param pkg_bin_archive If set, uses the relative path provided here to
@@ -45,14 +45,13 @@ buildify <- function(pkg_directory = ".",
     pkg_archive <- pkg_bin_archive
   }
 
+  desc_file <- file.path(pkg_directory, "DESCRIPTION")
   if (is.null(pkg_archive)) {
-    desc_file <- file.path(pkg_directory, "DESCRIPTION")
     if (!file.exists(desc_file)) {
       return()
     }
   }
   if (!is.null(pkg_archive)) {
-    desc_file <- grep("^[^/]+/DESCRIPTION$", untar(pkg_archive, list = TRUE), value = TRUE)
     untar(pkg_archive, files = desc_file)
     stopifnot(file.exists(desc_file))
   }
@@ -139,7 +138,7 @@ buildify <- function(pkg_directory = ".",
   stopifnot(length(build_deps) == 1)
   stopifnot(length(check_deps) == 1)
 
-  tags_attr <- ifelse(external, '    tags=["external-r-repo"]', '')
+  tags_attr <- ifelse(external, '    tags=["external-r-repo"]\n', '')
 
   header <- paste0('load("@com_grail_rules_r//R:defs.bzl",',
                    '"r_pkg", "r_source_pkg", "r_binary_pkg",',
@@ -166,19 +165,19 @@ buildify <- function(pkg_directory = ".",
 
     if (!is.null(pkg_src_archive)) {
       file_list <- untar(pkg_src_archive, list = TRUE)
-      include_dir <- sprintf("%s/inst/include/", name)
-      has_so_lib <- any(grepl(sprintf("^%s/src/", name), file_list))
+      include_dir <- sprintf("%s/inst/include/", pkg_directory)
+      has_so_lib <- any(grepl(sprintf("^%s/src/", pkg_directory), file_list))
       # Also extract the files from include dir from the tarball.
       if (any(grepl(sprintf("^%s", include_dir), file_list))) {
         untar(pkg_src_archive, files = include_dir)
       }
     } else if (!is.null(pkg_bin_archive)) {
       file_list <- untar(pkg_bin_archive, list = TRUE)
-      include_dir <- sprintf("%s/include/", name)
-      has_so_lib <- any(grepl(sprintf("^%s/libs/", name), file_list))
+      include_dir <- sprintf("%s/include/", pkg_directory)
+      has_so_lib <- any(grepl(sprintf("^%s/libs/", pkg_directory), file_list))
       # Also extract the files from include dir from the tarball.
       if (any(grepl(sprintf("^%s", include_dir), file_list))) {
-        untar(pkg_src_archive, files = include_dir)
+        untar(pkg_bin_archive, files = include_dir)
       }
     } else {
       file_list <- list.files(pkg_directory, recursive = TRUE)
@@ -217,6 +216,9 @@ buildify <- function(pkg_directory = ".",
   })
 
   build_file <- file.path(pkg_directory, build_file_name)
+  if (!is.null(pkg_archive)) {
+    build_file <- build_file_name
+  }
   if (file.exists(build_file)) {
     # Built vignettes store their index in the build directory; we need to delete that.
     # This is only needed on case insensitive FS.
@@ -479,18 +481,20 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       sprintf("if not native.existing_rule(\"%s\"):", bzl_repo_name)) -> preamble
     writeLines(paste0(strrep(" ", 4), preamble), output_con)
 
-    if (rule_type == "r_repository" && pkg$binary_package_available) {
-      pkg_type_attr <- sprintf('    pkg_type = "binary",')
-    } else {
-      pkg_type_attr <- character()
-    }
-
     if (!is.na(pkg$build_file)) {
       build_file <- sprintf('"%s"', pkg$build_file)
     } else if (!is.na(build_file_format)) {
       build_file <- sprintf('"%s"', sprintf(build_file_format, pkg$Package))
     } else {
       build_file <- "None"
+    }
+
+    if (rule_type == "r_repository" && pkg$binary_package_available) {
+      pkg_type_attr <- sprintf('    pkg_type = "binary_archive",')
+    } else if (build_file == "None") {
+      pkg_type_attr <- sprintf('    pkg_type = "source_archive",')
+    } else {
+      pkg_type_attr <- character()
     }
 
     c(sprintf("%s(", rule_type),

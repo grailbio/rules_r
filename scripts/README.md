@@ -34,7 +34,7 @@ dependencies. Also see the repository rule
 #' elsewhere you must manually edit the file later.
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
-#' @param pkg_directory
+#' @param pkg_directory Path to package on the filesystem, or in the archive.
 #' @param pkg_src_archive If set, uses the relative path provided here to
 #'        specify a source archive of the package.
 #' @param pkg_bin_archive If set, uses the relative path provided here to

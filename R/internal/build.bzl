@@ -534,12 +534,135 @@ def _build_impl(ctx):
             external_repo = external_repo,
             makevars = ctx.file.makevars,
             pkg_deps = pkg_deps,
-            pkg_lib_dir = pkg_lib_dir,
             pkg_gcno_files = pkg_gcno_files,
+            pkg_lib_dir = pkg_lib_dir,
             pkg_name = pkg_name,
             src_archive = pkg_src_archive,
             src_files = ctx.files.srcs,
             test_files = test_files,
+            transitive_pkg_deps = library_deps.transitive_pkg_deps,
+            transitive_tools = transitive_tools,
+        ),
+        instrumented_files_info,
+    ]
+
+def _build_source_pkg_impl(ctx):
+    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+
+    pkg_name = _package_name(ctx)
+    pkg_src_dir = _package_dir(ctx)
+    pkg_lib_dir = ctx.actions.declare_directory("lib")
+    pkg_bin_archive = ctx.outputs.bin_archive
+    flock = ctx.attr._flock.files_to_run.executable
+
+    # Instrumenting external R packages can be troublesome; e.g. RProtoBuf and testthat.
+    external_repo = _external_repo(ctx)
+    instrumented = (ctx.coverage_instrumented() and
+                    not external_repo and
+                    not "no-instrument" in ctx.attr.tags)
+
+    pkg_deps = _flatten_pkg_deps_list(ctx.attr.deps)
+
+    library_deps = _library_deps(pkg_deps)
+    cc_deps = _cc_deps(ctx, instrumented)
+    transitive_tools = depset(
+        _executables(ctx.attr.tools),
+        transitive = [library_deps.transitive_tools],
+    )
+    build_tools = depset(
+        _executables(ctx.attr.build_tools + info.tools),
+        transitive = [transitive_tools],
+    )
+    instrument_files = [ctx.file._instrument_R] if instrumented else []
+
+    input_files = ([ctx.file.src, ctx.file._build_pkg_common_sh, ctx.file._build_pkg_bin_sh] +
+                   library_deps.lib_dirs + cc_deps.files +
+                   _makevars_files(info.makevars_site, ctx.file.makevars) +
+                   build_tools.to_list() +
+                   instrument_files +
+                   info.files + [info.state])
+
+    if ctx.file.config_override:
+        input_files.append(ctx.file.config_override)
+
+    output_files = [pkg_lib_dir, pkg_bin_archive]
+    install_args = list(ctx.attr.install_args)
+    if instrumented:
+        # We need to keep the sources for code coverage to work.
+        # NOTE: With these options, each installed object in package namespaces gets a
+        # srcref attribute that has the source filenames as when installing the package.
+        # For reproducible builds, these will be /tmp paths.
+        install_args.extend(["--with-keep.source"])
+
+        # We currently do not instrument native code in source archives.
+
+    env = {
+        "DIRECT_FROM_SOURCE": "true",
+        "PKG_SRC_DIR": pkg_src_dir,
+        "PKG_LIB_PATH": pkg_lib_dir.path,
+        "PKG_SRC_ARCHIVE": ctx.file.src.path,
+        "PKG_BIN_ARCHIVE": pkg_bin_archive.path,
+        "PKG_NAME": pkg_name,
+        "R_MAKEVARS_SITE": info.makevars_site.path if info.makevars_site else "",
+        "R_MAKEVARS_USER": ctx.file.makevars.path if ctx.file.makevars else "",
+        "C_LIBS_FLAGS": " ".join(cc_deps.c_libs_flags),
+        "C_CPP_FLAGS": " ".join(cc_deps.c_cpp_flags),
+        "C_SO_FILES": _sh_quote_args([f.path for f in cc_deps.c_so_files]),
+        "CONFIG_OVERRIDE": ctx.file.config_override.path if ctx.file.config_override else "",
+        "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
+        "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(info.env_vars) + _env_vars(ctx.attr.env_vars)),
+        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(build_tools),
+        "INSTALL_ARGS": _sh_quote_args(install_args),
+        "INSTRUMENT_SCRIPT": ctx.file._instrument_R.path,
+        "FLOCK_PATH": flock.path,
+        "INSTRUMENTED": "true" if instrumented else "false",
+        "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
+        "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
+        "R": " ".join(info.r),
+        "RSCRIPT": " ".join(info.rscript),
+        "REQUIRED_VERSION": info.version,
+    }
+    ctx.actions.run(
+        outputs = output_files,
+        inputs = input_files,
+        tools = [flock],
+        executable = ctx.executable._build_pkg_bin_sh,
+        env = env,
+        mnemonic = "RBuild",
+        use_default_shell_env = False,
+        progress_message = "Building R package %s" % pkg_name,
+    )
+
+    ctx.actions.symlink(output = ctx.outputs.src_archive, target_file = ctx.file.src)
+
+    _symlink_so_lib(ctx, pkg_name, pkg_lib_dir)
+
+    instrumented_files_info = coverage_common.instrumented_files_info(
+        ctx,
+        # List the dependencies in which transitive instrumented files can be found.
+        dependency_attributes = ["deps", "cc_deps"],
+        # We build instrumented packages with --keep.source, so we don't
+        # need the .R files.
+    )
+
+    return [
+        DefaultInfo(
+            files = depset([pkg_lib_dir]),
+            runfiles = ctx.runfiles([pkg_lib_dir], collect_default = True),
+        ),
+        RPackage(
+            bin_archive = pkg_bin_archive,
+            build_tools = build_tools,
+            cc_deps = cc_deps,
+            external_repo = external_repo,
+            makevars = ctx.file.makevars,
+            pkg_deps = pkg_deps,
+            pkg_gcno_files = None,
+            pkg_lib_dir = pkg_lib_dir,
+            pkg_name = pkg_name,
+            src_archive = ctx.file.src,
+            src_files = None,
+            test_files = None,
             transitive_pkg_deps = library_deps.transitive_pkg_deps,
             transitive_tools = transitive_tools,
         ),
@@ -631,16 +754,50 @@ _COMMON_ATTRS = {
     ),
 }
 
-_PKG_ATTRS = dict(_COMMON_ATTRS)
+# Attributes for both `R CMD build` and `R CMD INSTALL`.
+_COMMON_BUILD_ATTRS = {
+    "cc_deps": attr.label_list(
+        doc = "cc_library dependencies for this package",
+    ),
+    "config_override": attr.label(
+        allow_single_file = True,
+        doc = "Replace the package configure script with this file",
+    ),
+    "makevars": attr.label(
+        allow_single_file = True,
+        doc = "Additional Makevars file supplied as R_MAKEVARS_USER",
+    ),
+    "build_tools": attr.label_list(
+        allow_files = True,
+        doc = "Executables that package build and load will try to find in the system",
+    ),
+    "_build_pkg_common_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build_pkg_common.sh",
+    ),
+    "_build_pkg_bin_sh": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:build_pkg_bin.sh",
+        executable = True,
+        cfg = "host",
+    ),
+    "_flock": attr.label(
+        default = "@com_grail_rules_r//R/scripts:flock",
+        executable = True,
+        cfg = "host",
+    ),
+    "_instrument_R": attr.label(
+        allow_single_file = True,
+        default = "@com_grail_rules_r//R/scripts:instrument.R",
+    ),
+}
 
-_PKG_ATTRS.update({
+# Attributes for `R CMD build`.
+_BUILD_ATTRS = {
     "srcs": attr.label_list(
         allow_files = True,
         mandatory = True,
         doc = "Source files to be included for building the package",
-    ),
-    "cc_deps": attr.label_list(
-        doc = "cc_library dependencies for this package",
     ),
     "build_args": attr.string_list(
         default = [
@@ -648,10 +805,6 @@ _PKG_ATTRS.update({
             "--no-manual",
         ],
         doc = "Additional arguments to supply to R CMD build",
-    ),
-    "config_override": attr.label(
-        allow_single_file = True,
-        doc = "Replace the package configure script with this file",
     ),
     "roclets": attr.string_list(
         doc = ("roclets to run before installing the package. If this is non-empty, " +
@@ -667,10 +820,6 @@ _PKG_ATTRS.update({
         ],
         doc = "roxygen2 or devtools dependency for running roclets",
     ),
-    "makevars": attr.label(
-        allow_single_file = True,
-        doc = "Additional Makevars file supplied as R_MAKEVARS_USER",
-    ),
     "inst_files": attr.label_keyed_string_dict(
         allow_files = True,
         cfg = "target",
@@ -678,10 +827,6 @@ _PKG_ATTRS.update({
               "The values of the dictionary will specify the package relative " +
               "destination path. For example, '' will bundle the files to the top level " +
               "directory, and 'mydir' will bundle all files into a directory mydir.",
-    ),
-    "build_tools": attr.label_list(
-        allow_files = True,
-        doc = "Executables that package build and load will try to find in the system",
     ),
     "metadata": attr.string_dict(
         doc = ("Metadata key-value pairs to add to the DESCRIPTION file before building. " +
@@ -693,19 +838,9 @@ _PKG_ATTRS.update({
         default = -1,
         doc = "Same behavior as the stamp attribute in cc_binary rule.",
     ),
-    "_build_pkg_common_sh": attr.label(
-        allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_pkg_common.sh",
-    ),
     "_build_pkg_src_sh": attr.label(
         allow_single_file = True,
         default = "@com_grail_rules_r//R/scripts:build_pkg_src.sh",
-        executable = True,
-        cfg = "host",
-    ),
-    "_build_pkg_bin_sh": attr.label(
-        allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_pkg_bin.sh",
         executable = True,
         cfg = "host",
     ),
@@ -715,25 +850,29 @@ _PKG_ATTRS.update({
         executable = True,
         cfg = "host",
     ),
-    "_flock": attr.label(
-        default = "@com_grail_rules_r//R/scripts:flock",
-        executable = True,
-        cfg = "host",
-    ),
-    "_instrument_R": attr.label(
-        allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:instrument.R",
-    ),
     "_stamp_description_sh": attr.label(
         allow_single_file = True,
         default = "@com_grail_rules_r//R/scripts:stamp_description.sh",
         executable = True,
         cfg = "host",
     ),
+}
+
+_PKG_ATTRS = dict(_COMMON_ATTRS)
+_PKG_ATTRS.update(_COMMON_BUILD_ATTRS)
+_PKG_ATTRS.update(_BUILD_ATTRS)
+
+_SOURCE_PKG_ATTRS = dict(_COMMON_ATTRS)
+_SOURCE_PKG_ATTRS.update(_COMMON_BUILD_ATTRS)
+_SOURCE_PKG_ATTRS.update({
+    "src": attr.label(
+        allow_single_file = True,
+        mandatory = True,
+        doc = "Source archive of the package",
+    ),
 })
 
 _BINARY_PKG_ATTRS = dict(_COMMON_ATTRS)
-
 _BINARY_PKG_ATTRS.update({
     "src": attr.label(
         allow_single_file = True,
@@ -759,6 +898,19 @@ r_pkg = rule(
     },
     toolchains = ["@com_grail_rules_r//R:toolchain_type"],
     implementation = _build_impl,
+)
+
+r_source_pkg = rule(
+    attrs = _SOURCE_PKG_ATTRS,
+    doc = ("Rule to install the package and its transitive dependencies in " +
+           "the Bazel sandbox from a source archive."),
+    outputs = {
+        "bin_archive": "%{name}.bin.tar.gz",
+        "src_archive": "%{name}.tar.gz",
+        "so_lib": "%{name}.so",
+    },
+    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    implementation = _build_source_pkg_impl,
 )
 
 r_binary_pkg = rule(

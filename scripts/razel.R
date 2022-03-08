@@ -23,6 +23,8 @@
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
 #' @param pkg_directory
+#' @param pkg_src_archive If set, uses the relative path provided here to
+#'        specify a source archive of the package.
 #' @param pkg_bin_archive If set, uses the relative path provided here to
 #'        specify a binary archive of the package.
 #' @param repo_name_prefix Prefix to package name when constructing the bazel
@@ -31,17 +33,27 @@
 #' @param build_file_name Name of the BUILD file in the repo.
 #' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
-buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
+buildify <- function(pkg_directory = ".",
+                     pkg_src_archive = NULL, pkg_bin_archive = NULL,
                      repo_name_prefix = "R_", no_test_rules = TRUE,
                      build_file_name = "BUILD.bazel", external = TRUE) {
-  if (is.null(pkg_bin_archive)) {
+  stopifnot(is.null(pkg_src_archive) || is.null(pkg_bin_archive))
+  pkg_archive <- NULL
+  if (!is.null(pkg_src_archive)) {
+    pkg_archive <- pkg_src_archive
+  } else if (!is.null(pkg_bin_archive)) {
+    pkg_archive <- pkg_bin_archive
+  }
+
+  if (is.null(pkg_archive)) {
     desc_file <- file.path(pkg_directory, "DESCRIPTION")
     if (!file.exists(desc_file)) {
       return()
     }
-  } else {
-    desc_file <- grep("^[^/]+/DESCRIPTION$", untar(pkg_bin_archive, list = TRUE), value = TRUE)
-    untar(pkg_bin_archive, files = desc_file)
+  }
+  if (!is.null(pkg_archive)) {
+    desc_file <- grep("^[^/]+/DESCRIPTION$", untar(pkg_archive, list = TRUE), value = TRUE)
+    untar(pkg_archive, files = desc_file)
     stopifnot(file.exists(desc_file))
   }
 
@@ -76,12 +88,15 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
     return(srcs)
   }
 
-  if (is.null(pkg_bin_archive)) {
-    pkg_rule <- "r_pkg"
-    srcs_attr <- pkg_srcs_attr()
-  } else {
+  if (!is.null(pkg_src_archive)) {
+    pkg_rule <- "r_source_pkg"
+    srcs_attr <- sprintf('src = "%s"', pkg_src_archive)
+  } else if (!is.null(pkg_bin_archive)) {
     pkg_rule <- "r_binary_pkg"
     srcs_attr <- sprintf('src = "%s"', pkg_bin_archive)
+  } else {
+    pkg_rule <- "r_pkg"
+    srcs_attr <- pkg_srcs_attr()
   }
 
   # Dependency files
@@ -127,7 +142,7 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
   tags_attr <- ifelse(external, '    tags=["external-r-repo"]', '')
 
   header <- paste0('load("@com_grail_rules_r//R:defs.bzl",',
-                   '"r_pkg", "r_binary_pkg",',
+                   '"r_pkg", "r_source_pkg", "r_binary_pkg",',
                    '"r_library", "r_unit_test", "r_pkg_test")\n\n',
                    'package(default_visibility = ["//visibility:public"])')
 
@@ -149,16 +164,24 @@ buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
   cc_import <- local({
     # C library for "Linking To" type dependencies.
 
-    if (is.null(pkg_bin_archive)) {
-      file_list <- list.files(pkg_directory, recursive = TRUE)
-      include_dir <- "inst/include/"
-      has_so_lib <- any(grepl("^src/", file_list))
-    } else {
+    if (!is.null(pkg_src_archive)) {
+      file_list <- untar(pkg_src_archive, list = TRUE)
+      include_dir <- sprintf("%s/inst/include/", name)
+      has_so_lib <- any(grepl(sprintf("^%s/src/", name), file_list))
+      # Also extract the files from include dir from the tarball.
+      # BSD tar does not list directories, so make sure we extract only files to be consistent.
+      untar(pkg_src_archive, files = grep(sprintf("^%s.*[^/]$", include_dir), file_list, value = TRUE))
+    } else if (!is.null(pkg_bin_archive)) {
       file_list <- untar(pkg_bin_archive, list = TRUE)
       include_dir <- sprintf("%s/include/", name)
       has_so_lib <- any(grepl(sprintf("^%s/libs/", name), file_list))
-      # Also extract the include dir from the tarball.
-      untar(pkg_bin_archive, files = grep(sprintf("^%s", include_dir), file_list, value = TRUE))
+      # Also extract the files from include dir from the tarball.
+      # BSD tar does not list directories, so make sure we extract only files to be consistent.
+      untar(pkg_bin_archive, files = grep(sprintf("^%s.*[^/]$", include_dir), file_list, value = TRUE))
+    } else {
+      file_list <- list.files(pkg_directory, recursive = TRUE)
+      include_dir <- "inst/include/"
+      has_so_lib <- any(grepl("^src/", file_list))
     }
 
     has_hdrs <- any(grepl(sprintf("^%s", include_dir), file_list))

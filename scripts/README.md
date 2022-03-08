@@ -35,6 +35,8 @@ dependencies. Also see the repository rule
 #' This tool is not perfect; you must always examine the generated BUILD file,
 #' especially the exclude section of the srcs glob.
 #' @param pkg_directory
+#' @param pkg_src_archive If set, uses the relative path provided here to
+#'        specify a source archive of the package.
 #' @param pkg_bin_archive If set, uses the relative path provided here to
 #'        specify a binary archive of the package.
 #' @param repo_name_prefix Prefix to package name when constructing the bazel
@@ -43,9 +45,10 @@ dependencies. Also see the repository rule
 #' @param build_file_name Name of the BUILD file in the repo.
 #' @param external If true, adds a tag 'external-r-repo' to the r_pkg rule.
 #' @export
-buildify <- function(pkg_directory = ".", pkg_bin_archive = NULL,
+buildify <- function(pkg_directory = ".",
+                     pkg_src_archive = NULL, pkg_bin_archive = NULL,
                      repo_name_prefix = "R_", no_test_rules = TRUE,
-                     build_file_name="BUILD.bazel", external=TRUE) ...
+                     build_file_name = "BUILD.bazel", external = TRUE) ...
 
 
 #' Function to generate BUILD files for all packages in a local repo.

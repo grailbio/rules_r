@@ -169,15 +169,17 @@ buildify <- function(pkg_directory = ".",
       include_dir <- sprintf("%s/inst/include/", name)
       has_so_lib <- any(grepl(sprintf("^%s/src/", name), file_list))
       # Also extract the files from include dir from the tarball.
-      # BSD tar does not list directories, so make sure we extract only files to be consistent.
-      untar(pkg_src_archive, files = grep(sprintf("^%s.*[^/]$", include_dir), file_list, value = TRUE))
+      if (any(grepl(sprintf("^%s", include_dir), file_list))) {
+        untar(pkg_src_archive, files = include_dir)
+      }
     } else if (!is.null(pkg_bin_archive)) {
       file_list <- untar(pkg_bin_archive, list = TRUE)
       include_dir <- sprintf("%s/include/", name)
       has_so_lib <- any(grepl(sprintf("^%s/libs/", name), file_list))
       # Also extract the files from include dir from the tarball.
-      # BSD tar does not list directories, so make sure we extract only files to be consistent.
-      untar(pkg_bin_archive, files = grep(sprintf("^%s.*[^/]$", include_dir), file_list, value = TRUE))
+      if (any(grepl(sprintf("^%s", include_dir), file_list))) {
+        untar(pkg_src_archive, files = include_dir)
+      }
     } else {
       file_list <- list.files(pkg_directory, recursive = TRUE)
       include_dir <- "inst/include/"

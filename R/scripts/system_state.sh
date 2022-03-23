@@ -10,16 +10,18 @@ r_minor_version="$("${R:-"R"}" --slave --vanilla \
 r_version="${r_major_version}.${r_minor_version}"
 
 # Check we have at least a minimum version needed for internal tools.
-if (( r_major_version < 4 )) || { (( r_major_version == 4 )) && (( r_minor_version < 1 )); }; then
-  >&2 echo "rules_r needs at least R 4.1; you have ${r_version}"
-  exit 1
-fi
-
-# Check version
-if [[ "${REQUIRED_VERSION:-}" ]]; then
-  if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
-    >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
+if "${CHECK_VERSIONS:-true}"; then
+  if (( r_major_version < 4 )) || { (( r_major_version == 4 )) && (( r_minor_version < 1 )); }; then
+    >&2 echo "rules_r needs at least R 4.1; you have ${r_version}"
     exit 1
+  fi
+
+  # Check version
+  if [[ "${REQUIRED_VERSION:-}" ]]; then
+    if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
+      >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
+      exit 1
+    fi
   fi
 fi
 

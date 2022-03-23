@@ -67,14 +67,21 @@ _r_toolchain = rule(
     attrs = {
         "r": attr.string(
             default = "R",
-            doc = "Path to R",
+            doc = ("Absolute path to R, or name of R executable; the search " +
+                   "path will include the directories for tools attribute."),
         ),
         "rscript": attr.string(
             default = "Rscript",
-            doc = "Path to Rscript",
+            doc = ("Absolute path to Rscript, or name of Rscript executable; " +
+                   "the search path will include the directories for tools " +
+                   "attribute."),
         ),
         "version": attr.string(
-            doc = "If provided, ensure version of R matches this string in x.y form",
+            doc = ("If provided, ensure version of R matches this string in x.y form. " +
+                   "This version check is performed in the `r_pkg` and `r_binary` " +
+                   "(and by extension, `r_test` and `r_markdown`) rules. For stronger " +
+                   "guarantees, perform this version check when generating the " +
+                   "`system_state_file` (see attribute below)."),
         ),
         "args": attr.string_list(
             default = [

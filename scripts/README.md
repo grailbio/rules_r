@@ -89,7 +89,7 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s",
 #'        overrides will be ignored.
 #' @param sha256 If TRUE, calculate the SHA256 digest (using
 #'        \code{\link[digest]{digest}}) and include it in the WORKSPACE rule.
-#' @param rule_type The type of rule to use. If new_http_archive, then
+#' @param rule_type The type of rule to use. If http_archive, then
 #'        build_file_format must be provided.
 #' @param repo_name_prefix Prefix to package name when constructing the bazel
 #'        repository name.
@@ -102,6 +102,7 @@ buildifyRepo <- function(local_repo_dir, build_file_format = "BUILD.%s",
 #' @param fail_fast If true, will fail loading the workspace if a package was
 #'        not found. Otherwise, the failure will happen on first use of the
 #'        package.
+#' @param ... Other named arguments to supply to the repository rules.
 #' @export
 generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    package_list_csv = NULL,
@@ -110,12 +111,13 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    build_file_overrides_csv = NULL,
                                    pkg_type = c("source", "both"),
                                    sha256 = TRUE,
-                                   rule_type = c("r_repository", "new_http_archive"),
+                                   rule_type = c("r_repository", "http_archive"),
                                    repo_name_prefix = "R_",
                                    remote_repos = getOption("repos"),
                                    mirror_repo_url = NULL,
                                    use_only_mirror_repo = FALSE,
-                                   fail_fast = FALSE) ...
+                                   fail_fast = FALSE,
+                                   ...) ...
 ```
 
 ## repo_management.R

@@ -83,6 +83,26 @@ r_toolchain(
     visibility = ["//visibility:public"],
 )
 
+# Toolchain to use R from nix packages.
+# Also remember to set the rscript path in r_repository_list in your WORKSPACE file.
+r_toolchain(
+    name = "r-toolchain-nix",
+    args = [
+        "--no-save",
+        "--no-site-file",
+        "--no-environ",
+    ],
+    files = ["@Rnix//:lib"],
+    system_state_file = ":empty",
+    tags = ["manual"],
+    tools = [
+        "@Rnix//:bin/R",
+        "@Rnix//:bin/Rscript",
+    ],
+    version = "4.1",
+    visibility = ["//visibility:public"],
+)
+
 toolchain(
     name = "toolchain-linux",
     exec_compatible_with = [
@@ -111,4 +131,18 @@ toolchain(
     toolchain = ":r-toolchain-darwin",
     toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
+)
+
+toolchain(
+    name = "toolchain-nix",
+    tags = ["manual"],
+    toolchain = ":r-toolchain-nix",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "gen_empty",
+    outs = ["empty"],
+    cmd = "touch $@",
 )

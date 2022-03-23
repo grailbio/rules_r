@@ -18,6 +18,18 @@ load(
 )
 load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
+def get_r_version(rctx, rscript):
+    # Return R version using the given Rscript path.
+
+    exec_result = rctx.execute([rscript, "-e", "v <- getRversion()", "-e", "cat(v$major, v$minor, sep = '.')"])
+    if exec_result.return_code:
+        fail("Could not obtain R version (%d):\n%s\n%s" % (
+            exec_result.return_code,
+            exec_result.stdout,
+            exec_result.stderr,
+        ))
+    return exec_result.stdout
+
 def package_dir(ctx):
     # Relative path to target directory.
 
@@ -162,6 +174,16 @@ def quote_literal(s):
     """Quote a literal string constant."""
 
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+def unquote_string(s):
+    """Unquote a string value if quoted."""
+    if not s:
+        return s
+
+    quote_char = s[0]
+    if quote_char == "\"" or quote_char == "'":
+        return s[1:(len(s) - 1)].replace("\\" + quote_char, quote_char)
+    return s
 
 def count_group_matches(v, prefix, suffix):
     """Counts reluctant substring matches between prefix and suffix.

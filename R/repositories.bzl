@@ -15,14 +15,16 @@
 load(
     "@com_grail_rules_r//R/internal:common.bzl",
     _dict_to_r_vec = "dict_to_r_vec",
+    _get_r_version = "get_r_version",
     _quote_dict_values = "quote_dict_values",
     _quote_literal = "quote_literal",
+    _unquote_string = "unquote_string",
 )
 load("@com_grail_rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
 
 _rscript = attr.string(
     default = "Rscript",
-    doc = "Name or path of the interpreter to use for running the razel script.",
+    doc = "Name, path or label of the interpreter to use for running the razel script.",
 )
 _razel = attr.label(
     default = "@com_grail_rules_r//scripts:razel.R",
@@ -31,6 +33,15 @@ _razel = attr.label(
 )
 
 _razel_tmp_script_name = "razel_script.R"
+
+def _rscript_path(rctx):
+    str_path = rctx.attr.rscript
+    if str_path.startswith("@") or str_path.startswith("//"):
+        return rctx.path(Label(str_path))
+    elif str_path.find("/") != -1:
+        return str_path
+    else:
+        return rctx.which(str_path)
 
 def _r_repository_impl(rctx):
     if not rctx.attr.urls:
@@ -73,7 +84,7 @@ buildify({args})
     rctx.file(_razel_tmp_script_name, content = script_content)
 
     exec_result = rctx.execute([
-        rctx.attr.rscript,
+        _rscript_path(rctx),
         "--vanilla",
         _razel_tmp_script_name,
     ])
@@ -114,18 +125,71 @@ r_repository = repository_rule(
     implementation = _r_repository_impl,
 )
 
+def _failing_repository_impl(rctx):
+    fail(rctx.attr.msg)
+
+failing_repository = repository_rule(
+    attrs = {
+        "msg": attr.string(mandatory = True),
+    },
+    implementation = _failing_repository_impl,
+)
+
+def _failing_r_repository_list(rctx, msg_suffix):
+    version_str = " (version %s)" % rctx.attr.r_version if rctx.attr.r_version else ""
+    repo_name_prefix = rctx.attr.other_args.get("repo_name_prefix", default = "R_")
+
+    package_list = rctx.read(rctx.attr.package_list)
+    package_lines = package_list.split("\n")[1:]  # Discard header line.
+    package_names = [line.split(",")[0] for line in package_lines]
+    repository_tpl = """
+    failing_repository(
+        name = "{name}",
+        msg = "R{version_str} not found on host machine{msg_suffix}",
+    )
+"""
+    repository_defs = [
+        repository_tpl.format(
+            name = "%s%s" % (repo_name_prefix, _unquote_string(package_name)),
+            version_str = version_str,
+            msg_suffix = msg_suffix,
+        )
+        for package_name in package_names
+        if package_name != ""
+    ]
+
+    content = """
+load("@com_grail_rules_r//R:repositories.bzl", "failing_repository")
+
+# R{version_str} not found on host machine; substituting package repositories
+# with rules that will fail on first load.
+
+def r_repositories():
+{repository_defs_lines}
+    return
+""".format(version_str = version_str, repository_defs_lines = "\n".join(repository_defs))
+    rctx.file("r_repositories.bzl", content = content, executable = False)
+
+    return
+
 def _r_repository_list_impl(rctx):
     rctx.file("BUILD", content = "", executable = False)
 
-    if not rctx.which(rctx.attr.rscript):
-        rctx.file("r_repositories.bzl", content = """
-def r_repositories():
-    return
-""", executable = False)
+    _rscript = _rscript_path(rctx)
+    do_fail = False
+    fail_msg_suffix = ""
+    if not _rscript:
+        do_fail = True
+    elif rctx.attr.r_version and _get_r_version(rctx, _rscript) != rctx.attr.r_version:
+        do_fail = True
+        fail_msg_suffix = "; found R (version %s)" % _get_r_version(rctx, _rscript)
+    if do_fail:
+        _failing_r_repository_list(rctx, fail_msg_suffix)
         return
 
     args = {
         "package_list_csv": str(rctx.path(rctx.attr.package_list)),
+        "rscript": _quote_literal(rctx.attr.rscript),
     }
     if rctx.attr.build_file_overrides:
         args.update({
@@ -144,7 +208,7 @@ generateWorkspaceMacro({args})
     rctx.file(_razel_tmp_script_name, content = script_content)
 
     cmd = [
-        rctx.attr.rscript,
+        _rscript,
         "--vanilla",
         _razel_tmp_script_name,
     ]
@@ -179,6 +243,9 @@ r_repository_list = repository_rule(
             doc = "Other arguments to supply to generateWorkspaceMacro function in razel.",
         ),
         "rscript": _rscript,
+        "r_version": attr.string(
+            doc = "If provided, ensure version of R matches this string in x.y form.",
+        ),
         "_razel": _razel,
     },
     configure = True,

@@ -39,8 +39,8 @@ fi
 # useful to trace which bazel target was run.
 # If these variables are already set, then we do not set them again, to allow nested
 # targets to retain information from the top-level target.
-# NOTE: Just like bazel status variables, users can override these in the BUILD file
-# as environment variables.
+# NOTE: Technically, users can override these in the BUILD file as environment
+# variables.
 export BUILD_PACKAGE_PATH=${BUILD_PACKAGE_PATH:-'{build_package_path}'}
 export BUILD_LABEL_NAME=${BUILD_LABEL_NAME:-'{build_label_name}'}
 
@@ -77,6 +77,17 @@ PWD=$(pwd -P)
 
 # Export path to tool needed for the test.
 {tools_export_cmd}
+
+# Check version
+if [[ "{required_version}" ]]; then
+  r_version="$({R} \
+    -e 'v <- getRversion()' \
+    -e 'cat(v$major, v$minor, sep=".")')"
+  if [[ "{required_version}" != "${r_version}" ]]; then
+    >&2 printf "Required R version is %s; you have %s\\n" "{required_version}" "${r_version}"
+    exit 1
+  fi
+fi
 
 export R_LIBS=dummy
 R_LIBS_USER="$(mktemp -d)"

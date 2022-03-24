@@ -17,11 +17,22 @@ set -euo pipefail
 
 EXEC_ROOT=$(pwd -P)
 
+eval "${EXPORT_ENV_VARS_CMD}"
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
+eval "${BUILD_TOOLS_EXPORT_CMD}"
 
-eval "${EXPORT_ENV_VARS_CMD:-}"
+# Check version
+if [[ "${REQUIRED_VERSION:-}" ]]; then
+  r_version="$(${R} \
+    -e 'v <- getRversion()' \
+    -e 'cat(v$major, v$minor, sep=".")')"
+  if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
+    >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
+    exit 1
+  fi
+fi
 
 # Use R_LIBS in place of R_LIBS_USER because on some sytems (e.g., Ubuntu),
 # R_LIBS_USER is parameter substituted with a default in .Renviron, which

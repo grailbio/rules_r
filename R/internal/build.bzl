@@ -703,6 +703,7 @@ def _build_binary_pkg_impl(ctx):
         _executables(ctx.attr.tools),
         transitive = [library_deps.transitive_tools],
     )
+    build_tools = _executables(info.tools)
     data = depset(
         transitive = [d[DefaultInfo].files for d in ctx.attr.data],
     )
@@ -714,14 +715,16 @@ def _build_binary_pkg_impl(ctx):
         "R_LIBS_DEPS": ":".join(["_EXEC_ROOT_" + d.path for d in library_deps.lib_dirs]),
         "INSTALL_ARGS": _sh_quote_args(ctx.attr.install_args),
         "EXPORT_ENV_VARS_CMD": "; ".join(_env_vars(ctx.attr.env_vars)),
+        "BUILD_TOOLS_EXPORT_CMD": _build_path_export(depset(build_tools)),
         "BAZEL_R_DEBUG": "true" if "rlang-debug" in ctx.features else "false",
         "BAZEL_R_VERBOSE": "true" if "rlang-verbose" in ctx.features else "false",
         "R": " ".join(info.r),
         "RSCRIPT": " ".join(info.rscript),
+        "REQUIRED_VERSION": info.version,
     }
     ctx.actions.run(
         outputs = [pkg_lib_dir],
-        inputs = [pkg_bin_archive, info.state],
+        inputs = [pkg_bin_archive, info.state] + build_tools,
         executable = ctx.executable._build_binary_sh,
         env = build_env,
         mnemonic = "RBuildBinary",

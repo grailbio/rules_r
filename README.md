@@ -86,6 +86,10 @@ The following software must be installed on your system:
 toolchain with `bazel sync --configure` to rebuild your packages with the new
 installation.
 
+**NOTE**: It is possible to use R from a bazel package instead of a system
+installation. See the toolchain `r-toolchain-nix` in the tests directory as an
+example.
+
 For each package, you can also specify a different Makevars file that can be
 used to have finer control over native code compilation. The site-wide
 Makevars files are configured by default in the toolchains, and these define
@@ -748,22 +752,25 @@ to configure the default registered toolchains.
     <tr>
       <td><code>r</code></td>
       <td>
-        <p><code>String, default R</code></p>
-        <p>Path to R.</p>
+        <p><code>String; default R</code></p>
+        <p>Absolute path to R, or name of R executable; the search path will include the directories for tools attribute.</p>
       </td>
     </tr>
     <tr>
       <td><code>rscript</code></td>
       <td>
-        <p><code>String, default Rscript</code></p>
-        <p>Path to Rscript.</p>
+        <p><code>String; default Rscript</code></p>
+        <p>Absolute path to Rscript, or name of Rscript executable; the search path will include the directories for tools attribute.</p>
       </td>
     </tr>
     <tr>
       <td><code>version</code></td>
       <td>
         <p><code>String; optional</code></p>
-        <p>If provided, ensure version of R matches this string in x.y form.</p>
+        <p>If provided, ensure version of R matches this string in x.y form. This version check is
+           performed in the `r_pkg` and `r_binary` (and by extension, `r_test` and `r_markdown`)
+           rules. For stronger guarantees, perform this version check when generating the
+           `system_state_file` (see attribute below).</p>
       </td>
     </tr>
     <tr>
@@ -820,7 +827,7 @@ to configure the default registered toolchains.
 ## r_repository
 
 ```python
-r_repository(urls, strip_prefix, type, sha256, build_file)
+r_repository(urls, strip_prefix, type, sha256, build_file, rscript)
 ```
 
 Repository rule in place of `new_http_archive` that can run razel to generate
@@ -880,6 +887,14 @@ the BUILD file automatically. See section on
         <p>Other arguments to supply to buildify function in razel.</p>
       </td>
     </tr>
+    <tr>
+      <td><code>rscript</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>Name, path or label (must start with `@` or `//`) of the interpreter to use
+           for running the razel script.</p>
+      </td>
+    </tr>
   </tbody>
 </table>
 
@@ -888,7 +903,7 @@ the BUILD file automatically. See section on
 ## r_repository_list
 
 ```python
-r_repository_list(package_list, build_file_overrides, remote_repos, other_args)
+r_repository_list(package_list, build_file_overrides, remote_repos, other_args, rscript)
 ```
 
 Repository rule that will generate a bzl file containing a macro, to be called
@@ -932,6 +947,21 @@ as `r_repositories()`, for `r_repository` definitions for packages in
       <td>
         <p><code>Dictionary; optional</code></p>
         <p>Other arguments to supply to generateWorkspaceMacro function in razel.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>rscript</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>Name, path or label (must start with `@` or `//`) of the interpreter to use
+           for running the razel script.</p>
+      </td>
+    </tr>
+    <tr>
+      <td><code>r_version</code></td>
+      <td>
+        <p><code>String; optional</code></p>
+        <p>If provided, ensure version of R matches this string in x.y form.</p>
       </td>
     </tr>
   </tbody>

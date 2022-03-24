@@ -18,7 +18,7 @@ load(
     _r_repository_list = "r_repository_list",
 )
 
-def r_coverage_dependencies():
+def r_coverage_dependencies(**kwargs):
     # Optional function to specify covr R package and dependencies. It is recommended that users
     # include covr in their WORKSPACE themselves as R_covr. This will allow them to use pre-built
     # binary packages, and their own CRAN mirror repositories.
@@ -33,4 +33,5 @@ def r_coverage_dependencies():
             # CRAN does not retain binary archives for macOS.
             "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",
         },
+        **kwargs
     )

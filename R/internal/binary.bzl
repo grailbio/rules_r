@@ -92,9 +92,11 @@ def _r_binary_impl(ctx):
             "{tools_export_cmd}": _runtime_path_export(tools),
             "{workspace_name}": ctx.workspace_name,
             "{ignore_execute_permissions}": "true" if ignore_execute_permissions else "false",
+            "{R}": " ".join(info.r),
             "{Rscript}": " ".join(info.rscript),
             "{Rscript_args}": _sh_quote_args(ctx.attr.rscript_args),
             "{script_args}": _sh_quote_args(ctx.attr.script_args),
+            "{required_version}": info.version,
         },
         is_executable = True,
     )

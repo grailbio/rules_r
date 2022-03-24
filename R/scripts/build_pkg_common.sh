@@ -16,24 +16,7 @@
 # This file is sourced from build_pkg_src.sh or build_pkg_bin.sh. It contains
 # common utility functions and environment variables.
 
-# Check version
-# TODO: Remove this check when the system state is unconditionally checked.
-if [[ "${REQUIRED_VERSION:-}" ]]; then
-  r_version="$(${R} \
-    -e 'v <- getRversion()' \
-    -e 'cat(v$major, v$minor, sep=".")')"
-  if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
-    >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
-    exit 1
-  fi
-fi
-
-EXEC_ROOT=$(pwd -P)
-
 TMP_FILES=() # Temporary files to be cleaned up before exiting the script.
-
-# Export PATH from bazel for subprocesses.
-export PATH
 
 cleanup() {
   rm -rf "${TMP_FILES[@]+"${TMP_FILES[@]}"}"
@@ -88,13 +71,25 @@ lock() {
 # Hard fail compilation on any gcov error.
 export GCOV_EXIT_AT_ERROR=1
 
-eval "${EXPORT_ENV_VARS_CMD:-}"
+EXEC_ROOT=$(pwd -P)
 
+# Common setup for environment and tools.
+eval "${EXPORT_ENV_VARS_CMD}"
 if "${BAZEL_R_DEBUG:-"false"}"; then
   set -x
 fi
+eval "${BUILD_TOOLS_EXPORT_CMD}"
 
-eval "${BUILD_TOOLS_EXPORT_CMD:-}"
+# Check version
+if [[ "${REQUIRED_VERSION:-}" ]]; then
+  r_version="$(${R} \
+    -e 'v <- getRversion()' \
+    -e 'cat(v$major, v$minor, sep=".")')"
+  if [[ "${REQUIRED_VERSION}" != "${r_version}" ]]; then
+    >&2 printf "Required R version is %s; you have %s\\n" "${REQUIRED_VERSION}" "${r_version}"
+    exit 1
+  fi
+fi
 
 # We make builds reproducible by asking R to use a constant timestamp, and by
 # installing the packages to the same destination, from the same source path,

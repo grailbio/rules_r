@@ -12,34 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//internal:os.bzl", "detect_os")
+load("@com_grail_rules_r//internal:os.bzl", _detect_os = "detect_os")
 
 _home_env_var = "BAZEL_R_HOME"
-
-def _must_execute(rctx, cmd, fail_msg):
-    exec_result = rctx.execute(cmd)
-    if exec_result.return_code != 0:
-        fail("%s: %d\n%s\n%s" %
-             (fail_msg, exec_result.return_code, exec_result.stdout, exec_result.stderr))
-
-    return exec_result.stdout
 
 def _path_must_exist(rctx, str_path):
     path = rctx.path(str_path)
     if not path.exists:
         fail("'%s' does not exist" % str_path)
     return path
-
-def _get_r_version(rctx, rscript):
-    return _must_execute(
-        rctx,
-        [rscript, "-e", "cat(sep='', version$major, '.', version$minor)"],
-        "Unable to obtain R version",
-    )
-
-def _check_version(expected, actual):
-    if expected != actual:
-        fail("Expected R version '%s', got '%s'" % (expected, actual))
 
 _BUILD = """load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
 
@@ -77,6 +58,7 @@ def _compute_system_state(rctx, r, rscript, state_file):
             "SITE_FILES_FLAG": "--no-site-files" if "-no-site-file" in rctx.attr.args else "",
             "ARGS": " ".join(rctx.attr.args),
             "REQUIRED_VERSION": rctx.attr.version,
+            "CHECK_VERSIONS": "true" if rctx.attr.strict else "false",
         },
     )
     if exec_result.return_code != 0:
@@ -108,7 +90,7 @@ def _local_r_toolchain_impl(rctx):
     if rctx.attr.strict and not r_found:
         fail("R or Rscript is not installed")
 
-    os = detect_os(rctx)
+    os = _detect_os(rctx)
 
     tools = list(rctx.attr.tools)
 

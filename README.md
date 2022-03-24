@@ -17,6 +17,7 @@ R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflow
 - [r_pkg_test](#r_pkg_test)
 - [r_binary](#r_binary)
 - [r_test](#r_test)
+- [r_markdown](#r_markdown)
 - [r_toolchain](#r_toolchain)
 
 #### Repository Rules
@@ -41,7 +42,7 @@ triggering builds accordingly on each commit, is that R packages can be built
 and tested as part of one build system in multi-language monorepos.
 
 These rules are mature for production use. We use these rules internally at
-GRAIL to build 400+ R packages from CRAN and Bioconductor.
+GRAIL to build 800+ R packages from CRAN and Bioconductor.
 
 <a name="getting-started"></a>
 ## Getting started
@@ -224,7 +225,10 @@ EOF
 Some examples are available in the tests directory of this repo.
 - See [tests/packages/exampleA][exampleA] for a barebones R package.
 - See [tests/packages/exampleB][exampleB] for a barebones R package that depends on another package.
-- See [tests/packages/exampleC][exampleC] for an R package that depends on external R packages.
+- See [tests/packages/exampleC][exampleC] for an R package that depends on external R packages and
+  user native code libraries.
+- See [tests/packages/exampleD][exampleD] for an R package that depends on external R packages which
+  have been built with bazel provided native code libraries instead of a system requirement.
 
 Also see [Razel scripts][scripts] that provide utility functions to generate `BUILD` files
 and `WORKSPACE` rules.
@@ -1088,6 +1092,9 @@ bazel sync --configure
 [gazelle]: gazelle
 [scripts]: scripts
 [libPaths]: https://stat.ethz.ch/R-manual/R-devel/library/base/html/libPaths.html
-[Makevars]: makevars/Makevars.darwin.tpl
 [r_library_tar]: R/internal/library.bzl
 [docker]: R/container/README.md
+[exampleA]: tests/packages/exampleA
+[exampleB]: tests/packages/exampleB
+[exampleC]: tests/packages/exampleC
+[exampleD]: tests/packages/exampleD

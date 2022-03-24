@@ -53,8 +53,14 @@ nixpkgs_package(
     repository = "@nixpkgs",
 )
 
+nixpkgs_package(
+    name = "rsync",
+    attribute_path = "rsync",
+    repository = "@nixpkgs",
+)
+
 # To actually use R from nix, change this value to True.
-use_r_from_nix = False
+use_r_from_nix = True
 
 # Initialize rules_r.
 load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
@@ -166,3 +172,7 @@ llvm_toolchain(
         "linux-x86_64": "stdc++",
     },
 )
+
+load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
+
+llvm_register_toolchains()

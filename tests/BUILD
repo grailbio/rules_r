@@ -98,6 +98,7 @@ r_toolchain(
     tools = [
         "@Rnix//:bin/R",
         "@Rnix//:bin/Rscript",
+        "@rsync//:bin/rsync",
     ],
     version = "4.1",
     visibility = ["//visibility:public"],

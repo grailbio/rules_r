@@ -15,12 +15,14 @@
 def detect_os(rctx):
     """Detects the host operating system.
 
-    Returns one of "darwin" or "linux", or raises an error.
+    Returns one of "darwin", "linux" or "windows", or raises an error.
     """
     os_name = rctx.os.name.lower()
     if os_name.startswith("mac os"):
         return "darwin"
     elif os_name == "linux":
         return "linux"
+    elif os_name.startswith("windows"):
+        return "windows"
     else:
         fail("unsupported %s" % os_name)

@@ -104,10 +104,17 @@ def _local_r_toolchain_impl(rctx):
             llvm_cov = Label("%s//:llvm-cov" % makevars_repo)
             tools.append(llvm_cov)
 
-    env_vars_str = "None"
+    env_vars = {
+        "BAZEL_R_DEBUG": "true",
+        "BAZEL_R_VERBOSE": "true",
+    }
     if os == "darwin":
         # http://blog.llvm.org/2019/11/deterministic-builds-with-clang-and-lld.html
-        env_vars_str = "{\"ZERO_AR_DATE\": \"1\"}"
+        env_vars["ZERO_AR_DATE"] = "1"
+    
+    env_vars_str = "None"
+    if len(env_vars) > 0:
+        env_vars_str = json.encode(env_vars)
 
     state_file = "system_state.txt"
     if not r_found:

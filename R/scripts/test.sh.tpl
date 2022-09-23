@@ -20,7 +20,7 @@ PWD=$(pwd -P)
 # Export environment variables, if any.
 {export_env_vars}
 
-if "${BAZEL_R_DEBUG:-"false"}"; then
+if "${BAZEL_R_DEBUG:-"true"}"; then
   set -x
 fi
 

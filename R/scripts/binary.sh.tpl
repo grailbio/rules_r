@@ -47,7 +47,7 @@ export BUILD_LABEL_NAME=${BUILD_LABEL_NAME:-'{build_label_name}'}
 # Export environment variables, if any.
 {export_env_vars}
 
-if "${BAZEL_R_DEBUG:-"false"}"; then
+if "${BAZEL_R_DEBUG:-"true"}"; then
   set -x
 fi
 

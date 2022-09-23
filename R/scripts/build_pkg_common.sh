@@ -31,7 +31,7 @@ silent() {
     echo "${OUT}"
     exit 1
   fi
-  if "${BAZEL_R_VERBOSE:-"false"}"; then
+  if "${BAZEL_R_VERBOSE:-"true"}"; then
     echo "${OUT}"
   fi
   set -e
@@ -75,7 +75,7 @@ EXEC_ROOT=$(pwd -P)
 
 # Common setup for environment and tools.
 eval "${EXPORT_ENV_VARS_CMD}"
-if "${BAZEL_R_DEBUG:-"false"}"; then
+if "${BAZEL_R_DEBUG:-"true"}"; then
   set -x
 fi
 eval "${BUILD_TOOLS_EXPORT_CMD}"

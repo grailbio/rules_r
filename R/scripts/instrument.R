@@ -46,7 +46,7 @@ loader_lines <- readLines(load_script)
 # Setup covr to save its trace counters on exit to the COVERAGE_DIR directory
 # set up by bazel when collecting coverage.  In the rare case that somebody
 # decides to use the instrumented package directly outside of bazel, substitute
-# COVERAGE_DIR with /tmp.
+# COVERAGE_DIR with bazel-out/R/.
 # Also fix mcexit to save counters for any forked R sessions from the 'parallel' package.
 hook_lines <-
   c(paste0("    ", check_line),
@@ -61,8 +61,8 @@ hook_lines <-
     "            assign('.covr_replacements_", pkg_name, "', replacements, envir = globalenv())",
     "        }",
     "        setHook(packageEvent(pkg, 'onLoad'), instrument)",
-    "        covr:::fix_mcexit(\"Sys.getenv('COVERAGE_DIR', '/tmp')\")",
-    "        trace_dir <- Sys.getenv('COVERAGE_DIR', '/tmp')",
+    "        covr:::fix_mcexit(\"Sys.getenv('COVERAGE_DIR', 'bazel-out/R/')\")",
+    "        trace_dir <- Sys.getenv('COVERAGE_DIR', 'bazel-out/R/')",
     "        registered_trace_dirs <-",
     "            get0('.covr_trace_dirs', envir=globalenv(), ifnotfound = character())",
     "        if (! trace_dir %in% registered_trace_dirs) {",

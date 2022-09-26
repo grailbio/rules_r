@@ -42,7 +42,8 @@ brew="${BAZEL_R_HOMEBREW:-"${brew}"}"
 
 sysroot="$(xcrun --show-sdk-path)"
 
-export HOME=/tmp  # Needed for Homebrew.
+output_path=$(bazel info output_path 2>/dev/null)
+export HOME="${output_path}/home/"  # Needed for Homebrew.
 # Prefer brew clang if available, for openmp support.
 CC=""
 CXX=""

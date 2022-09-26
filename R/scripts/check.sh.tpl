@@ -48,13 +48,13 @@ if [[ "${C_SO_FILES}" ]]; then
   fi
 fi
 
-tmp_mkvars="$(mktemp)"
+tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
 export R_MAKEVARS_SITE="${tmp_mkvars}"
 if [[ "{r_makevars_site}" ]]; then
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/{r_makevars_site}" > "${tmp_mkvars}"
 fi
 if [[ "{r_makevars_user}" ]]; then
-  tmp_mkvars="$(mktemp)"
+  tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/{r_makevars_user}" > "${tmp_mkvars}"
   export R_MAKEVARS_USER="${tmp_mkvars}"
 fi
@@ -87,7 +87,7 @@ r_libs="${r_libs//_EXEC_ROOT_/$PWD/}"
 (IFS=":"; for lib in ${r_libs}; do ln -s "${lib}/"* "${R_LIBS_USER}"; done)
 
 # Set HOME for pandoc for building vignettes.
-TMP_HOME="/tmp/bazel/R/home"
+TMP_HOME="bazel-out/R/home"
 mkdir -p "${TMP_HOME}"
 export HOME="${TMP_HOME}"
 

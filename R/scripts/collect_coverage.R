@@ -36,6 +36,7 @@ stopifnot(requireNamespace("covr"))
 test_workspace <- Sys.getenv("TEST_WORKSPACE")
 coverage_dir <- Sys.getenv("COVERAGE_DIR")
 
+
 ############
 # R coverage
 
@@ -80,11 +81,11 @@ local({
   # We already set GCOV_PREFIX_STRIP to be 0 before running the tests, so now
   # we strip components as needed.
 
-  # Files from /tmp/bazel/R/src.
+  # Files from bazel-out/R/src.
   # Recreate path if it has been deleted since building the packages.  We
   # need the path to actually exist so we can resolve symlinks and find out
   # how many actual components to strip.
-  tmp_src_path <- "/tmp/bazel/R/src"
+  tmp_src_path <- "bazel-out/R/src"
   if (!dir.exists(tmp_src_path)) {
     dir.create(tmp_src_path, recursive = TRUE)
   }
@@ -291,7 +292,7 @@ local({
 local({
   test_workspace_pattern <- paste0("^external/", test_workspace, "/")
   execroot_pattern <- paste0("^.*", file.path("execroot", Sys.getenv("TEST_WORKSPACE"), ""))
-  tmp_src_path <- normalizePath("/tmp/bazel/R/src", mustWork = FALSE)
+  tmp_src_path <- normalizePath("bazel-out/R/src", mustWork = FALSE)
   fix_filename <- function(f) {
     if (startsWith(f, tmp_src_path)) {
       f <- sub(paste0(tmp_src_path, "/"), "", f)

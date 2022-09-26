@@ -99,15 +99,17 @@ if [[ "${tmp_path_suffix}" == "." ]]; then
   tmp_path_suffix="_WORKSPACE_ROOT_"
 fi
 
+R_DIR="bazel-out/R"
+
 # Obtain a lock across all builds on this machine for this tmp_path_suffix.
-lock_dir="/tmp/bazel/R/locks"
+lock_dir="${R_DIR}/locks"
 mkdir -p "${lock_dir}"
 lock_name="${tmp_path_suffix//\//_}" # Replace all '/' with '_'; will lead to some collision but OK.
 lock "${lock_dir}/BZL_LOCK-${lock_name}"
 
-TMP_LIB="/tmp/bazel/R/lib/${tmp_path_suffix}"
-TMP_SRC="/tmp/bazel/R/src/${tmp_path_suffix}"
-TMP_HOME="/tmp/bazel/R/home"
+TMP_LIB="${R_DIR}/lib/${tmp_path_suffix}"
+TMP_SRC="${R_DIR}/src/${tmp_path_suffix}"
+TMP_HOME="${R_DIR}/home"
 
 # Clean any leftover files from previous builds.
 rm -rf "${TMP_LIB}" 2>/dev/null || true
@@ -116,7 +118,7 @@ mkdir -p "${TMP_LIB}"
 mkdir -p "${TMP_SRC}"
 
 # Ensure we have a clean site Makevars file, using user-provided content, if applicable.
-tmp_mkvars="$(mktemp)"
+tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
 TMP_FILES+=("${tmp_mkvars}")
 if [[ "${R_MAKEVARS_SITE:-}" ]]; then
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_SITE}" > "${tmp_mkvars}"
@@ -125,7 +127,7 @@ export R_MAKEVARS_SITE="${tmp_mkvars}"
 
 # Same for personal Makevars file.
 if [[ "${R_MAKEVARS_USER:-}" ]]; then
-  tmp_mkvars="$(mktemp)"
+  tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
   TMP_FILES+=("${tmp_mkvars}")
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/${R_MAKEVARS_USER}" > "${tmp_mkvars}"
   export R_MAKEVARS_USER="${tmp_mkvars}"

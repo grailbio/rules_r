@@ -48,13 +48,13 @@ if [[ "${C_SO_FILES}" ]]; then
   fi
 fi
 
-tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
+tmp_mkvars="$(mktemp --tmpdir=bazel-out)"
 export R_MAKEVARS_SITE="${tmp_mkvars}"
 if [[ "{r_makevars_site}" ]]; then
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/{r_makevars_site}" > "${tmp_mkvars}"
 fi
 if [[ "{r_makevars_user}" ]]; then
-  tmp_mkvars="$(mktemp -d --tmpdir=bazel-out)"
+  tmp_mkvars="$(mktemp --tmpdir=bazel-out)"
   sed -e "s@_EXEC_ROOT_@${EXEC_ROOT}/@" "${EXEC_ROOT}/{r_makevars_user}" > "${tmp_mkvars}"
   export R_MAKEVARS_USER="${tmp_mkvars}"
 fi
@@ -75,7 +75,7 @@ PKG_FFLAGS += ${pkg_cppflags}   # Fortran 77
 fi
 
 export R_LIBS=dummy
-R_LIBS_USER="$(mktemp -d)"
+R_LIBS_USER="$(mktemp -d --tmpdir=bazel-out)"
 export R_LIBS_USER
 cleanup() {
   rm -rf "${R_LIBS_USER}"

@@ -50,7 +50,7 @@ rm -rf "${PKG_LIB_PATH:?}/${PKG_NAME}" # Delete empty directories to make way fo
 mv -f "${TMP_LIB}/${PKG_NAME}" "${PKG_LIB_PATH}/"
 
 # Make the tar.gz reproducible by removing mtime and gzip timestamp.
-tmp_tar_dir="$(mktemp -d)"
+tmp_tar_dir="$(mktemp -d --tmpdir=bazel-out)"
 TMP_FILES+=("${tmp_tar_dir}")
 tar -C "${tmp_tar_dir}" -xzf "${PKG_NAME}"*gz  # .tgz on macOS and .tar.gz on Linux.
 # Reset mtime so that tarball is reproducible.

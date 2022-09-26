@@ -46,7 +46,7 @@ if [[ ${TEST_TMPDIR:-} ]]; then
 else
   readonly IS_TEST_SANDBOX=0
 fi
-(( IS_TEST_SANDBOX )) || TEST_TMPDIR=$(mktemp -d)
+(( IS_TEST_SANDBOX )) || TEST_TMPDIR=$(mktemp -d --tmpdir=bazel-out)
 
 cleanup() {
   popd > /dev/null 2>&1 || true

@@ -15,7 +15,7 @@
 
 set -exuo pipefail
 
-tmpdir="$(mktemp -d)"
+tmpdir="$(mktemp -d --tmpdir=bazel-out)"
 marker_failed="${tmpdir}/failed"
 marker_1="${tmpdir}/1"
 marker_2="${tmpdir}/2"

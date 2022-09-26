@@ -23,7 +23,7 @@ new_tar="${new_tar%.gz}"
 gunzip -c "${IN_TAR}" > "${new_tar}"
 
 # Copy the test files so we can reset their mtime so make the tarball reproducible.
-dir=$(mktemp -d)
+dir=$(mktemp -d --tmpdir=bazel-out)
 mkdir -p "${dir}"
 rsync --recursive --copy-links --no-perms --chmod=u+w --executability --specials \
   "${PKG_SRC_DIR}/tests" "${dir}/${PKG_NAME}"

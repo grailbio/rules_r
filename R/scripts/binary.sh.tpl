@@ -90,7 +90,7 @@ if [[ "{required_version}" ]]; then
 fi
 
 export R_LIBS=dummy
-R_LIBS_USER="$(mktemp -d)"
+R_LIBS_USER="$(mktemp -d --tmpdir=bazel-out)"
 export R_LIBS_USER
 cleanup() {
   rm -rf "${R_LIBS_USER}"

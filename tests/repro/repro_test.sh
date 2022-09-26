@@ -23,7 +23,7 @@ source "../setup-bazel.sh"
 # with a different output_path.
 rm "$("${bazel}" info workspace)/bazel-*" 2>/dev/null || true
 
-tmpdir="$(mktemp -d)"
+tmpdir="$(mktemp -d --tmpdir=bazel-out)"
 readonly tmpdir
 readonly first="${tmpdir}/first"
 readonly second="${tmpdir}/second"

@@ -18,7 +18,7 @@ set -euo pipefail
 tar -xzf "${IN_TAR}" "${PKG_NAME}/DESCRIPTION"
 
 # Make a script file for sed that can substitute status vars enclosed in {}, with their values.
-status_substitution_commands="$(mktemp)"
+status_substitution_commands="$(mktemp --tmpdir=bazel-out)"
 add_substitute_commands() {
   local status_file="$1"
   sed -e 's/@/\\@/' -e 's/^/s@{/' -e 's/ /}@/' -e 's/$/@/' "${status_file}" >> \

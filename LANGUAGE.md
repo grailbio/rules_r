@@ -17,7 +17,7 @@ it.
 
 ----
 
-R originated as a blend between *Scheme*, a functional programming language, and *S*, a stastitical computing language. The language specification started as a toy used within a closed-group of statisticians in the early 1990s [1], and grew organically in the public domain from the year 2000. Parts of the language will feel familiar to users of languages like Lisp or Haskell, and other parts will feel familiar to users of software like Matlab.
+R originated as a blend between *Scheme*, a functional programming language, and *S*, a statistical computing language. The language specification started as a toy used within a closed-group of statisticians in the early 1990s [1], and grew organically in the public domain from the year 2000. Parts of the language will feel familiar to users of languages like Lisp or Haskell, and other parts will feel familiar to users of software like Matlab.
 
 The language provides very few primitives, and most operators, like `+` or `[` are implemented as functions, which can be overloaded and overridden by users. Given the power and flexibility, it is important that users of the language limit themselves to a known safe set of features, and understand their implications.
 

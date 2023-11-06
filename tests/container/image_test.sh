@@ -43,17 +43,17 @@ check() {
   fi
 }
 
-check "library_image-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_internal-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "true"
-check "library_image_internal-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "true"
-check "library_image_tools-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_tools-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
+check "library_image-layer.tar" "./r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image-layer.tar" "./r/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_internal-layer.tar" "./r/r-libs/exampleC/DESCRIPTION" "true"
+check "library_image_internal-layer.tar" "./r/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./r/r-libs/bitops/DESCRIPTION" "true"
+check "library_image_tools-layer.tar" "./r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_tools-layer.tar" "./r/r-libs/bitops/DESCRIPTION" "false"
 
-check "library_archive.tar.gz" "./grail/r-libs/exampleC/DESCRIPTION" "false"
-check "library_archive.tar.gz" "./grail/r-libs/bitops/DESCRIPTION" "true"
+check "library_archive.tar.gz" "./r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_archive.tar.gz" "./r/r-libs/bitops/DESCRIPTION" "true"
 
 # Check binary script and R library packages.
 check "binary_image-layer.tar" "/app/binary/binary" "true"

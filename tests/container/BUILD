@@ -22,7 +22,7 @@ r_library_tar(
         "tools",
     ],
     library = "//:library",
-    library_path = "grail/r-libs",
+    library_path = "r/r-libs",
 )
 
 ## Image related tests
@@ -32,7 +32,7 @@ load("@com_rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
 r_library_image(
     name = "library_image",
     base = "@r_base//image",
-    directory = "grail",
+    directory = "r",
     library = "//:library",
     library_path = "r-libs",
     tags = ["no-remote-cache"],

@@ -1,7 +1,7 @@
-R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflows/tests.yml/badge.svg)](https://github.com/grailbio/rules_r/actions/workflows/tests.yml)
-=================
+# R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflows/tests.yml/badge.svg)](https://github.com/grailbio/rules_r/actions/workflows/tests.yml)
 
 #### General Information
+
 - [Overview](#overview)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
@@ -11,6 +11,7 @@ R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflow
 - [Known Issues](#known-issues)
 
 #### Rules
+
 - [r_pkg](#r_pkg)
 - [r_library](#r_library)
 - [r_unit_test](#r_unit_test)
@@ -21,6 +22,7 @@ R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflow
 - [r_toolchain](#r_toolchain)
 
 #### Repository Rules
+
 - [r_repository](#r_repository)
 - [r_repository_list](#r_repository_list)
 - [r_rules_dependencies](#r_rules_dependencies)
@@ -28,10 +30,12 @@ R Rules for Bazel [![Tests](https://github.com/grailbio/rules_r/actions/workflow
 - [r_register_toolchains](#r_register_toolchains)
 
 #### Container Rules
+
 - [r_library_image](R/container/README.md#r_library_image)
 - [r_binary_image](R/container/README.md#r_binary_image)
 
 <a name="overview"></a>
+
 ## Overview
 
 These rules are used for building [R][r] packages with Bazel. Although R has an
@@ -45,6 +49,7 @@ These rules are mature for production use. We use these rules internally at
 GRAIL to build 800+ R packages from CRAN and Bioconductor.
 
 <a name="getting-started"></a>
+
 ## Getting started
 
 The following assumes that you are familiar with how to use Bazel in general.
@@ -56,12 +61,12 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Change master to the git tag you want.
 http_archive(
-    name = "com_grail_rules_r",
+    name = "com_rules_r",
     strip_prefix = "rules_r-master",
     urls = ["https://github.com/grailbio/rules_r/archive/master.tar.gz"],
 )
 
-load("@com_grail_rules_r//R:dependencies.bzl", "r_register_toolchains", "r_rules_dependencies")
+load("@com_rules_r//R:dependencies.bzl", "r_register_toolchains", "r_rules_dependencies")
 
 r_rules_dependencies()
 
@@ -69,8 +74,9 @@ r_register_toolchains()
 ```
 
 You can load the rules in your BUILD file like so:
+
 ```python
-load("@com_grail_rules_r//R:defs.bzl",
+load("@com_rules_r//R:defs.bzl",
      "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
 ```
 
@@ -78,6 +84,7 @@ Advanced users can also set up [Gazelle][gazelle] to maintain the BUILD files
 for the R packages in their repo automatically.
 
 <a name="configuration"></a>
+
 ## Configuration
 
 The following software must be installed on your system:
@@ -101,11 +108,13 @@ reproducible builds.
 
 For _macOS_, this setup will help you cover the requirements for a large number
 of packages:
+
 ```
 brew install gcc pkg-config icu4c openssl
 ```
 
 For _Ubuntu_, this (or equivalent for other Unix systems) helps:
+
 ```
 apt-get install pkgconf libssl-dev libxml2-dev libcurl4-openssl-dev
 ```
@@ -120,6 +129,7 @@ other packages from R by setting a different value for `R_LIBS_USER`.
 
 When moving to Bazel for installing R packages on your system, we recommend
 cleaning up existing machines:
+
 ```
 sudo Rscript \
   -e 'options("repos"="https://cloud.r-project.org")' \
@@ -136,6 +146,7 @@ For more details on how R searches different paths for packages, see
 [libPaths][libPaths].
 
 <a name="external-packages"></a>
+
 ## External packages
 
 To depend on external packages from CRAN and other remote repos, you can define the
@@ -147,7 +158,7 @@ but outside your main repository, you will have to use `local_repository` with
 a saved BUILD file. Same for VCS repositories.
 
 ```
-load("@com_grail_rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
+load("@com_rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
 
 # R packages with non-standard sources.
 r_repository(
@@ -180,18 +191,20 @@ r_repositories()
 
 The list of all external R packages configured this way can be obtained from
 your shell with
+
 ```
 $ bazel query 'filter(":R_", //external:*)'
 ```
 
 **NOTE**: Periods ('.') in the package names are replaced with underscores
-('_') because bazel does not allow periods in repository names.
+('\_') because bazel does not allow periods in repository names.
 
 To generate and maintain a CSV file containing all your external dependencies
 for use with `r_repository_list`, you can use the functions in the script
 `repo_management.R`.
 
 For example:
+
 ```bash
 script="/path/to/rules_r/scripts/repo_management.R"
 package_list_csv="/path/to/output/csv/file"
@@ -220,9 +233,11 @@ EOF
 ```
 
 <a name="examples"></a>
+
 ## Examples
 
 Some examples are available in the tests directory of this repo.
+
 - See [tests/packages/exampleA][exampleA] for a barebones R package.
 - See [tests/packages/exampleB][exampleB] for a barebones R package that depends on another package.
 - See [tests/packages/exampleC][exampleC] for an R package that depends on external R packages and
@@ -234,6 +249,7 @@ Also see [Razel scripts][scripts] that provide utility functions to generate `BU
 and `WORKSPACE` rules.
 
 <a name="contributing"></a>
+
 ## Contributing
 
 Contributions are most welcome. Please submit a pull request giving the owners
@@ -241,14 +257,15 @@ of this github repo access to your branch for minor style related edits, etc. We
 opening an issue first to discuss the nature of your change before beginning work on it.
 
 <a name="known-issues"></a>
+
 ## Known Issues
 
 Please check open issues at the github repo.
 
-
 # Rules
 
 <a name="r_pkg"></a>
+
 ## r_pkg
 
 ```python
@@ -439,8 +456,8 @@ the right flags.
   </tbody>
 </table>
 
-
 <a name="r_library"></a>
+
 ## r_library
 
 ```python
@@ -485,8 +502,8 @@ container_image rule.
   </tbody>
 </table>
 
-
 <a name="r_unit_test"></a>
+
 ## r_unit_test
 
 ```python
@@ -548,8 +565,8 @@ in the package, and C/C++ code in the `src` directory of R packages.
   </tbody>
 </table>
 
-
 <a name="r_pkg_test"></a>
+
 ## r_pkg_test
 
 ```python
@@ -620,8 +637,8 @@ sandbox.
   </tbody>
 </table>
 
-
 <a name="r_binary"></a>
+
 ## r_binary
 
 ```python
@@ -702,6 +719,7 @@ the runfiles of the root executable.
 </table>
 
 <a name="r_test"></a>
+
 ## r_test
 
 ```python
@@ -711,6 +729,7 @@ r_test(name, src, deps, data, env_vars, tools, rscript_args, script_args)
 This is identical to [r_binary](#r_binary) but is run as a test.
 
 <a name="r_markdown"></a>
+
 ## r_markdown
 
 ```python
@@ -734,6 +753,7 @@ directory of the render function, typically the same directory as the input
 file.
 
 <a name="r_toolchain"></a>
+
 ## r_toolchain
 
 ```python
@@ -826,10 +846,10 @@ to configure the default registered toolchains.
   </tbody>
 </table>
 
-
 # Repository Rules
 
 <a name="r_repository"></a>
+
 ## r_repository
 
 ```python
@@ -904,8 +924,8 @@ the BUILD file automatically. See section on
   </tbody>
 </table>
 
-
 <a name="r_repository_list"></a>
+
 ## r_repository_list
 
 ```python
@@ -973,12 +993,12 @@ as `r_repositories()`, for `r_repository` definitions for packages in
   </tbody>
 </table>
 
-
 <a name="r_rules_dependencies"></a>
+
 ## r_rules_dependencies
 
 ```python
-load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+load("@com_rules_r//R:dependencies.bzl", "r_rules_dependencies")
 
 r_rules_dependencies()
 ```
@@ -986,12 +1006,12 @@ r_rules_dependencies()
 Repository rule that provides repository definitions for dependencies of the
 BUILD system. One such dependency is the site-wide Makevars file.
 
-
 <a name="r_coverage_dependencies"></a>
+
 ## r_coverage_dependencies
 
 ```python
-load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
+load("@com_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
 
 r_coverage_dependencies()
 
@@ -1004,12 +1024,12 @@ Repository rule that provides repository definitions for dependencies in
 computing code coverage for unit tests. Not needed if users already have
 a repository definition for the [covr](https://github.com/r-lib/covr) package.
 
-
 <a name="r_register_toolchains"></a>
+
 ## r_register_toolchains
 
 ```python
-load("@com_grail_rules_r//R:dependencies.bzl", "r_register_toolchains")
+load("@com_rules_r//R:dependencies.bzl", "r_register_toolchains")
 
 r_register_toolchains(r_home, strict, makevars_site, version, args, tools)
 ```
@@ -1020,14 +1040,13 @@ environment. If you want to register your own toolchain for specific platforms,
 register them before calling this function in your WORKSPACE file to give them
 preference.
 
-
 **NOTE**: These toolchains read your system state and cache the findings for
 future runs. Whenever you install a new R version, or if you want to reset the
 toolchain for any reason, run:
+
 ```bash
 bazel sync --configure
 ```
-
 
 <table class="table table-condensed table-bordered table-params">
   <colgroup>
@@ -1086,7 +1105,6 @@ bazel sync --configure
     </tr>
   </tbody>
 </table>
-
 
 [r]: https://cran.r-project.org
 [gazelle]: gazelle

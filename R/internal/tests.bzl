@@ -13,11 +13,11 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:shell.bzl",
+    "@com_rules_r//internal:shell.bzl",
     _sh_quote_args = "sh_quote_args",
 )
 load(
-    "@com_grail_rules_r//R/internal:common.bzl",
+    "@com_rules_r//R/internal:common.bzl",
     _env_vars = "env_vars",
     _executables = "executables",
     _flatten_pkg_deps_list = "flatten_pkg_deps_list",
@@ -28,10 +28,10 @@ load(
     _runtime_path_export = "runtime_path_export",
     _tests_dir = "tests_dir",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
+load("@com_rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 def _test_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@com_rules_r//R:toolchain_type"].RInfo
 
     pkg = ctx.attr.pkg
     pkg_deps = _flatten_pkg_deps_list(ctx.attr.suggested_deps)
@@ -130,7 +130,7 @@ r_unit_test = rule(
         ),
         "_test_sh_tpl": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:test.sh.tpl",
+            default = "@com_rules_r//R/scripts:test.sh.tpl",
         ),
         "_coverage_deps": attr.label_list(
             default = [
@@ -142,23 +142,23 @@ r_unit_test = rule(
         ),
         "_collect_coverage_R": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:collect_coverage.R",
+            default = "@com_rules_r//R/scripts:collect_coverage.R",
         ),
         "_lcov_merger": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:lcov_merger.sh",
+            default = "@com_rules_r//R/scripts:lcov_merger.sh",
         ),
     },
     doc = ("Rule to keep all deps in the sandbox, and run the test " +
            "scripts of the specified package. The package itself must " +
            "be one of the deps."),
     test = True,
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@com_rules_r//R:toolchain_type"],
     implementation = _test_impl,
 )
 
 def _check_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@com_rules_r//R:toolchain_type"].RInfo
 
     pkg_name = ctx.attr.pkg[RPackage].pkg_name
     src_archive = ctx.attr.pkg[RPackage].src_archive
@@ -235,13 +235,13 @@ r_pkg_test = rule(
         ),
         "_check_sh_tpl": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:check.sh.tpl",
+            default = "@com_rules_r//R/scripts:check.sh.tpl",
         ),
     },
     doc = ("Rule to keep all deps of the package in the sandbox, build " +
            "a source archive of this package, and run R CMD check on " +
            "the package source archive in the sandbox."),
     test = True,
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@com_rules_r//R:toolchain_type"],
     implementation = _check_impl,
 )

@@ -13,23 +13,23 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:versions.bzl",
+    "@com_rules_r//internal:versions.bzl",
     _is_at_least = "is_at_least",
 )
 load(
-    "@com_grail_rules_r//R/makevars:darwin.bzl",
+    "@com_rules_r//R/makevars:darwin.bzl",
     _local_darwin_makevars = "local_darwin_makevars",
 )
 load(
-    "@com_grail_rules_r//R/makevars:linux.bzl",
+    "@com_rules_r//R/makevars:linux.bzl",
     _local_linux_makevars = "local_linux_makevars",
 )
 load(
-    "@com_grail_rules_r//R/internal/toolchains:local_toolchain.bzl",
+    "@com_rules_r//R/internal/toolchains:local_toolchain.bzl",
     _local_r_toolchain = "local_r_toolchain",
 )
 load(
-    "@com_grail_rules_r//R/internal:coverage_deps.bzl",
+    "@com_rules_r//R/internal:coverage_deps.bzl",
     _r_coverage_dependencies = "r_coverage_dependencies",
 )
 
@@ -47,22 +47,22 @@ def r_rules_dependencies():
 
     _maybe(
         _local_darwin_makevars,
-        name = "com_grail_rules_r_makevars_darwin",
+        name = "com_rules_r_makevars_darwin",
     )
     _maybe(
         _local_linux_makevars,
-        name = "com_grail_rules_r_makevars_linux",
+        name = "com_rules_r_makevars_linux",
     )
 
 def r_register_toolchains(**kwargs):
     _maybe(
         _local_r_toolchain,
-        name = "com_grail_rules_r_toolchains",
+        name = "com_rules_r_toolchains",
         **kwargs
     )
 
     native.register_toolchains(
-        "@com_grail_rules_r_toolchains//:toolchain",
+        "@com_rules_r_toolchains//:toolchain",
     )
 
 def _maybe(repo_rule, name, **kwargs):

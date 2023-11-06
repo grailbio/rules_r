@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_test")
+load("@com_rules_r//R:defs.bzl", "r_test")
 
 r_test(
     name = "state_test",
     src = "state_test.sh",
-    data = ["@com_grail_rules_r_toolchains//:system_state.txt"],
+    data = ["@com_rules_r_toolchains//:system_state.txt"],
 )

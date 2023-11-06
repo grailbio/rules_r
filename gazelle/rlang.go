@@ -65,7 +65,7 @@ func (rLang) Kinds() map[string]rule.KindInfo {
 func (rLang) Loads() []rule.LoadInfo {
 	return []rule.LoadInfo{
 		{
-			Name: "@com_grail_rules_r//R:defs.bzl",
+			Name: "@com_rules_r//R:defs.bzl",
 			Symbols: []string{
 				"r_pkg",
 				"r_library",

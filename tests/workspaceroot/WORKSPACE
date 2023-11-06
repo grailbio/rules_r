@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-workspace(name = "com_grail_rules_r_tests_workspaceroot")
+workspace(name = "com_rules_r_tests_workspaceroot")
 
 local_repository(
-    name = "com_grail_rules_r",
+    name = "com_rules_r",
     path = "../..",
 )
 
-load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies", "r_register_toolchains", "r_rules_dependencies")
+load("@com_rules_r//R:dependencies.bzl", "r_coverage_dependencies", "r_register_toolchains", "r_rules_dependencies")
 
 r_rules_dependencies()
 

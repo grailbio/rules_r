@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:shell.bzl",
+    "@com_rules_r//internal:shell.bzl",
     _sh_quote = "sh_quote",
 )
 
@@ -46,7 +46,7 @@ local_darwin_makevars = repository_rule(
     attrs = {
         "src": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/makevars:Makevars.darwin.tpl",
+            default = "@com_rules_r//R/makevars:Makevars.darwin.tpl",
             doc = "Template Makevars file.",
         ),
         "env": attr.string_dict(
@@ -64,7 +64,7 @@ local_darwin_makevars = repository_rule(
                    "true or false. Also used to check gcc to find gfortran."),
         ),
         "_processor": attr.label(
-            default = "@com_grail_rules_r//R/makevars:Makevars.darwin.sh",
+            default = "@com_rules_r//R/makevars:Makevars.darwin.sh",
             doc = ("Processor script to perform template substitution. " +
                    "Takes input file as STDIN and returns the processed " +
                    "file as STDOUT. May perform side actions in the " +

@@ -45,7 +45,7 @@ Bazel, over a custom solution of tracking the package dependency graph and
 triggering builds accordingly on each commit, is that R packages can be built
 and tested as part of one build system in multi-language monorepos.
 
-These rules are mature for production use. We use these rules internally at
+These rules are mature for production use. These rules are used at
 GRAIL to build 800+ R packages from CRAN and Bioconductor.
 
 <a name="getting-started"></a>
@@ -213,7 +213,7 @@ bioc_version="bioc_version to use, e.g. 3.11"
 
 # This will be the cache directory for a local copy of all the packages.
 # The output CSV will always reflect the state of this directory.
-local_r_repo="${HOME}/.cache/grail-r-repo"
+local_r_repo="${HOME}/.cache/r-repo"
 
 Rscript - <<EOF
 source('${script}')

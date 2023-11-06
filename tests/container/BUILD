@@ -22,7 +22,7 @@ r_library_tar(
         "tools",
     ],
     library = "//:library",
-    library_path = "r/r-libs",
+    library_path = "R/r-libs",
 )
 
 ## Image related tests

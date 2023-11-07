@@ -43,17 +43,17 @@ check() {
   fi
 }
 
-check "library_image-layer.tar" "./R/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image-layer.tar" "./R/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_internal-layer.tar" "./R/r-libs/exampleC/DESCRIPTION" "true"
-check "library_image_internal-layer.tar" "./R/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./R/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./R/r-libs/bitops/DESCRIPTION" "true"
-check "library_image_tools-layer.tar" "./R/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_tools-layer.tar" "./R/r-libs/bitops/DESCRIPTION" "false"
+check "library_image-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_internal-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "true"
+check "library_image_internal-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "true"
+check "library_image_tools-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_tools-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
 
-check "library_archive.tar.gz" "./R/r-libs/exampleC/DESCRIPTION" "false"
-check "library_archive.tar.gz" "./R/r-libs/bitops/DESCRIPTION" "true"
+check "library_archive.tar.gz" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
+check "library_archive.tar.gz" "./rules_r/r-libs/bitops/DESCRIPTION" "true"
 
 # Check binary script and R library packages.
 check "binary_image-layer.tar" "/app/binary/binary" "true"

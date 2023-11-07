@@ -22,7 +22,7 @@ r_library_tar(
         "tools",
     ],
     library = "//:library",
-    library_path = "R/r-libs",
+    library_path = "rules_r/r-libs",
 )
 
 ## Image related tests
@@ -32,7 +32,7 @@ load("@rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
 r_library_image(
     name = "library_image",
     base = "@r_base//image",
-    directory = "r",
+    directory = "rules_r",
     library = "//:library",
     library_path = "r-libs",
     tags = ["no-remote-cache"],

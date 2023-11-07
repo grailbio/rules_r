@@ -40,7 +40,7 @@ in a Docker image using this rule. Dependencies are installed implicitly
 in an efficient layered mechanism.
 
 ```python
-load("@com_rules_r//R:defs.bzl", "r_library")
+load("@rules_r//R:defs.bzl", "r_library")
 
 r_library(
     name = "my_r_library",
@@ -68,7 +68,7 @@ reason, you can use the `r_library_tar` rule to provide a tar to the container.
 ```python
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
-load("@com_rules_r//R:defs.bzl", "r_library_tar")
+load("@rules_r//R:defs.bzl", "r_library_tar")
 
 r_library_tar(
     name = "my_r_library_archive",
@@ -99,7 +99,7 @@ additionally a `binary` attribute. For more details on how the rule
 works, see the documentation in [binary.bzl][binary.bzl].
 
 ```python
-load("@com_rules_r//R:defs.bzl", "r_library")
+load("@rules_r//R:defs.bzl", "r_library")
 
 r_binary(
     name = "my_r_binary",

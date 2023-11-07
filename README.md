@@ -61,12 +61,12 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Change master to the git tag you want.
 http_archive(
-    name = "com_rules_r",
+    name = "rules_r",
     strip_prefix = "rules_r-master",
     urls = ["https://github.com/grailbio/rules_r/archive/master.tar.gz"],
 )
 
-load("@com_rules_r//R:dependencies.bzl", "r_register_toolchains", "r_rules_dependencies")
+load("@rules_r//R:dependencies.bzl", "r_register_toolchains", "r_rules_dependencies")
 
 r_rules_dependencies()
 
@@ -76,7 +76,7 @@ r_register_toolchains()
 You can load the rules in your BUILD file like so:
 
 ```python
-load("@com_rules_r//R:defs.bzl",
+load("@rules_r//R:defs.bzl",
      "r_pkg", "r_library", "r_unit_test", "r_pkg_test")
 ```
 
@@ -158,7 +158,7 @@ but outside your main repository, you will have to use `local_repository` with
 a saved BUILD file. Same for VCS repositories.
 
 ```
-load("@com_rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
+load("@rules_r//R:repositories.bzl", "r_repository", "r_repository_list")
 
 # R packages with non-standard sources.
 r_repository(
@@ -998,7 +998,7 @@ as `r_repositories()`, for `r_repository` definitions for packages in
 ## r_rules_dependencies
 
 ```python
-load("@com_rules_r//R:dependencies.bzl", "r_rules_dependencies")
+load("@rules_r//R:dependencies.bzl", "r_rules_dependencies")
 
 r_rules_dependencies()
 ```
@@ -1011,7 +1011,7 @@ BUILD system. One such dependency is the site-wide Makevars file.
 ## r_coverage_dependencies
 
 ```python
-load("@com_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
+load("@rules_r//R:dependencies.bzl", "r_coverage_dependencies")
 
 r_coverage_dependencies()
 
@@ -1029,7 +1029,7 @@ a repository definition for the [covr](https://github.com/r-lib/covr) package.
 ## r_register_toolchains
 
 ```python
-load("@com_rules_r//R:dependencies.bzl", "r_register_toolchains")
+load("@rules_r//R:dependencies.bzl", "r_register_toolchains")
 
 r_register_toolchains(r_home, strict, makevars_site, version, args, tools)
 ```

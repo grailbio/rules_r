@@ -1,2 +1,2 @@
 "Package","build_file"
-"RProtoBuf","@com_rules_r_tests//cran:BUILD.RProtoBuf"
+"RProtoBuf","@rules_r_tests//cran:BUILD.RProtoBuf"

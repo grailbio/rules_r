@@ -126,7 +126,7 @@ _r_toolchain = rule(
 def r_toolchain(**kwargs):
     if kwargs.get("stamp") == None:
         _r_toolchain(stamp = select({
-            "@com_rules_r//R/internal/toolchains:stamp": True,
+            "@rules_r//R/internal/toolchains:stamp": True,
             "//conditions:default": False,
         }), **kwargs)
     else:

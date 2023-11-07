@@ -15,5 +15,5 @@
 sh_test(
     name = "flock_test",
     srcs = ["flock_test.sh"],
-    data = ["@com_rules_r//R/scripts:flock"],
+    data = ["@rules_r//R/scripts:flock"],
 )

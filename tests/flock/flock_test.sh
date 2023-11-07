@@ -49,7 +49,7 @@ pids=()
 # Acquire a lock on the first file in a subshell for some time.
 (
   exec 200>"${lock_1}"
-  external/com_rules_r/R/scripts/flock 200 || fail "unable to acquire lock 1 in proc 1"
+  external/rules_r/R/scripts/flock 200 || fail "unable to acquire lock 1 in proc 1"
   mark "${marker_1}"
   wait_on_marker "${marker_2}"  # Wait until the second subshell has tried acquiring the lock.
   exec 200>&- # Close the file descriptor; releasing the lock.
@@ -61,17 +61,17 @@ pids+=($!)
 (
   wait_on_marker "${marker_1}"  # Wait until the first subshell has acquired the lock.
   exec 200>"${lock_1}"
-  external/com_rules_r/R/scripts/flock 200 && fail "should not have acquired lock 1 in proc 2"
+  external/rules_r/R/scripts/flock 200 && fail "should not have acquired lock 1 in proc 2"
   mark "${marker_2}"
   wait_on_marker "${marker_3}"
-  external/com_rules_r/R/scripts/flock 200 || fail "unable to acquire lock 1 in proc 2"
+  external/rules_r/R/scripts/flock 200 || fail "unable to acquire lock 1 in proc 2"
 ) &
 pids+=($!)
 
 # Try to acquire a lock on a different file, and succeed immediately.
 (
   exec 200>"${lock_2}"
-  external/com_rules_r/R/scripts/flock 200 || fail "unable to acquire lock 2 in proc 3"
+  external/rules_r/R/scripts/flock 200 || fail "unable to acquire lock 2 in proc 3"
 ) &
 pids+=($!)
 

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 load(
-    "@com_rules_r//R/internal:common.bzl",
+    "@rules_r//R/internal:common.bzl",
     _layer_library_deps = "layer_library_deps",
     _library_deps = "library_deps",
     _runfiles = "runfiles",
 )
-load("@com_rules_r//R:providers.bzl", "RLibrary", "RPackage")
+load("@rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 def _library_impl(ctx):
-    info = ctx.toolchains["@com_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@rules_r//R:toolchain_type"].RInfo
 
     library_deps = _library_deps(ctx.attr.pkgs)
 
@@ -74,13 +74,13 @@ r_library = rule(
         ),
         "_library_sh_tpl": attr.label(
             allow_single_file = True,
-            default = "@com_rules_r//R/scripts:library.sh.tpl",
+            default = "@rules_r//R/scripts:library.sh.tpl",
         ),
     },
     doc = ("Rule to install the given package and all dependencies to " +
            "a user provided or system default R library site."),
     executable = True,
-    toolchains = ["@com_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _library_impl,
 )
 

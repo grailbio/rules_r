@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_rules_r//R:defs.bzl", "r_library_tar")
+load("@rules_r//R:defs.bzl", "r_library_tar")
 
 r_library_tar(
     name = "library_archive",
@@ -27,7 +27,7 @@ r_library_tar(
 
 ## Image related tests
 
-load("@com_rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
+load("@rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
 
 r_library_image(
     name = "library_image",

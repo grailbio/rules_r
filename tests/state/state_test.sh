@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-readonly state_file="./external/com_rules_r_toolchains/system_state.txt"
+readonly state_file="./external/rules_r_toolchains/system_state.txt"
 
 fail() {
   >&2 echo "$@"

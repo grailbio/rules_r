@@ -45,8 +45,7 @@ Bazel, over a custom solution of tracking the package dependency graph and
 triggering builds accordingly on each commit, is that R packages can be built
 and tested as part of one build system in multi-language monorepos.
 
-These rules are mature for production use. These rules are used at
-GRAIL to build 800+ R packages from CRAN and Bioconductor.
+These rules are mature for production use.
 
 <a name="getting-started"></a>
 

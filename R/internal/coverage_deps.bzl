@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//R:repositories.bzl",
+    "@rules_r//R:repositories.bzl",
     _r_repository = "r_repository",
     _r_repository_list = "r_repository_list",
 )
@@ -28,7 +28,7 @@ def r_coverage_dependencies(**kwargs):
         other_args = {
             "pkg_type": "both",
         },
-        package_list = "@com_grail_rules_r//R/internal:coverage_deps_list.csv",
+        package_list = "@rules_r//R/internal:coverage_deps_list.csv",
         remote_repos = {
             # CRAN does not retain binary archives for macOS.
             "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",

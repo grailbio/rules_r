@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:defs.bzl", "r_test")
+load("@rules_r//R:defs.bzl", "r_test")
 
 r_test(
     name = "stamp_test",
     src = "stamp_test.sh",
     data = [
-        "@com_grail_rules_r//internal/statusfiles:stable",
-        "@com_grail_rules_r//internal/statusfiles:volatile",
+        "@rules_r//internal/statusfiles:stable",
+        "@rules_r//internal/statusfiles:volatile",
     ],
 )
 
@@ -27,7 +27,7 @@ r_test(
     name = "nostamp_test",
     src = "nostamp_test.sh",
     data = [
-        "@com_grail_rules_r//internal/statusfiles:volatile",
+        "@rules_r//internal/statusfiles:volatile",
     ],
 )
 

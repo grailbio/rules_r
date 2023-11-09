@@ -23,7 +23,7 @@ go_library(
         "resolve.go",
         "rlang.go",
     ],
-    importpath = "grail.com/bazel/gazelle/rlang",
+    importpath = "bazel.io/gazelle/rlang",
     visibility = ["//visibility:public"],
     deps = [
         "@bazel_gazelle//config:go_default_library",

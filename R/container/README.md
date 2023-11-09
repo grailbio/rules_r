@@ -1,5 +1,4 @@
-Container Support
-================
+# Container Support
 
 You can create Docker or OCI images of R packages using Bazel.
 
@@ -33,6 +32,7 @@ container_pull(
 ```
 
 <a name="r_library_image"></a>
+
 ## r_library_image
 
 In a `BUILD` file, define your library of R packages and install them
@@ -40,7 +40,7 @@ in a Docker image using this rule. Dependencies are installed implicitly
 in an efficient layered mechanism.
 
 ```python
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
+load("@rules_r//R:defs.bzl", "r_library")
 
 r_library(
     name = "my_r_library",
@@ -48,7 +48,7 @@ r_library(
         "//path/to/packageA:r_pkg_target",
         "//path/to/packageB:r_pkg_target",
     ],
-)  
+)
 
 r_library_image(
     name = "my_r_library_image",
@@ -68,7 +68,7 @@ reason, you can use the `r_library_tar` rule to provide a tar to the container.
 ```python
 load("@io_bazel_rules_docker//container:container.bzl", "container_image")
 
-load("@com_grail_rules_r//R:defs.bzl", "r_library_tar")
+load("@rules_r//R:defs.bzl", "r_library_tar")
 
 r_library_tar(
     name = "my_r_library_archive",
@@ -86,6 +86,7 @@ container_image(
 ```
 
 <a name="r_binary_image"></a>
+
 ## r_binary_image
 
 This rule wraps an `r_binary` target in a container, ideal for quickly setting
@@ -98,7 +99,7 @@ additionally a `binary` attribute. For more details on how the rule
 works, see the documentation in [binary.bzl][binary.bzl].
 
 ```python
-load("@com_grail_rules_r//R:defs.bzl", "r_library")
+load("@rules_r//R:defs.bzl", "r_library")
 
 r_binary(
     name = "my_r_binary",
@@ -107,7 +108,7 @@ r_binary(
         "//path/to/packageA:r_pkg_target",
         "//path/to/packageB:r_pkg_target",
     ],
-)  
+)
 
 r_binary_image(
     name = "my_r_binary_image",
@@ -115,7 +116,6 @@ r_binary_image(
     binary = "my_r_binary",
 )
 ```
-
 
 [library.bzl]: library.bzl
 [binary.bzl]: binary.bzl

@@ -36,7 +36,7 @@ CXX11 = ${LLVM_BIN}clang++
 CXX14 = ${LLVM_BIN}clang++
 CXX17 = ${LLVM_BIN}clang++
 
-# Reproducibility flags copied from @com_grail_rules_r_makevars_linux
+# Reproducibility flags copied from @rules_r_makevars_linux
 CPPFLAGS += "-Wno-builtin-macro-redefined" \
   "-D__DATE__=\"redacted\"" \
   "-D__TIMESTAMP__=\"redacted\"" \

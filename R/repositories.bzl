@@ -13,21 +13,21 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//R/internal:common.bzl",
+    "@rules_r//R/internal:common.bzl",
     _dict_to_r_vec = "dict_to_r_vec",
     _get_r_version = "get_r_version",
     _quote_dict_values = "quote_dict_values",
     _quote_literal = "quote_literal",
     _unquote_string = "unquote_string",
 )
-load("@com_grail_rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
+load("@rules_r//internal:shell.bzl", _sh_quote = "sh_quote")
 
 _rscript = attr.string(
     default = "Rscript",
     doc = "Name, path or label of the interpreter to use for running the razel script.",
 )
 _razel = attr.label(
-    default = "@com_grail_rules_r//scripts:razel.R",
+    default = "@rules_r//scripts:razel.R",
     allow_single_file = True,
     doc = "R source file containing razel functions.",
 )
@@ -159,7 +159,7 @@ def _failing_r_repository_list(rctx, msg_suffix):
     ]
 
     content = """
-load("@com_grail_rules_r//R:repositories.bzl", "failing_repository")
+load("@rules_r//R:repositories.bzl", "failing_repository")
 
 # R{version_str} not found on host machine; substituting package repositories
 # with rules that will fail on first load.

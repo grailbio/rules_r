@@ -13,11 +13,11 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:shell.bzl",
+    "@rules_r//internal:shell.bzl",
     _sh_quote_args = "sh_quote_args",
 )
 load(
-    "@com_grail_rules_r//R/internal:common.bzl",
+    "@rules_r//R/internal:common.bzl",
     _build_path_export = "build_path_export",
     _count_group_matches = "count_group_matches",
     _env_vars = "env_vars",
@@ -30,7 +30,7 @@ load(
     _srcs_dir = "srcs_dir",
     _tests_dir = "tests_dir",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RLibrary", "RPackage")
+load("@rules_r//R:providers.bzl", "RLibrary", "RPackage")
 
 # From the global R Makeconf.
 _NATIVE_SOURCE_EXTS = [
@@ -357,7 +357,7 @@ def _merge_tests(ctx, in_tar, out_tar, pkg_name, pkg_src_dir, test_files):
     )
 
 def _build_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@rules_r//R:toolchain_type"].RInfo
 
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
@@ -560,7 +560,7 @@ def _build_impl(ctx):
     ]
 
 def _build_source_pkg_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@rules_r//R:toolchain_type"].RInfo
 
     pkg_name = _package_name(ctx)
     pkg_src_dir = _package_dir(ctx)
@@ -692,7 +692,7 @@ def _build_source_pkg_impl(ctx):
     ]
 
 def _build_binary_pkg_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@rules_r//R:toolchain_type"].RInfo
 
     pkg_name = _package_name(ctx)
     pkg_lib_dir = ctx.actions.declare_directory("lib")
@@ -811,22 +811,22 @@ _COMMON_BUILD_ATTRS = {
     ),
     "_build_pkg_common_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_pkg_common.sh",
+        default = "@rules_r//R/scripts:build_pkg_common.sh",
     ),
     "_build_pkg_bin_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_pkg_bin.sh",
+        default = "@rules_r//R/scripts:build_pkg_bin.sh",
         executable = True,
         cfg = "host",
     ),
     "_flock": attr.label(
-        default = "@com_grail_rules_r//R/scripts:flock",
+        default = "@rules_r//R/scripts:flock",
         executable = True,
         cfg = "host",
     ),
     "_instrument_R": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:instrument.R",
+        default = "@rules_r//R/scripts:instrument.R",
     ),
 }
 
@@ -878,19 +878,19 @@ _BUILD_ATTRS = {
     ),
     "_build_pkg_src_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_pkg_src.sh",
+        default = "@rules_r//R/scripts:build_pkg_src.sh",
         executable = True,
         cfg = "host",
     ),
     "_merge_test_files_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:merge_test_files.sh",
+        default = "@rules_r//R/scripts:merge_test_files.sh",
         executable = True,
         cfg = "host",
     ),
     "_stamp_description_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:stamp_description.sh",
+        default = "@rules_r//R/scripts:stamp_description.sh",
         executable = True,
         cfg = "host",
     ),
@@ -919,7 +919,7 @@ _BINARY_PKG_ATTRS.update({
     ),
     "_build_binary_sh": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:build_binary.sh",
+        default = "@rules_r//R/scripts:build_binary.sh",
         executable = True,
         cfg = "host",
     ),
@@ -934,7 +934,7 @@ r_pkg = rule(
         "src_archive": "%{name}.tar.gz",
         "so_lib": "%{name}.so",
     },
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _build_impl,
 )
 
@@ -947,7 +947,7 @@ r_source_pkg = rule(
         "src_archive": "%{name}.tar.gz",
         "so_lib": "%{name}.so",
     },
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _build_source_pkg_impl,
 )
 
@@ -959,6 +959,6 @@ r_binary_pkg = rule(
         "bin_archive": "%{name}.bin.tar.gz",
         "so_lib": "%{name}.so",
     },
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _build_binary_pkg_impl,
 )

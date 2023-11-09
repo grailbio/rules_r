@@ -43,7 +43,7 @@ echo "::group::Storing debug artifacts"
 export ARTIFACTS_DIR="/tmp/debug-artifacts/$(uname)"
 mkdir -p "${ARTIFACTS_DIR}"
 "${bazel}" query --output=build 'kind("r_repository", "//external:*")' > "${ARTIFACTS_DIR}/repository_list.txt"
-cp "$("${bazel}" info output_base)/external/com_grail_rules_r_toolchains/system_state.txt" "${ARTIFACTS_DIR}/"
+cp "$("${bazel}" info output_base)/external/rules_r_toolchains/system_state.txt" "${ARTIFACTS_DIR}/"
 echo "::endgroup::"
 
 echo "::group::Default tests"

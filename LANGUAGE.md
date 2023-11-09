@@ -1,23 +1,8 @@
-# GRAIL R guide
+# R guide
 
 <!-- Please prefer a markdown editor like Typora when making large changes -->
 
-Language Guide for writing code at GRAIL in the R language.
-
-<b>NOTE</b>: This is a snapshot of what GRAIL has maintained internally as a
-style guide. This does not talk about environment configuration and
-integration with the build system. This is here until I find a better place for
-it.
-
-<b>Author</b>: Siddhartha Bagaria
-
-<b>Reviewers</b>: Steven Banville and Hyunsung John Kim
-
-<b>Last Updated</b>: May 9, 2019
-
-----
-
-R originated as a blend between *Scheme*, a functional programming language, and *S*, a statistical computing language. The language specification started as a toy used within a closed-group of statisticians in the early 1990s [1], and grew organically in the public domain from the year 2000. Parts of the language will feel familiar to users of languages like Lisp or Haskell, and other parts will feel familiar to users of software like Matlab.
+R originated as a blend between _Scheme_, a functional programming language, and _S_, a statistical computing language. The language specification started as a toy used within a closed-group of statisticians in the early 1990s [1], and grew organically in the public domain from the year 2000. Parts of the language will feel familiar to users of languages like Lisp or Haskell, and other parts will feel familiar to users of software like Matlab.
 
 The language provides very few primitives, and most operators, like `+` or `[` are implemented as functions, which can be overloaded and overridden by users. Given the power and flexibility, it is important that users of the language limit themselves to a known safe set of features, and understand their implications.
 
@@ -26,23 +11,24 @@ For a more comprehensive reading on the language, please see the [official manua
 At GRAIL, the following is a community agreed set of rules to simplify the language and be consistent in our usage. It is not the aim of this guide to act as a tutorial or a reference.
 
 <a name="toc"></a>
+
 ## Table of Contents
 
 - [Language](#language)
-  + [Attaching](#attaching)
-  + [Variable Sequence Generation](#variable-sequence-generation)
-  + [Warnings](#warnings)
-  + [Vectors, Indexing and Recycling](#vectors--indexing-and-recycling)
-  + [OOP](#oop)
-  + [Metaprogramming](#metaprogramming)
-  + [Discouraged Functions](#discouraged-functions)
+  - [Attaching](#attaching)
+  - [Variable Sequence Generation](#variable-sequence-generation)
+  - [Warnings](#warnings)
+  - [Vectors, Indexing and Recycling](#vectors--indexing-and-recycling)
+  - [OOP](#oop)
+  - [Metaprogramming](#metaprogramming)
+  - [Discouraged Functions](#discouraged-functions)
 - [Dependencies](#dependencies)
-  + [Tidy Evaluation](#tidy-evaluation)
+  - [Tidy Evaluation](#tidy-evaluation)
     - [Data Manipulation Verbs](#data-manipulation-verbs)
     - [Pipe Operator](#pipe-operator)
 - [Packages](#packages)
 - [Style](#style)
-  + [Syntax](#syntax)
+  - [Syntax](#syntax)
     - [File Names](#file-names)
     - [Package Names](#package-names)
     - [Object Names](#object-names)
@@ -50,7 +36,7 @@ At GRAIL, the following is a community agreed set of rules to simplify the langu
     - [Returns](#returns)
     - [Arguments](#arguments)
     - [Errors](#errors)
-  + [Formatting](#formatting)
+  - [Formatting](#formatting)
     - [Line Length](#line-length)
     - [Spacing](#spacing)
     - [Code Blocks](#code-blocks)
@@ -58,7 +44,7 @@ At GRAIL, the following is a community agreed set of rules to simplify the langu
     - [Roxygen Documentation](#roxygen-documentation)
     - [TODOs](#todos)
 
-------
+---
 
 ## Language
 
@@ -88,7 +74,7 @@ library(roguePkg)
 
 **Cons**: Although messages are printed on the console listing the objects that were masked by new definitions, these can be easily missed. This makes code behavior dependent on the order or existence of attach operations, which is obviously undesirable.
 
-**Decision**: Avoid attaching as much as you can, and qualify all your objects with the namespace, e.g. `dplyr::mutate`. Attach when you are absolutely sure you are not unintentionally masking. If you do have to attach, in interactive runs, visually inspect the output from your attach operation, and in non-interactive runs, check the output of [base::conflicts](https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/conflicts) function. Also, see the *Good Practice* section on [base::attach](https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/attach).
+**Decision**: Avoid attaching as much as you can, and qualify all your objects with the namespace, e.g. `dplyr::mutate`. Attach when you are absolutely sure you are not unintentionally masking. If you do have to attach, in interactive runs, visually inspect the output from your attach operation, and in non-interactive runs, check the output of [base::conflicts](https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/conflicts) function. Also, see the _Good Practice_ section on [base::attach](https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/attach).
 
 ```R
 # Bad
@@ -106,7 +92,7 @@ somePkg::some_var
 
 A convenient way to generate sequences in R is using the `:` operator, e.g. `1:3`. This section concerns when at least one side of the operator is variable.
 
-**Pros**: It is a much more intuitive way to think that you are *counting* from `1` to `x`.
+**Pros**: It is a much more intuitive way to think that you are _counting_ from `1` to `x`.
 
 **Cons**: This pattern is often misused as a way to get a sequence of length `x` because it gives incorrect results when `x < 1`, because `1:0 == c(1, 0)` which is not the intended result in most cases, where you would expect an empty vector.
 
@@ -162,10 +148,10 @@ It pays to keep in mind that there are no scalars in R, and that vectors of insu
 
    ```R
    > df <- data.frame(foo = 1:2, bar = 3:4)
-   
+
    > df[, "foo"]
    [1] 1 2
-   
+
    > df[, "foo", drop = FALSE]
      foo
    1   1
@@ -180,17 +166,17 @@ It pays to keep in mind that there are no scalars in R, and that vectors of insu
    [1] TRUE
    > c(FALSE, FALSE) || c(FALSE, TRUE)
    [1] FALSE
-   
+
    # Good
    > c(TRUE, FALSE) & c(TRUE, TRUE)
    [1]  TRUE FALSE
    > c(FALSE, FALSE) | c(FALSE, TRUE)
    [1] FALSE  TRUE
-   
+
    # Bad
    > if (x & y) { ... }
    > ifelse(x && y, ..., ...)
-   
+
    # Good
    > if (x && y) { ... }
    > ifelse(x & y, ..., ...)
@@ -200,17 +186,17 @@ It pays to keep in mind that there are no scalars in R, and that vectors of insu
 
    ```R
    # Different behaviors of list concatenation
-   
+
    > a <- list(one=1, two=2)
    > b <- list(three=3, four=4)
-   
+
    > class(c(a, b))
    [1] "list"
    > length(c(a, b))
    [1] 4
    > class(c(a, b, recursive=TRUE))
    [1] "numeric"
-   
+
    > length(list(a, b))
    [1] 2
    ```
@@ -219,12 +205,12 @@ It pays to keep in mind that there are no scalars in R, and that vectors of insu
 
    ```R
    > x <- as.list(1:2)
-   
+
    > class(x[[2]])
    [1] "integer"
    > class(x[2])
    [1] "list"
-   
+
    > class(x[1:2])
    [1] "list"
    > class(x[[1:2]])
@@ -237,7 +223,7 @@ It pays to keep in mind that there are no scalars in R, and that vectors of insu
 
    ```R
    > x <- 1
-   
+
    # Maybe unintended results
    > x[3] <- 3
    > x
@@ -303,14 +289,13 @@ The following functions from standard packages are discouraged because of unexpe
 2. `base::subset`
    See warning in the [documentation](https://www.rdocumentation.org/packages/base/versions/3.6.0/topics/subset) about caveats with nonstandard evaluation of the argument.
 
-------
-
+---
 
 ## Dependencies
 
 [top](#toc)
 
-"*Dependencies are invitations for other people to break your code*"
+"_Dependencies are invitations for other people to break your code_"
 
 R has a thriving ecosystem of community contributions in the form of established package repositories like CRAN and Bioconductor. CRAN [Task Views](https://cran.r-project.org/web/views/) and Bioc [Views](https://www.bioconductor.org/packages/release/BiocViews.html) provide a catalogued view of these ~13,000 packages.
 
@@ -344,7 +329,7 @@ One of the major objectives of Tidy Evaluation is to make the data your executio
 
 #### Pipe Operator
 
-``magrittr::`%>%` `` 
+`` magrittr::`%>%`  ``
 
 Read this [blog post](http://www.win-vector.com/blog/2017/07/in-praise-of-syntactic-sugar/) for some discussion on semantics of the pipe operator, and alternatives.
 
@@ -360,7 +345,7 @@ Read this [blog post](http://www.win-vector.com/blog/2017/07/in-praise-of-syntac
 4. Break long flows (> 10 steps) by assigning intermediate variable names.
 5. Prefer alternative implementations which have cleaner standard evaluation semantics, e.g. the dot pipe operator ([introduction](https://winvector.github.io/wrapr/articles/dot_pipe.html), [technical article](https://journal.r-project.org/archive/2018/RJ-2018-042/RJ-2018-042.pdf)).
 
------
+---
 
 ## Packages
 
@@ -378,7 +363,7 @@ Prefer writing and maintaining your code as an R package. Some useful guidelines
 6. When using Roxygen, collect all package level directives, i.e. package documentation, `@importFrom` directives, etc., above a single symbol (typically `NULL` or `"_PACKAGE"`), usually in the file `zzz.R`.
 7. Write unit tests for your package when possible. Any executable file in the tests directory is considered a test. The preferred unit testing framework at GRAIL is `testthat`.
 
-----
+---
 
 ## Style
 
@@ -539,7 +524,7 @@ get_best_label <- function(too_scores, too_labels_map) { ... }
 
 #### TODOs
 
-1. Use a consistent style for TODOs throughout your code. 
+1. Use a consistent style for TODOs throughout your code.
    `TODO(username): Explicit description of action to be taken`
 
 ## Open Questions
@@ -547,7 +532,7 @@ get_best_label <- function(too_scores, too_labels_map) { ... }
 1. Pros and cons of `tibble` as an alternative to `data.frame`. Looks like accessing non-existent columns generate a warning, and `drop=FALSE` is default.
 2. Performance benchmarks of Tidy Evaluation compared to alternatives.
 3. Preference to single quotes over double quotes for string constants.
-4. Generating errors for unintended use of `switch`,  `ifelse`, `case_when`, etc.
+4. Generating errors for unintended use of `switch`, `ifelse`, `case_when`, etc.
 5. Examples of well formatted code blocks.
 
 ---

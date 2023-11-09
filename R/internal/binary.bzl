@@ -13,11 +13,11 @@
 # limitations under the License.
 
 load(
-    "@com_grail_rules_r//internal:shell.bzl",
+    "@rules_r//internal:shell.bzl",
     _sh_quote_args = "sh_quote_args",
 )
 load(
-    "@com_grail_rules_r//R/internal:common.bzl",
+    "@rules_r//R/internal:common.bzl",
     _dict_to_r_vec = "dict_to_r_vec",
     _env_vars = "env_vars",
     _executables = "executables",
@@ -27,7 +27,7 @@ load(
     _runfiles = "runfiles",
     _runtime_path_export = "runtime_path_export",
 )
-load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
+load("@rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
 def _r_markdown_stub(ctx):
     stub = ctx.actions.declare_file(ctx.label.name + "_stub.R")
@@ -47,7 +47,7 @@ def _r_markdown_stub(ctx):
     return stub
 
 def _r_binary_impl(ctx):
-    info = ctx.toolchains["@com_grail_rules_r//R:toolchain_type"].RInfo
+    info = ctx.toolchains["@rules_r//R:toolchain_type"].RInfo
 
     if "render_function" in dir(ctx.attr):
         src = _r_markdown_stub(ctx)
@@ -160,7 +160,7 @@ _R_BINARY_ATTRS = {
     ),
     "_binary_sh_tpl": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:binary.sh.tpl",
+        default = "@rules_r//R/scripts:binary.sh.tpl",
     ),
 }
 
@@ -184,7 +184,7 @@ _R_MARKDOWN_ATTRS.update({
     ),
     "_render_R_tpl": attr.label(
         allow_single_file = True,
-        default = "@com_grail_rules_r//R/scripts:render.R.tpl",
+        default = "@rules_r//R/scripts:render.R.tpl",
     ),
 })
 
@@ -192,7 +192,7 @@ r_binary = rule(
     attrs = _R_BINARY_ATTRS,
     doc = "Rule to run a binary with a configured R library.",
     executable = True,
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _r_binary_impl,
 )
 
@@ -201,7 +201,7 @@ r_test = rule(
     doc = "Rule to run a binary with a configured R library.",
     executable = True,
     test = True,
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _r_binary_impl,
 )
 
@@ -209,6 +209,6 @@ r_markdown = rule(
     attrs = _R_MARKDOWN_ATTRS,
     doc = "Rule to render a markdown.",
     executable = True,
-    toolchains = ["@com_grail_rules_r//R:toolchain_type"],
+    toolchains = ["@rules_r//R:toolchain_type"],
     implementation = _r_binary_impl,
 )

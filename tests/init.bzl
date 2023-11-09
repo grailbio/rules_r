@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//R:dependencies.bzl", _r_register_toolchains = "r_register_toolchains")
+load("@rules_r//R:dependencies.bzl", _r_register_toolchains = "r_register_toolchains")
 
 def r_register_toolchains(use_r_from_nix = False):
     if use_r_from_nix:
         rscript = "@Rnix//:bin/Rscript"
-        native.register_toolchains("@com_grail_rules_r_tests//:toolchain-nix")
+        native.register_toolchains("@rules_r_tests//:toolchain-nix")
     else:
         rscript = "Rscript"
         _r_register_toolchains()

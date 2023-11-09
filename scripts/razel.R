@@ -140,7 +140,7 @@ buildify <- function(pkg_directory = ".",
 
   tags_attr <- ifelse(external, '    tags=["external-r-repo"]\n', '')
 
-  header <- paste0('load("@com_grail_rules_r//R:defs.bzl",',
+  header <- paste0('load("@rules_r//R:defs.bzl",',
                    '"r_pkg", "r_source_pkg", "r_binary_pkg",',
                    '"r_library", "r_unit_test", "r_pkg_test")\n\n',
                    'package(default_visibility = ["//visibility:public"])')
@@ -456,7 +456,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     "# R version information",
     r_version_lines,
     "",
-    "load(\"@com_grail_rules_r//R:repositories.bzl\", \"r_repository\")",
+    "load(\"@rules_r//R:repositories.bzl\", \"r_repository\")",
     "",
     "def r_repositories():") -> header
   writeLines(header, output_con)

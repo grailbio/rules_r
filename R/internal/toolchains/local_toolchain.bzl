@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@com_grail_rules_r//internal:os.bzl", _detect_os = "detect_os")
+load("@rules_r//internal:os.bzl", _detect_os = "detect_os")
 
 _home_env_var = "BAZEL_R_HOME"
 
@@ -22,7 +22,7 @@ def _path_must_exist(rctx, str_path):
         fail("'%s' does not exist" % str_path)
     return path
 
-_BUILD = """load("@com_grail_rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
+_BUILD = """load("@rules_r//R/internal/toolchains:toolchain.bzl", "r_toolchain")
 
 exports_files(
     ["{state_file}"]
@@ -43,8 +43,8 @@ r_toolchain(
 
 toolchain(
     name = "toolchain",
-    toolchain = "@com_grail_rules_r_toolchains//:r_toolchain_generic",
-    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
+    toolchain = "@rules_r_toolchains//:r_toolchain_generic",
+    toolchain_type = "@rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )
 """
@@ -96,7 +96,7 @@ def _local_r_toolchain_impl(rctx):
 
     makevars_site_str = "None"
     if rctx.attr.makevars_site:
-        makevars_repo = "@com_grail_rules_r_makevars_%s" % os
+        makevars_repo = "@rules_r_makevars_%s" % os
         makevars_site_str = "\"%s\"" % makevars_repo
         llvm_cov_dir = rctx.path(Label(makevars_repo)).dirname
         llvm_cov_path = llvm_cov_dir.get_child("llvm-cov")
@@ -159,7 +159,7 @@ local_r_toolchain = repository_rule(
         ),
         "_system_state_computer": attr.label(
             allow_single_file = True,
-            default = "@com_grail_rules_r//R/scripts:system_state.sh",
+            default = "@rules_r//R/scripts:system_state.sh",
             doc = "Executable to output R system state",
         ),
     },

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_r//R:defs.bzl", "r_library")
+load("@com_grail_rules_r//R:defs.bzl", "r_library")
 
 r_library(
     name = "library",
@@ -26,7 +26,7 @@ r_library(
     ],
 )
 
-load("@rules_r//R:defs.bzl", "r_toolchain")
+load("@com_grail_rules_r//R:defs.bzl", "r_toolchain")
 
 r_toolchain(
     name = "r-toolchain-linux",
@@ -45,7 +45,7 @@ r_toolchain(
     makevars_site = "//cran:Makevars.gnu",
     r = "/usr/bin/R",
     rscript = "/usr/bin/Rscript",
-    system_state_file = "@rules_r_toolchains//:system_state.txt",
+    system_state_file = "@com_grail_rules_r_toolchains//:system_state.txt",
     tools = [
         "@llvm_toolchain_llvm//:bin/clang",
         "@llvm_toolchain_llvm//:bin/clang++",
@@ -72,8 +72,8 @@ r_toolchain(
         ],
         "//conditions:default": None,
     }),
-    makevars_site = "@rules_r_makevars_darwin",
-    system_state_file = "@rules_r_toolchains//:system_state.txt",
+    makevars_site = "@com_grail_rules_r_makevars_darwin",
+    system_state_file = "@com_grail_rules_r_toolchains//:system_state.txt",
     tools = [
         "@llvm_toolchain_llvm//:bin/clang",
         "@llvm_toolchain_llvm//:bin/clang++",
@@ -114,7 +114,7 @@ toolchain(
         "@bazel_tools//platforms:x86_64",
     ],
     toolchain = ":r-toolchain-linux",
-    toolchain_type = "@rules_r//R:toolchain_type",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )
 
@@ -129,7 +129,7 @@ toolchain(
         "@bazel_tools//platforms:x86_64",
     ],
     toolchain = ":r-toolchain-darwin",
-    toolchain_type = "@rules_r//R:toolchain_type",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )
 
@@ -137,7 +137,7 @@ toolchain(
     name = "toolchain-nix",
     tags = ["manual"],
     toolchain = ":r-toolchain-nix",
-    toolchain_type = "@rules_r//R:toolchain_type",
+    toolchain_type = "@com_grail_rules_r//R:toolchain_type",
     visibility = ["//visibility:public"],
 )
 

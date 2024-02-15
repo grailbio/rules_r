@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-workspace(name = "rules_r_tests")
+workspace(name = "com_grail_rules_r_tests")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # rules_r workspace.
 local_repository(
-    name = "rules_r",
+    name = "com_grail_rules_r",
     path = "..",
 )
 
@@ -57,24 +57,24 @@ nixpkgs_package(
 use_r_from_nix = False
 
 # Initialize rules_r.
-load("@rules_r//R:dependencies.bzl", "r_rules_dependencies")
+load("@com_grail_rules_r//R:dependencies.bzl", "r_rules_dependencies")
 
 r_rules_dependencies()
 
-load("@rules_r_tests//:init.bzl", "r_register_toolchains")
+load("@com_grail_rules_r_tests//:init.bzl", "r_register_toolchains")
 
 rscript = r_register_toolchains(use_r_from_nix)
 
 # Initialize R packages.
-load("@rules_r//R:repositories.bzl", "r_repository_list")
+load("@com_grail_rules_r//R:repositories.bzl", "r_repository_list")
 
 r_repository_list(
     name = "r_repositories_bzl",
-    build_file_overrides = "@rules_r_tests//cran:build_file_overrides.csv",
+    build_file_overrides = "@com_grail_rules_r_tests//cran:build_file_overrides.csv",
     other_args = {
         "pkg_type": "both",
     },
-    package_list = "@rules_r_tests//cran:packages.csv",
+    package_list = "@com_grail_rules_r_tests//cran:packages.csv",
     remote_repos = {
         # CRAN does not retain binary archives for macOS.
         "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",
@@ -86,7 +86,7 @@ load("@r_repositories_bzl//:r_repositories.bzl", "r_repositories")
 
 r_repositories()
 
-load("@rules_r//R:dependencies.bzl", "r_coverage_dependencies")
+load("@com_grail_rules_r//R:dependencies.bzl", "r_coverage_dependencies")
 
 r_coverage_dependencies(rscript = rscript)
 

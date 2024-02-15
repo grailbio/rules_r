@@ -20,7 +20,7 @@ load(
     "@io_bazel_rules_docker//container:layer.bzl",
     _layer = "layer",
 )
-load("@rules_r//R:providers.bzl", "RLibrary")
+load("@com_grail_rules_r//R:providers.bzl", "RLibrary")
 
 def _tools_layer_impl(ctx):
     provider = ctx.attr.library[RLibrary]

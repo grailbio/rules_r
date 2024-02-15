@@ -126,7 +126,7 @@ _r_toolchain = rule(
 def r_toolchain(**kwargs):
     if kwargs.get("stamp") == None:
         _r_toolchain(stamp = select({
-            "@rules_r//R/internal/toolchains:stamp": True,
+            "@com_grail_rules_r//R/internal/toolchains:stamp": True,
             "//conditions:default": False,
         }), **kwargs)
     else:

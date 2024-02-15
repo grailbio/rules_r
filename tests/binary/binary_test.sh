@@ -26,11 +26,11 @@ if ! [[ "${RUNFILES_DIR:-}" ]]; then
   cd "${BASH_SOURCE[0]}.runfiles"
   RUNFILES_DIR=$(pwd -P)
   export RUNFILES_DIR
-  cd "rules_r_tests"
+  cd "com_grail_rules_r_tests"
 fi
 
 # shortpath to binary from runfiles dir.
-BINARY="../rules_r_tests/binary/binary"
+BINARY="../com_grail_rules_r_tests/binary/binary"
 
 if ! "${BINARY}"; then
   echo "Binary should have passed."

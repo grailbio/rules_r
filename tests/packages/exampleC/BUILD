@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_unit_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_library", "r_pkg", "r_pkg_test", "r_unit_test")
 
 package(default_visibility = ["//visibility:public"])
 

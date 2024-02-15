@@ -114,7 +114,7 @@ toolchain_args=(
   "--extra_toolchains=//:toolchain-${os}"
   "--extra_toolchains=@llvm_toolchain//:cc-toolchain-x86_64-${os}"
   "--incompatible_enable_cc_toolchain_resolution"
-  "--toolchain_resolution_debug=rules_r"
+  "--toolchain_resolution_debug=com_grail_rules_r"
 )
 "${bazel}" coverage "${bazel_test_opts[@]}" "${toolchain_args[@]}" //...
 expect_equal "custom_toolchain_C.xml" "${coverage_file_C}"

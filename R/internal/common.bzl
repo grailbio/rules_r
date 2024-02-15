@@ -13,10 +13,10 @@
 # limitations under the License.
 
 load(
-    "@rules_r//internal:shell.bzl",
+    "@com_grail_rules_r//internal:shell.bzl",
     _sh_quote = "sh_quote",
 )
-load("@rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
+load("@com_grail_rules_r//R:providers.bzl", "RBinary", "RLibrary", "RPackage")
 
 def get_r_version(rctx, rscript):
     # Return R version using the given Rscript path.

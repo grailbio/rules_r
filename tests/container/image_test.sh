@@ -19,7 +19,7 @@ set -eou pipefail
 if [[ "${TEST_SRCDIR:-}" ]]; then
   # Ensure we are in the correct workspace for this test.
   echo "Moving to the right bazel workspace:"
-  pushd "${TEST_SRCDIR}/rules_r_tests/container"
+  pushd "${TEST_SRCDIR}/com_grail_rules_r_tests/container"
   echo ""
 else
   cd "$(dirname "${BASH_SOURCE[0]}")/bazel-bin/container"
@@ -43,33 +43,33 @@ check() {
   fi
 }
 
-check "library_image-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_internal-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "true"
-check "library_image_internal-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_external-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "true"
-check "library_image_tools-layer.tar" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
-check "library_image_tools-layer.tar" "./rules_r/r-libs/bitops/DESCRIPTION" "false"
+check "library_image-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_internal-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "true"
+check "library_image_internal-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_external-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "true"
+check "library_image_tools-layer.tar" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_image_tools-layer.tar" "./grail/r-libs/bitops/DESCRIPTION" "false"
 
-check "library_archive.tar.gz" "./rules_r/r-libs/exampleC/DESCRIPTION" "false"
-check "library_archive.tar.gz" "./rules_r/r-libs/bitops/DESCRIPTION" "true"
+check "library_archive.tar.gz" "./grail/r-libs/exampleC/DESCRIPTION" "false"
+check "library_archive.tar.gz" "./grail/r-libs/bitops/DESCRIPTION" "true"
 
 # Check binary script and R library packages.
 check "binary_image-layer.tar" "/app/binary/binary" "true"
-check "binary_image-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/binary/binary.R" "true"
-check "binary_image-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleA/lib/exampleA/DESCRIPTION" "true"
-check "binary_image-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleB/lib/exampleB/DESCRIPTION" "true"
-check "binary_image-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleC/lib/exampleC/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/binary/binary.R" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleA/lib/exampleA/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleB/lib/exampleB/DESCRIPTION" "true"
+check "binary_image-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleC/lib/exampleC/DESCRIPTION" "true"
 check "binary_image-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "true"
 check "binary_image-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "true"
 
 # Check that explicitly layered packages are not in the top layer, but in one layer below.
 check "binary_image_explicit_layers-layer.tar" "/app/binary/binary" "true"
-check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/binary/binary.R" "true"
-check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleA/lib/exampleA/DESCRIPTION" "true"
-check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleB/lib/exampleB/DESCRIPTION" "true"
-check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/rules_r_tests/packages/exampleC/lib/exampleC/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/binary/binary.R" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleA/lib/exampleA/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleB/lib/exampleB/DESCRIPTION" "true"
+check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/com_grail_rules_r_tests/packages/exampleC/lib/exampleC/DESCRIPTION" "true"
 check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/R_bitops/lib/bitops/DESCRIPTION" "false"
 check "binary_image_explicit_layers-layer.tar" "./app/binary/binary.runfiles/R_R6/lib/R6/DESCRIPTION" "false"
 check "binary_image_explicit_layers.0-layer.tar" "./app/R_bitops/lib/bitops/DESCRIPTION" "true"

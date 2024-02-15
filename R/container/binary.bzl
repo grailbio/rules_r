@@ -24,7 +24,7 @@ load(
     _app_layer = "app_layer",
     _layer_file_path = "layer_file_path",
 )
-load("@rules_r//R:providers.bzl", "RBinary")
+load("@com_grail_rules_r//R:providers.bzl", "RBinary")
 
 # Similar to dep_layer_impl, but with output group files.
 # We expect to capture any empty files in the app layer.

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_r//R:defs.bzl", "r_binary", "r_test")
+load("@com_grail_rules_r//R:defs.bzl", "r_binary", "r_test")
 
 r_binary(
     name = "binary",

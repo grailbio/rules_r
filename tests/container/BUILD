@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_r//R:defs.bzl", "r_library_tar")
+load("@com_grail_rules_r//R:defs.bzl", "r_library_tar")
 
 r_library_tar(
     name = "library_archive",
@@ -22,17 +22,17 @@ r_library_tar(
         "tools",
     ],
     library = "//:library",
-    library_path = "rules_r/r-libs",
+    library_path = "grail/r-libs",
 )
 
 ## Image related tests
 
-load("@rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
+load("@com_grail_rules_r//R/container:defs.bzl", "r_binary_image", "r_library_image")
 
 r_library_image(
     name = "library_image",
     base = "@r_base//image",
-    directory = "rules_r",
+    directory = "grail",
     library = "//:library",
     library_path = "r-libs",
     tags = ["no-remote-cache"],

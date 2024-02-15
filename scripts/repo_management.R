@@ -23,7 +23,7 @@
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.6", "4.0", "4.1"))  # Binaries for these R versions.
+options("RVersions" = c("3.6", "4.0", "4.1", "4.2", "4.3"))  # Binaries for these R versions.
 options("ForceDownload" = FALSE)  # Download packages even if src package already present in repo.
 
 # Factors in unexpected places create problems.
@@ -40,6 +40,9 @@ macContribDir <- function(r_version) {
   contrib_prefix <- ""
   if (r_version %in% c("3.4", "3.5", "3.6")) {
     contrib_prefix <- "el-capitan/"
+  }
+  if (r_version %in% c("4.3")) {
+    contrib_prefix <- "big-sur-x86_64/"
   }
   return(sprintf("/bin/macosx/%scontrib/%s", contrib_prefix, r_version))
 }
@@ -61,7 +64,11 @@ isValidBinRepo <- function(repo, r_version) {
   }
 
   bioc_version <- gsub("(.*packages/|/bioc)", "", repo)
-  return((bioc_version == "3.14" && r_version == "4.1") ||
+  return((bioc_version == "3.18" && r_version == "4.3") ||
+         (bioc_version == "3.17" && r_version == "4.3") ||
+         (bioc_version == "3.16" && r_version == "4.2") ||
+         (bioc_version == "3.15" && r_version == "4.2") ||
+         (bioc_version == "3.14" && r_version == "4.1") ||
          (bioc_version == "3.13" && r_version == "4.1") ||
          (bioc_version == "3.12" && r_version == "4.0") ||
          (bioc_version == "3.11" && r_version == "4.0") ||

@@ -1,5 +1,4 @@
-Razel scripts
-=============
+# Razel scripts
 
 These are a crude collection of functions to help generate `BUILD` files for R
 packages, and `WORKSPACE` rules for external R packages. They may become part
@@ -133,8 +132,8 @@ you want to use this local repo as a functional mirror for macOS and windows.
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.6", "4.0", "4.1"))  # Binaries for these R versions.
-
+options("RVersions" = c("3.6", "4.0", "4.1", "4.2", "4.3"))  # Binaries for these R versions.
+options("ForceDownload" = FALSE)  # Download packages even if src package already present in repo.
 
 #' Already downloaded source archive packages in the repo.
 #'

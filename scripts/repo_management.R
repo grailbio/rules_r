@@ -44,11 +44,6 @@ macContribDir <- function(r_version) {
   if (r_version %in% c("4.3")) {
     contrib_prefix <- "big-sur-x86_64/"
   }
-  print('====')
-  print(r_version)
-  print(r_version %in% c("4.3"))
-  print(sprintf("/bin/macosx/%scontrib/%s", contrib_prefix, r_version))
-  print('====')
   return(sprintf("/bin/macosx/%scontrib/%s", contrib_prefix, r_version))
 }
 

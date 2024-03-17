@@ -40,6 +40,10 @@ r_toolchain(
             "@llvm_toolchain//:compiler-components-x86_64-linux",
             "@llvm_toolchain//:linker-components-x86_64-linux",
         ],
+        "@bazel_tools//src/conditions:linux_aarch64": [
+            "@llvm_toolchain//:compiler-components-aarch64-linux",
+            "@llvm_toolchain//:linker-components-aarch64-linux",
+        ],
         "//conditions:default": None,
     }),
     makevars_site = "//cran:Makevars.gnu",
@@ -70,6 +74,10 @@ r_toolchain(
             "@llvm_toolchain//:compiler-components-x86_64-darwin",
             "@llvm_toolchain//:linker-components-x86_64-darwin",
         ],
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "@llvm_toolchain//:compiler-components-aarch64-darwin",
+            "@llvm_toolchain//:linker-components-aarch64-darwin",
+        ],
         "//conditions:default": None,
     }),
     makevars_site = "@rules_r_makevars_darwin",
@@ -79,7 +87,7 @@ r_toolchain(
         "@llvm_toolchain_llvm//:bin/clang++",
         "@llvm_toolchain_llvm//:bin/llvm-cov",
     ],
-    version = "4.1",
+    version = "4.3",
     visibility = ["//visibility:public"],
 )
 
@@ -99,7 +107,7 @@ r_toolchain(
         "@Rnix//:bin/R",
         "@Rnix//:bin/Rscript",
     ],
-    version = "4.1",
+    version = "4.3",
     visibility = ["//visibility:public"],
 )
 
@@ -107,11 +115,9 @@ toolchain(
     name = "toolchain-linux",
     exec_compatible_with = [
         "@bazel_tools//platforms:linux",
-        "@bazel_tools//platforms:x86_64",
     ],
     target_compatible_with = [
         "@bazel_tools//platforms:linux",
-        "@bazel_tools//platforms:x86_64",
     ],
     toolchain = ":r-toolchain-linux",
     toolchain_type = "@rules_r//R:toolchain_type",
@@ -122,11 +128,9 @@ toolchain(
     name = "toolchain-darwin",
     exec_compatible_with = [
         "@bazel_tools//platforms:osx",
-        "@bazel_tools//platforms:x86_64",
     ],
     target_compatible_with = [
         "@bazel_tools//platforms:osx",
-        "@bazel_tools//platforms:x86_64",
     ],
     toolchain = ":r-toolchain-darwin",
     toolchain_type = "@rules_r//R:toolchain_type",

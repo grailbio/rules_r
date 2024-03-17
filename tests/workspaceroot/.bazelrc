@@ -1,9 +1,11 @@
 common --enable_bzlmod=false
 
-build --workspace_status_command=stamping/workspace_status.sh
 build --incompatible_strict_action_env
 build --java_runtime_version=remotejdk_11
 
+# Not needed after https://github.com/grailbio/bazel-toolchain/pull/229.
+build --features=-libtool
+
 build --action_env=ZERO_AR_DATE=1 # https://github.com/bazelbuild/bazel/issues/10886
 
-try-import buildbuddy.bazelrc
+try-import ../buildbuddy.bazelrc

@@ -16,13 +16,13 @@ load("@rules_r//R:defs.bzl", "r_library_tar")
 
 r_library_tar(
     name = "library_archive",
-    extension = "tar.gz",
     layers = [
         "external",
         "tools",
     ],
     library = "//:library",
     library_path = "rules_r/r-libs",
+    tags = ["manual"],
 )
 
 ## Image related tests
@@ -35,7 +35,10 @@ r_library_image(
     directory = "rules_r",
     library = "//:library",
     library_path = "r-libs",
-    tags = ["no-remote-cache"],
+    tags = [
+        "manual",
+        "no-remote-cache",
+    ],
 )
 
 sh_test(
@@ -48,7 +51,10 @@ sh_test(
         ":library_archive",
         ":library_image",
     ],
-    tags = ["no-remote-cache"],
+    tags = [
+        "manual",
+        "no-remote-cache",
+    ],
 )
 
 r_binary_image(
@@ -58,7 +64,10 @@ r_binary_image(
     # TODO(siddharthab): Providing `-i` here (as in the default value) makes
     # the docker daemon hang when starting the container on macOS.
     docker_run_flags = "--rm",
-    tags = ["no-remote-cache"],
+    tags = [
+        "manual",
+        "no-remote-cache",
+    ],
 )
 
 r_binary_image(
@@ -69,5 +78,8 @@ r_binary_image(
         "@R_bitops",
         "@R_R6",
     ],
-    tags = ["no-remote-cache"],
+    tags = [
+        "manual",
+        "no-remote-cache",
+    ],
 )

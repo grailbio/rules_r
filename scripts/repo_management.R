@@ -23,7 +23,7 @@
 # Options to also download binary archives.
 options("BinariesMac" = TRUE)  # Binaries for Mac
 options("BinariesWin" = FALSE)  # Binaries for Win
-options("RVersions" = c("3.6", "4.0", "4.1"))  # Binaries for these R versions.
+options("RVersions" = c("4.3"))  # Binaries for these R versions.
 options("ForceDownload" = FALSE)  # Download packages even if src package already present in repo.
 
 # Factors in unexpected places create problems.
@@ -35,11 +35,20 @@ srcContribDir <- function() {
 }
 
 # Returns macOS binary archive locations of repos based on R version.
-macContribDir <- function(r_version) {
+macContribDirs <- function(r_version) {
   stopifnot(r_version %in% getOption("RVersions"))
-  contrib_prefix <- ""
   if (r_version %in% c("3.4", "3.5", "3.6")) {
     contrib_prefix <- "el-capitan/"
+  } else {
+    if (r_version %in% c("4.3")) {
+      contrib_prefix <- "big-sur-x86_64/"
+    } else {
+      # Versions 4.0, 4.1 and 4.2.
+      contrib_prefix <- ""
+    }
+    if (r_version %in% c("4.2", "4.3")) {
+      contrib_prefix <- c(contrib_prefix, "big-sur-arm64/")
+    }
   }
   return(sprintf("/bin/macosx/%scontrib/%s", contrib_prefix, r_version))
 }
@@ -83,11 +92,14 @@ downloadLatestPackages <- function(pkgs, repo_dir, repos) {
     bin_repos <- repos[sapply(repos, isValidBinRepo, r_version)]
 
     if (getOption("BinariesMac")) {
-      mac_contrib_dir <- paste0(repo_dir, macContribDir(r_version))
-      dir.create(mac_contrib_dir, recursive = TRUE, showWarnings = FALSE)
-      download.packages(pkgs, destdir = mac_contrib_dir,
-                        contriburl = paste0(bin_repos, macContribDir(r_version)),
-                        type = "mac.binary")
+      mac_contrib_dirs <- macContribDirs(r_version)
+      for (mac_contrib_dir in mac_contrib_dirs) {
+        local_dir <- paste0(repo_dir, mac_contrib_dir)
+        dir.create(local_dir, recursive = TRUE, showWarnings = FALSE)
+        download.packages(pkgs, destdir = local_dir,
+                          contriburl = paste0(bin_repos, mac_contrib_dir),
+                          type = "mac.binary")
+      }
     }
 
     if (getOption("BinariesWin")) {
@@ -147,8 +159,16 @@ packageSHAs <- function(pkgs, repo_dir=".") {
   helper(file.path(repo_dir, "src", "contrib"), "sha256", ".tar.gz")
   for (r_version in getOption("RVersions")) {
     if (getOption("BinariesMac")) {
-      mac_contrib_dir <- paste0(repo_dir, macContribDir(r_version))
-      helper(mac_contrib_dir, paste0("mac_", r_version, "_sha256"), ".tgz")
+      mac_contrib_dirs <- macContribDirs(r_version)
+      for (mac_contrib_dir in mac_contrib_dirs) {
+        local_dir <- paste0(repo_dir, mac_contrib_dir)
+        if (grepl("arm64", mac_contrib_dir)) {
+          prefix <- "mac_arm_"
+        } else {
+          prefix <- "mac_intel_"
+        }
+        helper(local_dir, paste0(prefix, r_version, "_sha256"), ".tgz")
+      }
     }
     if (getOption("BinariesWin")) {
       win_contrib_dir <- paste0(repo_dir, winContribDir(r_version))
@@ -180,10 +200,12 @@ repoPackages <- function(repo_dir) {
 updateRepoIndex <- function(repo_dir) {
   tools::write_PACKAGES(paste0(repo_dir, srcContribDir()), type = "source", latestOnly = FALSE)
   for (r_version in getOption("RVersions")) {
-    macDir <- paste0(repo_dir, macContribDir(r_version))
+    macDirs <- paste0(repo_dir, macContribDirs(r_version))
     winDir <- paste0(repo_dir, winContribDir(r_version))
-    if (file.exists(macDir)) {
-      tools::write_PACKAGES(macDir, type = "mac.binary", latestOnly = FALSE)
+    for (macDir in macDirs) {
+      if (file.exists(macDir)) {
+        tools::write_PACKAGES(macDir, type = "mac.binary", latestOnly = FALSE)
+      }
     }
     if (file.exists(winDir)) {
       tools::write_PACKAGES(winDir, type = "win.binary", latestOnly = FALSE)

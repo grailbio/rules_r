@@ -79,7 +79,6 @@ cc_library(
         "src/lib/rcpp.cc",
     ],
     hdrs = ["src/lib/rcpp.h"],
-    # NOTE: @platforms//os:... targets work in select statement from bazel 4.0.0+.
     copts = select({
         # NOTE: The include path requirements here are met through setup-bazel.sh.
         # When using Xcode toolchains, /Library include paths work out of the box from bazel 4.0.0+.

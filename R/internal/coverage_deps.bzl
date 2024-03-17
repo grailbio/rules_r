@@ -31,7 +31,7 @@ def r_coverage_dependencies(**kwargs):
         package_list = "@rules_r//R/internal:coverage_deps_list.csv",
         remote_repos = {
             # CRAN does not retain binary archives for macOS.
-            "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",
+            "CRAN": "https://packagemanager.posit.co/cran/2024-01-15/",
         },
         **kwargs
     )

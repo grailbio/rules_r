@@ -101,11 +101,8 @@ def _r_library_tar_impl(ctx):
             for f in provider.container_file_map[layer]:
                 args.add("--file=%s=%s" % (f.path, path_prefix))
 
-    if ctx.attr.extension:
-        dotPos = ctx.attr.extension.find(".")
-        if dotPos > 0:
-            dotPos += 1
-            args.add("--compression=%s" % ctx.attr.extension[dotPos:])
+    if ctx.attr.compression:
+        args.add("--compression=%s" % ctx.attr.compression)
 
     ctx.actions.run(
         outputs = [ctx.outputs.out],
@@ -139,9 +136,9 @@ r_library_tar = rule(
             ],
             doc = "Library layers to include in the tar.",
         ),
-        "extension": attr.string(default = "tar"),
+        "compression": attr.string(default = "gz"),
         "_build_tar": attr.label(
-            default = Label("@bazel_tools//tools/build_defs/pkg:build_tar"),
+            default = Label("@rules_pkg//pkg/private/tar:build_tar"),
             cfg = "host",
             executable = True,
             allow_files = True,
@@ -149,7 +146,7 @@ r_library_tar = rule(
     },
     doc = "Rule to create a tar archive of the files in this library.",
     outputs = {
-        "out": "%{name}.%{extension}",
+        "out": "%{name}.tar" + ".%{compression}" if "%{compression}" else "",
     },
     implementation = _r_library_tar_impl,
 )

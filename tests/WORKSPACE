@@ -31,9 +31,9 @@ local_repository(
 # R distribution from Nix.
 http_archive(
     name = "io_tweag_rules_nixpkgs",
-    sha256 = "7aee35c95251c1751e765f7da09c3bb096d41e6d6dca3c72544781a5573be4aa",
-    strip_prefix = "rules_nixpkgs-0.8.0",
-    urls = ["https://github.com/tweag/rules_nixpkgs/archive/v0.8.0.tar.gz"],
+    sha256 = "980edfceef2e59e1122d9be6c52413bc298435f0a3d452532b8a48d7562ffd67",
+    strip_prefix = "rules_nixpkgs-0.10.0",
+    urls = ["https://github.com/tweag/rules_nixpkgs/releases/download/v0.10.0/rules_nixpkgs-0.10.0.tar.gz"],
 )
 
 load("@io_tweag_rules_nixpkgs//nixpkgs:repositories.bzl", "rules_nixpkgs_dependencies")
@@ -44,7 +44,7 @@ load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "
 
 nixpkgs_git_repository(
     name = "nixpkgs",
-    revision = "21.11",
+    revision = "23.11",
 )
 
 nixpkgs_package(
@@ -77,7 +77,7 @@ r_repository_list(
     package_list = "@rules_r_tests//cran:packages.csv",
     remote_repos = {
         # CRAN does not retain binary archives for macOS.
-        "CRAN": "https://cran.microsoft.com/snapshot/2022-02-28",
+        "CRAN": "https://packagemanager.posit.co/cran/2024-01-15/",
     },
     rscript = rscript,
 )
@@ -94,13 +94,65 @@ load("@r_coverage_deps_bzl//:r_repositories.bzl", coverage_deps = "r_repositorie
 
 coverage_deps()
 
+http_archive(
+    name = "com_google_protobuf",
+    sha256 = "8ff511a64fc46ee792d3fe49a5a1bcad6f7dc50dfbba5a28b0e5b979c17f9871",
+    strip_prefix = "protobuf-25.2",
+    urls = [
+        "https://github.com/protocolbuffers/protobuf/releases/download/v25.2/protobuf-25.2.tar.gz",
+    ],
+)
+
+# System dependencies.
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()
+
+# Define custom toolchains to test if R toolchains work correctly.
+# See BUILD for actual definition of the R toolchains.
+http_archive(
+    name = "toolchains_llvm",
+    sha256 = "e91c4361f99011a54814e1afbe5c436e0d329871146a3cd58c23a2b4afb50737",
+    strip_prefix = "toolchains_llvm-1.0.0",
+    canonical_id = "1.0.0",
+    url = "https://github.com/bazel-contrib/toolchains_llvm/releases/download/1.0.0/toolchains_llvm-1.0.0.tar.gz",
+)
+
+load("@toolchains_llvm//toolchain:deps.bzl", "bazel_toolchain_dependencies")
+
+bazel_toolchain_dependencies()
+
+load("@toolchains_llvm//toolchain:rules.bzl", "llvm_toolchain")
+
+llvm_toolchain(
+    name = "llvm_toolchain",
+    cxx_builtin_include_directories = {
+        "linux-aarch64": ["/usr/share/R/include"],
+        "linux-x86_64": ["/usr/share/R/include"],
+        "darwin-aarch64": ["/Library/Frameworks/R.framework/Headers"],
+        "darwin-x86_64": ["/Library/Frameworks/R.framework/Headers"],
+    },
+    llvm_versions = {
+        "": "16.0.0",
+        "darwin-aarch64": "16.0.5",
+        "darwin-x86_64": "15.0.7",
+    },
+    stdlib = {
+        "linux-aarch64": "stdc++",
+        "linux-x86_64": "stdc++",
+    },
+)
+
+load("@llvm_toolchain//:toolchains.bzl", "llvm_register_toolchains")
+
+llvm_register_toolchains()
+
 # Docker related setup.
 http_archive(
     name = "io_bazel_rules_docker",
-    sha256 = "59536e6ae64359b716ba9c46c39183403b01eabfbd57578e84398b4829ca499a",
-    strip_prefix = "rules_docker-0.22.0",
+    sha256 = "b1e80761a8a8243d03ebca8845e9cc1ba6c82ce7c5179ce2b295cd36f7e394bf",
     urls = [
-        "https://github.com/bazelbuild/rules_docker/releases/download/v0.22.0/rules_docker-v0.22.0.tar.gz",
+        "https://github.com/bazelbuild/rules_docker/releases/download/v0.25.0/rules_docker-v0.25.0.tar.gz",
     ],
 )
 
@@ -122,47 +174,8 @@ load(
 
 container_pull(
     name = "r_base",
-    digest = "sha256:7d5243aa3c5010a0978a30eba38089f140ce9efd509aafe2267d794be94ccf44",
-    registry = "index.docker.io",
-    repository = "rocker/r-ver",
-    tag = "4.1.2",
-)
-
-http_archive(
-    name = "com_google_protobuf",
-    sha256 = "3bd7828aa5af4b13b99c191e8b1e884ebfa9ad371b0ce264605d347f135d2568",
-    strip_prefix = "protobuf-3.19.4",
-    urls = [
-        "https://github.com/protocolbuffers/protobuf/archive/v3.19.4.tar.gz",
-    ],
-)
-
-# System dependencies.
-load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
-
-protobuf_deps()
-
-# Define custom toolchains to test if R toolchains work correctly.
-# See BUILD for actual definition of the R toolchains.
-http_archive(
-    name = "com_grail_bazel_toolchain",
-    sha256 = "148e871e785ae699e6adfbb07afea241ee668dbc0c530e72a47356885fce0cb7",
-    strip_prefix = "bazel-toolchain-0.7",
-    urls = [
-        "https://github.com/grailbio/bazel-toolchain/archive/0.7.tar.gz",
-    ],
-)
-
-load("@com_grail_bazel_toolchain//toolchain:rules.bzl", "llvm_toolchain")
-
-llvm_toolchain(
-    name = "llvm_toolchain",
-    cxx_builtin_include_directories = {
-        "linux-x86_64": ["/usr/share/R/include"],
-        "darwin-x86_64": ["/Library/Frameworks/R.framework/Headers"],
-    },
-    llvm_version = "13.0.0",
-    stdlib = {
-        "linux-x86_64": "stdc++",
-    },
+    digest = "sha256:9bfa340008f25823bfbe6dd2d8aebf01672cc4f36f19e00dfcb4a4cd7fb082ae",
+    registry = "ghcr.io",
+    repository = "rocker-org/r-ver",
+    tag = "4.3.2",
 )

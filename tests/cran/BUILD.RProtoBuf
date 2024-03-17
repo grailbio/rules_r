@@ -22,9 +22,9 @@ alias(
 )
 
 genrule(
-    name = "genrule_empty",
-    outs = ["empty"],
-    cmd = "touch $@",
+    name = "gen_config",
+    outs = ["config"],
+    cmd = "echo 'echo CXX_STD=CXX17 >src/Makevars' >$@",
 )
 
 r_pkg(
@@ -42,9 +42,8 @@ r_pkg(
         "@com_google_protobuf//:protobuf_lite",
         "@com_google_protobuf//:protobuf",
     ],
-    config_override = ":empty",
+    config_override = ":config",
     env_vars = {
-        "USE_CXX11": "1",
         "MAKE": "make -j 4",
     },
     tags = ["external-r-repo"],

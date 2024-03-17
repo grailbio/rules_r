@@ -355,7 +355,15 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     if (pkg_type == "both") {
       r_version <- R.Version()
       minor_version <- gsub("\\..*", "", r_version$minor)
-      sha256_col <- paste0("mac_", r_version$major, "_", minor_version, "_sha256")
+      sys_info <- Sys.info()
+      stopifnot(sys_info["sysname"] == "Darwin")
+      stopifnot(as.integer(sub("\\..*", "", sys_info["release"])) >= 20)
+      if (sys_info["machine"] == "arm64") {
+        prefix <- "mac_arm_"
+      } else {
+        prefix <- "mac_intel_"
+      }
+      sha256_col <- paste0(prefix, r_version$major, "_", minor_version, "_sha256")
       if (sha256_col %in% colnames(repo_pkgs)) {
         repo_pkgs[, "binary_package_available"] <- !is.na(repo_pkgs[, sha256_col])
         repo_pkgs[repo_pkgs[, "binary_package_available"], "sha256"] <-

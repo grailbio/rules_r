@@ -22,12 +22,15 @@ readonly os
 arch="$(uname -m)"
 if [[ ${arch} == "x86_64" ]]; then
   arch="amd64"
+  bzl_arch="x86_64"
 elif [[ ${arch} == "aarch64" ]] || [[ ${arch} == "arm64" ]]; then
   arch="arm64"
+  bzl_arch="aarch64"
 else
   echo >&2 "Unknown architecture: ${arch}"
 fi
 readonly arch
+readonly bzl_arch
 
 # Use bazelisk to catch migration problems.
 readonly url="https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-${os}-${arch}"

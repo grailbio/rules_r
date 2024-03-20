@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage line-rate="1" branch-rate="0" lines-covered="3" lines-valid="3" branches-covered="0" branches-valid="0" complexity="0" version="3.5.1" timestamp="1960-01-01 00:00:00">
+<!DOCTYPE coverage SYSTEM "https://raw.githubusercontent.com/cobertura/cobertura/master/cobertura/src/site/htdocs/xml/coverage-04.dtd">
+<coverage line-rate="1" branch-rate="0" lines-covered="3" lines-valid="3" branches-covered="0" branches-valid="0" complexity="0" version="3.6.4" timestamp="1960-01-01 00:00:00">
   <sources/>
   <packages>
     <package name="NULL" line-rate="1" branch-rate="0" complexity="0">
       <classes>
         <class name="fn.R" filename="external/workspaceroot/R/fn.R" line-rate="1" branch-rate="0" complexity="0">
           <methods>
-            <method name="hello" signature="" line-rate="1" branch-rate="0">
+            <method name="hello" signature="" line-rate="1" branch-rate="0" complexity="0">
               <lines>
                 <line number="16" hits="1" branch="false"/>
               </lines>
             </method>
-            <method name="helloC" signature="" line-rate="1" branch-rate="0">
+            <method name="helloC" signature="" line-rate="1" branch-rate="0" complexity="0">
               <lines>
                 <line number="20" hits="1" branch="false"/>
               </lines>

@@ -46,5 +46,7 @@ CPPFLAGS += "-Wno-builtin-macro-redefined" \
   "-ffile-prefix-map=_EXEC_ROOT_=" \
   "-no-canonical-prefixes" \
 
+LDFLAGS += -fuse-ld=lld
+
 # Following flags should be enabled if switching to gcc:
 # CPPFLAGS += -fno-canonical-system-headers

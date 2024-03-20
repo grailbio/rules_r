@@ -114,10 +114,10 @@ r_toolchain(
 toolchain(
     name = "toolchain-linux",
     exec_compatible_with = [
-        "@bazel_tools//platforms:linux",
+        "@platforms//os:linux",
     ],
     target_compatible_with = [
-        "@bazel_tools//platforms:linux",
+        "@platforms//os:linux",
     ],
     toolchain = ":r-toolchain-linux",
     toolchain_type = "@rules_r//R:toolchain_type",
@@ -127,10 +127,10 @@ toolchain(
 toolchain(
     name = "toolchain-darwin",
     exec_compatible_with = [
-        "@bazel_tools//platforms:osx",
+        "@platforms//os:osx",
     ],
     target_compatible_with = [
-        "@bazel_tools//platforms:osx",
+        "@platforms//os:osx",
     ],
     toolchain = ":r-toolchain-darwin",
     toolchain_type = "@rules_r//R:toolchain_type",

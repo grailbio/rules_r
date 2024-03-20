@@ -6,4 +6,4 @@ build --java_runtime_version=remotejdk_11
 
 build --action_env=ZERO_AR_DATE=1 # https://github.com/bazelbuild/bazel/issues/10886
 
-try-import buildbuddy.bazelrc
+try-import %workspace%/buildbuddy.bazelrc

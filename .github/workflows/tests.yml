@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -56,6 +57,7 @@ jobs:
 
     - name: Run tests
       env:
+        CI: true
         USE_BAZEL_VERSION: ${{ matrix.bazel_version }}
       run: tests/run_tests.sh
 
@@ -63,5 +65,5 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{ always() }}
       with:
-        name: archive-debug-artifacts
+        name: archive-debug-artifacts-${{ matrix.os }}-${{ matrix.bazel_version }}-${{ matrix.r_version }}
         path: /tmp/debug-artifacts/*

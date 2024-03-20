@@ -23,7 +23,18 @@ source "../setup-bazel.sh"
 # with a different output_path.
 rm "$("${bazel}" info workspace)/bazel-*" 2>/dev/null || true
 
-tmpdir="$(mktemp -d)"
+# Clean up previous Bazel workspace because of low disk space on GitHub CI runners.
+if "${CI:-false}" ; then
+  "${bazel}" clean --expunge
+fi
+
+if [[ ${os} == "linux" ]]; then
+  # Do not use /tmp for output_base because it interferes with /tmp mounts in linux-sandbox.
+  default_output_base="$("${bazel}" info output_base)"
+  tmpdir="$(mktemp -d -p "${default_output_base}")"
+else
+  tmpdir="$(mktemp -d)"
+fi
 readonly tmpdir
 readonly first="${tmpdir}/first"
 readonly second="${tmpdir}/second"
@@ -66,7 +77,7 @@ file_list="${tmpdir}/mismatch_files.txt"
 ( ( cd "${second_output}" && shasum -a 256 -c "${shasums}" ) || true ) | \
   ( grep -v "OK$" || true ) | \
   sed -e 's/: .*$//' > "${file_list}"
-if [[ "${CI:-false}" ]] && [[ "${ARTIFACTS_DIR:-}" ]]; then
+if "${CI:-false}" && [[ "${ARTIFACTS_DIR:-}" ]]; then
   mkdir -p "${ARTIFACTS_DIR}/repro"
   cp "${shasums}" "${ARTIFACTS_DIR}/repro/"
   (cd "${first_output}" && rsync "--files-from=${file_list}" . "${ARTIFACTS_DIR}/repro/first")

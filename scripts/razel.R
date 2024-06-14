@@ -337,13 +337,12 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   stopifnot(!(rule_type == "http_archive" && is.null(build_file_format)))
 
   pkg_type <- match.arg(pkg_type)
-  if (getOption("pkgType") == "source") {
-    pkg_type <- "source"
-  }
 
   if (is.null(build_file_format)) {
     build_file_format <- NA_character_
   }
+
+  sys_info <- Sys.info()
 
   if (!is.null(package_list_csv)) {
     repo_pkgs <- read.csv(package_list_csv,
@@ -355,13 +354,16 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
     if (pkg_type == "both") {
       r_version <- R.Version()
       minor_version <- gsub("\\..*", "", r_version$minor)
-      sys_info <- Sys.info()
-      stopifnot(sys_info["sysname"] == "Darwin")
-      stopifnot(as.integer(sub("\\..*", "", sys_info["release"])) >= 20)
-      if (sys_info["machine"] == "arm64") {
-        prefix <- "mac_arm_"
-      } else {
-        prefix <- "mac_intel_"
+      stopifnot(sys_info["sysname"] == "Darwin" || sys_info["sysname"] == "Linux")
+      if (sys_info["sysname"] == "Darwin") {
+        stopifnot(as.integer(sub("\\..*", "", sys_info["release"])) >= 20)
+        if (sys_info["machine"] == "arm64") {
+          prefix <- "mac_arm_"
+        } else {
+          prefix <- "mac_intel_"
+        }
+      } else if (sys_info["sysname"] == "Linux"){
+        prefix <- "linux_"
       }
       sha256_col <- paste0(prefix, r_version$major, "_", minor_version, "_sha256")
       if (sha256_col %in% colnames(repo_pkgs)) {
@@ -394,6 +396,11 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                       ifelse(repo_pkgs[, "binary_package_available"],
                                              ".tgz", ".tar.gz")),
                      stringsAsFactors = FALSE)
+
+  linuxBinaryDir <- function(repos) {
+      r_version <- R.Version()
+      repo_r_version <- sprintf("%s.%s",r_version$major, gsub("\\..*", "", r_version$minor))
+  }
 
   findPackages <- function(repos, suffix) {
     mergeWithRemote <- function(type) {

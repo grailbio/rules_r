@@ -329,6 +329,7 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
                                    remote_repos = getOption("repos"),
                                    mirror_repo_url = NULL,
                                    use_only_mirror_repo = FALSE,
+                                   use_linux_binaries = TRUE,
                                    fail_fast = FALSE,
                                    ...) {
   stopifnot(!is.null(local_repo_dir) || !is.null(package_list_csv))
@@ -336,13 +337,20 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   rule_type <- match.arg(rule_type)
   stopifnot(!(rule_type == "http_archive" && is.null(build_file_format)))
 
+  sys_info <- Sys.info()
+
   pkg_type <- match.arg(pkg_type)
+  if (getOption("pkgType") == "source") {
+    pkg_type <- "source"
+  }
+
+  if (sys_info["sysname"] == "Linux" && use_linux_binaries) {
+    pkg_type <- "both"
+  }
 
   if (is.null(build_file_format)) {
     build_file_format <- NA_character_
   }
-
-  sys_info <- Sys.info()
 
   if (!is.null(package_list_csv)) {
     repo_pkgs <- read.csv(package_list_csv,
@@ -391,22 +399,30 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
         vecCompareVersion(repo_merged_pkgs[, "Version.binary"], repo_merged_pkgs[, "Version"]) >= 0
     }
   }
-  repo_pkgs <- cbind(repo_pkgs,
-                     Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version,
-                                      ifelse(repo_pkgs[, "binary_package_available"],
-                                             ".tgz", ".tar.gz")),
-                     stringsAsFactors = FALSE)
 
-  linuxBinaryDir <- function(repos) {
-      r_version <- R.Version()
-      repo_r_version <- sprintf("%s.%s",r_version$major, gsub("\\..*", "", r_version$minor))
+  binary_extension <- ".tgz"
+  if (sys_info["sysname"] == "Linux" && use_linux_binaries) binary_extension <- ".tar.gz"
+
+  repo_pkgs <- cbind(repo_pkgs,
+                    Archive = paste0(repo_pkgs$Package, "_", repo_pkgs$Version,
+                                      ifelse(repo_pkgs[, "binary_package_available"],
+                                            binary_extension, ".tar.gz")),
+                    stringsAsFactors = FALSE)
+
+  linuxBinarySubrepoPath <- function(repo) {
+    r_version <- R.Version()
+    repo_r_version <- sprintf("%s.%s",r_version$major, gsub("\\..*", "", r_version$minor))
+    subrepo_path <- sprintf("/bin/linux/%s", repo_r_version)
+    return(paste0(repo, subrepo_path))
   }
 
   findPackages <- function(repos, suffix) {
+    repos <- mirror_repo_url
+    suffix <- ".mirrored"
     mergeWithRemote <- function(type) {
       remote_pkgs <- as.data.frame(
-          available.packages(repos = repos, type = type)[, c("Package", "Repository")],
-          stringsAsFactors = FALSE)
+        available.packages(repos = repos, type = type)[, c("Package", "Repository")],
+        stringsAsFactors = FALSE)
       colnames(remote_pkgs) <- c("Package", paste0("Repository", suffix))
       if (type == "binary") {
         pkg_idx <- which(repo_pkgs[, "binary_package_available"])
@@ -416,8 +432,24 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       merge(repo_pkgs[pkg_idx, ], remote_pkgs, by = "Package", all.x = TRUE, all.y = FALSE)
     }
 
+    mergeWithRemoteLinuxBinaries <- function() {
+      linuxBinaryRepos <- sapply(repos, linuxBinarySubrepoPath)
+      remote_pkgs <- as.data.frame(
+        available.packages(repos = linuxBinaryRepos, type = "source")[, c("Package", "Repository")],
+        stringsAsFactors = FALSE)
+      colnames(remote_pkgs) <- c("Package", paste0("Repository", suffix))
+      pkg_idx <- which(repo_pkgs[, "binary_package_available"])
+      merge(repo_pkgs[pkg_idx, ], remote_pkgs, by = "Package", all.x = TRUE, all.y = FALSE)
+    }
+
     if (pkg_type == "both") {
-      unordered_df <- rbind(mergeWithRemote("binary"), mergeWithRemote("source"),
+      if(suffix == ".mirrored" && sys_info["sysname"] == "Linux" && use_linux_binaries){
+        remoteBinaries <- mergeWithRemoteLinuxBinaries()
+      } else {
+        remoteBinaries <- mergeWithRemote("binary")
+      }
+      sourceBinaries <-mergeWithRemote("source")
+      unordered_df <- rbind(remoteBinaries, mergeWithRemote("source"),
                             make.row.names = FALSE, stringsAsFactors = FALSE)
       ordered_df <- unordered_df[match(repo_pkgs[, "Package"], unordered_df[, "Package"]), ]
       stopifnot(identical(ordered_df[, "Package"], repo_pkgs[, "Package"]))

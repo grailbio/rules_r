@@ -54,7 +54,7 @@ macContribDirs <- function(r_version) {
 }
 
 linuxContribDir <- function(r_version){
-  return(sprintf("/bin/linux/ubuntu/%s/src/contrib", r_version))
+  return(sprintf("/bin/linux/%s/src/contrib", r_version))
 }
 
 # Returns windows binary archive locations of repos based on R version.

@@ -446,7 +446,6 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
       } else {
         remoteBinaries <- mergeWithRemote("binary")
       }
-      sourceBinaries <-mergeWithRemote("source")
       unordered_df <- rbind(remoteBinaries, mergeWithRemote("source"),
                             make.row.names = FALSE, stringsAsFactors = FALSE)
       ordered_df <- unordered_df[match(repo_pkgs[, "Package"], unordered_df[, "Package"]), ]

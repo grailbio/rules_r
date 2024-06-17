@@ -53,6 +53,10 @@ macContribDirs <- function(r_version) {
   return(sprintf("/bin/macosx/%scontrib/%s", contrib_prefix, r_version))
 }
 
+linuxContribDir <- function(r_version){
+  return(sprintf("/bin/linux/%s/src/contrib", r_version))
+}
+
 # Returns windows binary archive locations of repos based on R version.
 winContribDir <- function(r_version) {
   stopifnot(r_version %in% getOption("RVersions"))
@@ -201,11 +205,15 @@ updateRepoIndex <- function(repo_dir) {
   tools::write_PACKAGES(paste0(repo_dir, srcContribDir()), type = "source", latestOnly = FALSE)
   for (r_version in getOption("RVersions")) {
     macDirs <- paste0(repo_dir, macContribDirs(r_version))
+    linuxDir <- paste0(repo_dir, linuxContribDir(r_version))
     winDir <- paste0(repo_dir, winContribDir(r_version))
     for (macDir in macDirs) {
       if (file.exists(macDir)) {
         tools::write_PACKAGES(macDir, type = "mac.binary", latestOnly = FALSE)
       }
+    }
+    if (file.exists(linuxDir)) {
+      tools::write_PACKAGES(linuxDir, type = "source", latestOnly = FALSE)
     }
     if (file.exists(winDir)) {
       tools::write_PACKAGES(winDir, type = "win.binary", latestOnly = FALSE)

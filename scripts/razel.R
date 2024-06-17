@@ -417,8 +417,6 @@ generateWorkspaceMacro <- function(local_repo_dir = NULL,
   }
 
   findPackages <- function(repos, suffix) {
-    repos <- mirror_repo_url
-    suffix <- ".mirrored"
     mergeWithRemote <- function(type) {
       remote_pkgs <- as.data.frame(
         available.packages(repos = repos, type = type)[, c("Package", "Repository")],

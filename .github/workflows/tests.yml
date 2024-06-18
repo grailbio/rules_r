@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-13, ubuntu-latest]
         # Latest version of required software, and a minimum version as
         # specified in the README.
         bazel_version: [latest]
